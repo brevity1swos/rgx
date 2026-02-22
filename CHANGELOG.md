@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.5] - 2026-02-22
+
+### Bug Fixes
+
+- Bust GitHub CDN cache for demo GIF
+Add query parameter to demo.gif URL to force GitHub's camo CDN
+  to fetch the updated image instead of serving the stale cache.
+
+
 ## [0.1.4] - 2026-02-22
 
 ### Bug Fixes
