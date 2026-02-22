@@ -5,15 +5,18 @@ use crate::input::editor::Editor;
 pub struct App {
     pub regex_editor: Editor,
     pub test_editor: Editor,
-    pub focused_panel: u8, // 0 = regex, 1 = test, 2 = matches, 3 = explanation
+    pub replace_editor: Editor,
+    pub focused_panel: u8, // 0=regex, 1=test, 2=replace, 3=matches, 4=explanation
     pub engine_kind: EngineKind,
     pub flags: EngineFlags,
     pub matches: Vec<engine::Match>,
+    pub replace_result: Option<engine::ReplaceResult>,
     pub explanation: Vec<ExplainNode>,
     pub error: Option<String>,
     pub show_help: bool,
     pub should_quit: bool,
     pub match_scroll: u16,
+    pub replace_scroll: u16,
     pub explain_scroll: u16,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
@@ -25,19 +28,45 @@ impl App {
         Self {
             regex_editor: Editor::new(),
             test_editor: Editor::new(),
+            replace_editor: Editor::new(),
             focused_panel: 0,
             engine_kind,
             flags,
             matches: Vec::new(),
+            replace_result: None,
             explanation: Vec::new(),
             error: None,
             show_help: false,
             should_quit: false,
             match_scroll: 0,
+            replace_scroll: 0,
             explain_scroll: 0,
             engine,
             compiled: None,
         }
+    }
+
+    pub fn set_replacement(&mut self, text: &str) {
+        self.replace_editor = Editor::with_content(text.to_string());
+        self.rereplace();
+    }
+
+    pub fn scroll_replace_up(&mut self) {
+        self.replace_scroll = self.replace_scroll.saturating_sub(1);
+    }
+
+    pub fn scroll_replace_down(&mut self) {
+        self.replace_scroll = self.replace_scroll.saturating_add(1);
+    }
+
+    pub fn rereplace(&mut self) {
+        let template = self.replace_editor.content().to_string();
+        if template.is_empty() || self.matches.is_empty() {
+            self.replace_result = None;
+            return;
+        }
+        let text = self.test_editor.content().to_string();
+        self.replace_result = Some(engine::replace_all(&text, &self.matches, &template));
     }
 
     pub fn set_pattern(&mut self, pattern: &str) {
@@ -119,6 +148,7 @@ impl App {
             let text = self.test_editor.content().to_string();
             if text.is_empty() {
                 self.matches.clear();
+                self.replace_result = None;
                 return;
             }
             match compiled.find_matches(&text) {
@@ -131,5 +161,6 @@ impl App {
         } else {
             self.matches.clear();
         }
+        self.rereplace();
     }
 }

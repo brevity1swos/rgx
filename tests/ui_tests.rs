@@ -129,3 +129,67 @@ fn narrow_terminal_layout() {
     app.set_pattern(r"\w+");
     terminal.draw(|frame| ui::render(frame, &app)).unwrap();
 }
+
+#[test]
+fn render_with_replacement() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("hello 123 world 456");
+    app.set_pattern(r"\d+");
+    app.set_replacement("[NUM]");
+
+    assert!(app.replace_result.is_some());
+    let result = app.replace_result.as_ref().unwrap();
+    assert_eq!(result.output, "hello [NUM] world [NUM]");
+
+    terminal.draw(|frame| ui::render(frame, &app)).unwrap();
+}
+
+#[test]
+fn render_empty_replacement() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("hello 123");
+    app.set_pattern(r"\d+");
+    // No replacement set
+    assert!(app.replace_result.is_none());
+}
+
+#[test]
+fn panel_cycling_includes_replace() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    assert_eq!(app.focused_panel, 0);
+    app.focused_panel = (app.focused_panel + 1) % 5;
+    assert_eq!(app.focused_panel, 1);
+    app.focused_panel = (app.focused_panel + 1) % 5;
+    assert_eq!(app.focused_panel, 2); // replace panel
+    app.focused_panel = (app.focused_panel + 1) % 5;
+    assert_eq!(app.focused_panel, 3); // matches
+    app.focused_panel = (app.focused_panel + 1) % 5;
+    assert_eq!(app.focused_panel, 4); // explanation
+    app.focused_panel = (app.focused_panel + 1) % 5;
+    assert_eq!(app.focused_panel, 0); // back to regex
+}
+
+#[test]
+fn replacement_with_named_groups() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("2024-01");
+    app.set_pattern(r"(?P<y>\d{4})-(?P<m>\d{2})");
+    app.set_replacement("${m}/${y}");
+
+    assert!(app.replace_result.is_some());
+    let result = app.replace_result.as_ref().unwrap();
+    assert_eq!(result.output, "01/2024");
+}
+
+#[test]
+fn replacement_clears_on_empty_template() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("hello 123");
+    app.set_pattern(r"\d+");
+    app.set_replacement("[NUM]");
+    assert!(app.replace_result.is_some());
+
+    app.set_replacement("");
+    assert!(app.replace_result.is_none());
+}

@@ -7,15 +7,14 @@ use ratatui::{
 };
 
 use crate::input::editor::Editor;
-use crate::ui::{syntax_highlight, theme};
+use crate::ui::theme;
 
-pub struct RegexInput<'a> {
+pub struct ReplaceInput<'a> {
     pub editor: &'a Editor,
     pub focused: bool,
-    pub error: Option<&'a str>,
 }
 
-impl<'a> Widget for RegexInput<'a> {
+impl<'a> Widget for ReplaceInput<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let border_style = if self.focused {
             Style::default().fg(theme::BLUE)
@@ -23,38 +22,19 @@ impl<'a> Widget for RegexInput<'a> {
             Style::default().fg(theme::OVERLAY)
         };
 
-        let title = if let Some(err) = self.error {
-            let truncated: String = err
-                .chars()
-                .take((area.width as usize).saturating_sub(10))
-                .collect();
-            format!(" Pattern (Error: {truncated}) ")
-        } else {
-            " Pattern ".to_string()
-        };
-
-        let title_style = if self.error.is_some() {
-            Style::default().fg(theme::RED)
-        } else {
-            Style::default().fg(theme::TEXT)
-        };
-
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(border_style)
-            .title(Span::styled(title, title_style));
+            .title(Span::styled(
+                " Replacement ($1, ${name}) ",
+                Style::default().fg(theme::TEXT),
+            ));
 
         let content = self.editor.content();
-        let tokens = syntax_highlight::highlight(content);
-        let spans = if tokens.is_empty() {
-            vec![Span::styled(
-                content.to_string(),
-                Style::default().fg(theme::TEXT),
-            )]
-        } else {
-            syntax_highlight::build_highlighted_spans(content, &tokens)
-        };
-        let line = Line::from(spans);
+        let line = Line::from(Span::styled(
+            content.to_string(),
+            Style::default().fg(theme::TEXT),
+        ));
 
         let paragraph = Paragraph::new(line)
             .block(block)

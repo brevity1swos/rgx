@@ -1,23 +1,29 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Style,
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
 
 use crate::engine;
+use crate::ui::test_input::split_spans_into_lines;
 use crate::ui::theme;
 
 pub struct MatchDisplay<'a> {
     pub matches: &'a [engine::Match],
+    pub replace_result: Option<&'a engine::ReplaceResult>,
     pub scroll: u16,
     pub focused: bool,
 }
 
 impl<'a> Widget for MatchDisplay<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = format!(" Matches ({}) ", self.matches.len());
+        let title = if self.replace_result.is_some() {
+            format!(" Matches ({}) | Preview ", self.matches.len())
+        } else {
+            format!(" Matches ({}) ", self.matches.len())
+        };
         let border_color = if self.focused {
             theme::BLUE
         } else {
@@ -78,6 +84,18 @@ impl<'a> Widget for MatchDisplay<'a> {
             }
         }
 
+        // Replace preview section
+        if let Some(result) = self.replace_result {
+            lines.push(Line::from(Span::styled(
+                "─── Replace Preview ───",
+                Style::default().fg(theme::OVERLAY),
+            )));
+
+            let preview_spans = build_replace_preview_spans(result);
+            let preview_lines = split_spans_into_lines(preview_spans);
+            lines.extend(preview_lines);
+        }
+
         let paragraph = Paragraph::new(lines)
             .block(block)
             .style(Style::default().bg(theme::BASE))
@@ -86,4 +104,24 @@ impl<'a> Widget for MatchDisplay<'a> {
 
         paragraph.render(area, buf);
     }
+}
+
+fn build_replace_preview_spans(result: &engine::ReplaceResult) -> Vec<Span<'_>> {
+    let mut spans = Vec::new();
+    for seg in &result.segments {
+        let text = &result.output[seg.start..seg.end];
+        let style = if seg.is_replacement {
+            Style::default()
+                .fg(theme::BASE)
+                .bg(theme::GREEN)
+                .add_modifier(Modifier::BOLD)
+        } else {
+            Style::default().fg(theme::TEXT)
+        };
+        spans.push(Span::styled(text.to_string(), style));
+    }
+    if spans.is_empty() {
+        spans.push(Span::styled("(empty)", Style::default().fg(theme::SUBTEXT)));
+    }
+    spans
 }

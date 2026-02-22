@@ -1,6 +1,7 @@
 pub mod explanation;
 pub mod match_display;
 pub mod regex_input;
+pub mod replace_input;
 pub mod status_bar;
 pub mod syntax_highlight;
 pub mod test_input;
@@ -15,6 +16,7 @@ use crate::app::App;
 use explanation::ExplanationPanel;
 use match_display::MatchDisplay;
 use regex_input::RegexInput;
+use replace_input::ReplaceInput;
 use status_bar::StatusBar;
 use test_input::TestInput;
 
@@ -27,23 +29,24 @@ pub fn render(frame: &mut Frame, app: &App) {
         .constraints([
             Constraint::Length(3), // regex input
             Constraint::Length(8), // test string input (6 visible lines)
+            Constraint::Length(3), // replacement input
             Constraint::Min(5),    // results area
             Constraint::Length(1), // status bar
         ])
         .split(size);
 
     // Results area: split horizontally between matches and explanation
-    let results_chunks = if main_chunks[2].width > 80 {
+    let results_chunks = if main_chunks[3].width > 80 {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(main_chunks[2])
+            .split(main_chunks[3])
     } else {
         // Stack vertically on narrow terminals
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(main_chunks[2])
+            .split(main_chunks[3])
     };
 
     // Help overlay
@@ -74,12 +77,22 @@ pub fn render(frame: &mut Frame, app: &App) {
         main_chunks[1],
     );
 
+    // Replacement input
+    frame.render_widget(
+        ReplaceInput {
+            editor: &app.replace_editor,
+            focused: app.focused_panel == 2,
+        },
+        main_chunks[2],
+    );
+
     // Match display
     frame.render_widget(
         MatchDisplay {
             matches: &app.matches,
+            replace_result: app.replace_result.as_ref(),
             scroll: app.match_scroll,
-            focused: app.focused_panel == 2,
+            focused: app.focused_panel == 3,
         },
         results_chunks[0],
     );
@@ -90,7 +103,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             nodes: &app.explanation,
             error: error_str,
             scroll: app.explain_scroll,
-            focused: app.focused_panel == 3,
+            focused: app.focused_panel == 4,
         },
         results_chunks[1],
     );
@@ -102,7 +115,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             match_count: app.matches.len(),
             flags: app.flags.clone(),
         },
-        main_chunks[3],
+        main_chunks[4],
     );
 }
 
@@ -114,7 +127,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
     };
 
     let help_width = 60.min(area.width.saturating_sub(4));
-    let help_height = 22.min(area.height.saturating_sub(4));
+    let help_height = 24.min(area.height.saturating_sub(4));
     let x = (area.width.saturating_sub(help_width)) / 2;
     let y = (area.height.saturating_sub(help_height)) / 2;
     let help_area = Rect::new(x, y, help_width, help_height);
@@ -132,7 +145,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("Tab       ", Style::default().fg(theme::GREEN)),
             Span::styled(
-                "Cycle focus: pattern/test/matches/explanation",
+                "Cycle focus: pattern/test/replace/matches/explanation",
                 Style::default().fg(theme::TEXT),
             ),
         ]),
@@ -185,6 +198,11 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
             Span::styled("Esc       ", Style::default().fg(theme::GREEN)),
             Span::styled("Quit", Style::default().fg(theme::TEXT)),
         ]),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Replacement: $1, ${name}, $0/$&, $$ for literal $",
+            Style::default().fg(theme::SUBTEXT),
+        )),
         Line::from(""),
         Line::from(Span::styled(
             "Press any key to close",
