@@ -1,5 +1,5 @@
 [package]
-name = "rgx"
+name = "rgx-cli"
 version = "0.1.1"
 edition = "2021"
 rust-version = "1.74"
@@ -12,6 +12,14 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 keywords = ["regex", "tui", "terminal", "cli", "developer-tools"]
 categories = ["command-line-utilities", "text-processing", "development-tools"]
+
+[[bin]]
+name = "rgx"
+path = "src/main.rs"
+
+[lib]
+name = "rgx"
+path = "src/lib.rs"
 
 [features]
 default = ["pcre2-engine"]

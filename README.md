@@ -33,7 +33,7 @@ A terminal regex debugger with real-time matching, capture group highlighting, a
 ### From crates.io
 
 ```bash
-cargo install rgx
+cargo install rgx-cli
 ```
 
 ### From prebuilt binaries
@@ -66,7 +66,7 @@ cargo install --path .
 ### Without PCRE2 (zero C dependencies)
 
 ```bash
-cargo install rgx --no-default-features
+cargo install rgx-cli --no-default-features
 ```
 
 </details>
