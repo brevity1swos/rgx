@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.8] - 2026-02-22
+
+### Bug Fixes
+
+- Use absolute URL for demo GIF so it renders on crates.io
+crates.io doesn't serve repository assets, so relative paths like
+  assets/demo.gif don't work. Use the raw.githubusercontent.com URL.
+
+### Features
+
+- Add social preview image (1280x640)
+Catppuccin Mocha themed preview showing the TUI with pattern input,
+  colored capture group highlights, match results, and explanation panel.
+  Includes the generation script for reproducibility.
+
+
 ## [0.1.7] - 2026-02-22
 
 ### Bug Fixes
