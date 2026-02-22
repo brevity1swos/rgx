@@ -11,7 +11,7 @@
 
 A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations. Written in Rust.
 
-![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif?v=2)
+![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif?v=3)
 
 *Press F1 in the app for a multi-page cheat sheet with keyboard shortcuts, regex syntax, and engine-specific features.*
 
@@ -22,6 +22,7 @@ A terminal regex debugger with real-time matching, capture group highlighting, a
 ## Features
 
 - **Real-time matching** — matches update on every keystroke
+- **Syntax-highlighted pattern input** — AST-based coloring for groups, quantifiers, character classes, anchors, and escapes
 - **3 regex engines** — Rust `regex` (default), `fancy-regex` (lookaround/backrefs), PCRE2 (full features)
 - **Capture group highlighting** — distinct colors per group, nested group support
 - **Plain-English explanations** — walks the regex AST to generate human-readable breakdowns
