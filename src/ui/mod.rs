@@ -140,8 +140,10 @@ pub fn render(frame: &mut Frame, app: &App) {
         StatusBar {
             engine: app.engine_kind,
             match_count: app.matches.len(),
-            flags: app.flags.clone(),
+            flags: app.flags,
             show_whitespace: app.show_whitespace,
+            compile_time: app.compile_time,
+            match_time: app.match_time,
         },
         layout.status_bar,
     );

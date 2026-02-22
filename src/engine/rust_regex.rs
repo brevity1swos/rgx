@@ -13,29 +13,7 @@ impl RegexEngine for RustRegexEngine {
     }
 
     fn compile(&self, pattern: &str, flags: &EngineFlags) -> EngineResult<Box<dyn CompiledRegex>> {
-        let mut flag_prefix = String::new();
-        if flags.case_insensitive {
-            flag_prefix.push('i');
-        }
-        if flags.multi_line {
-            flag_prefix.push('m');
-        }
-        if flags.dot_matches_newline {
-            flag_prefix.push('s');
-        }
-        if flags.unicode {
-            flag_prefix.push('u');
-        }
-        if flags.extended {
-            flag_prefix.push('x');
-        }
-
-        let full_pattern = if flag_prefix.is_empty() {
-            pattern.to_string()
-        } else {
-            format!("(?{flag_prefix}){pattern}")
-        };
-
+        let full_pattern = flags.wrap_pattern(pattern);
         let re = Regex::new(&full_pattern).map_err(|e| EngineError::CompileError(e.to_string()))?;
 
         Ok(Box::new(RustCompiledRegex { re }))

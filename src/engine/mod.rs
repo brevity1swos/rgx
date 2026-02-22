@@ -47,7 +47,7 @@ impl fmt::Display for EngineKind {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct EngineFlags {
     pub case_insensitive: bool,
     pub multi_line: bool,
@@ -57,6 +57,35 @@ pub struct EngineFlags {
 }
 
 impl EngineFlags {
+    pub fn to_inline_prefix(&self) -> String {
+        let mut s = String::new();
+        if self.case_insensitive {
+            s.push('i');
+        }
+        if self.multi_line {
+            s.push('m');
+        }
+        if self.dot_matches_newline {
+            s.push('s');
+        }
+        if self.unicode {
+            s.push('u');
+        }
+        if self.extended {
+            s.push('x');
+        }
+        s
+    }
+
+    pub fn wrap_pattern(&self, pattern: &str) -> String {
+        let prefix = self.to_inline_prefix();
+        if prefix.is_empty() {
+            pattern.to_string()
+        } else {
+            format!("(?{prefix}){pattern}")
+        }
+    }
+
     pub fn toggle_case_insensitive(&mut self) {
         self.case_insensitive = !self.case_insensitive;
     }

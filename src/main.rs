@@ -12,25 +12,39 @@ use ratatui::Terminal;
 
 use rgx::app::App;
 use rgx::config::cli::Cli;
+use rgx::config::settings::Settings;
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
+use rgx::input::editor::Editor;
 use rgx::input::{key_to_action, Action};
 use rgx::ui;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
+    let settings = Settings::load();
 
-    let engine_kind = cli.parse_engine();
+    let engine_kind = match cli.engine {
+        Some(ref e) => match e.as_str() {
+            "fancy" => rgx::engine::EngineKind::FancyRegex,
+            #[cfg(feature = "pcre2-engine")]
+            "pcre2" => rgx::engine::EngineKind::Pcre2,
+            _ => rgx::engine::EngineKind::RustRegex,
+        },
+        None => settings.parse_engine(),
+    };
     let flags = EngineFlags {
-        case_insensitive: cli.case_insensitive,
-        multi_line: cli.multiline,
-        dot_matches_newline: cli.dotall,
-        unicode: cli.unicode,
-        extended: cli.extended,
+        case_insensitive: cli.case_insensitive || settings.case_insensitive,
+        multi_line: cli.multiline || settings.multiline,
+        dot_matches_newline: cli.dotall || settings.dotall,
+        unicode: cli.unicode.unwrap_or(settings.unicode),
+        extended: cli.extended || settings.extended,
     };
 
     let mut app = App::new(engine_kind, flags);
+    if settings.show_whitespace {
+        app.show_whitespace = true;
+    }
 
     // Read stdin if piped
     let stdin_text = if !io::stdin().is_terminal() {
@@ -97,12 +111,35 @@ async fn main() -> anyhow::Result<()> {
                         continue;
                     }
 
+                    let edit_focused = |app: &mut App, f: fn(&mut Editor)| match app.focused_panel {
+                        App::PANEL_REGEX => {
+                            f(&mut app.regex_editor);
+                            app.recompute();
+                        }
+                        App::PANEL_TEST => {
+                            f(&mut app.test_editor);
+                            app.rematch();
+                        }
+                        App::PANEL_REPLACE => {
+                            f(&mut app.replace_editor);
+                            app.rereplace();
+                        }
+                        _ => {}
+                    };
+
+                    let move_focused = |app: &mut App, f: fn(&mut Editor)| match app.focused_panel {
+                        App::PANEL_REGEX => f(&mut app.regex_editor),
+                        App::PANEL_TEST => f(&mut app.test_editor),
+                        App::PANEL_REPLACE => f(&mut app.replace_editor),
+                        _ => {}
+                    };
+
                     match key_to_action(key) {
                         Action::Quit => {
                             app.should_quit = true;
                         }
                         Action::SwitchPanel => {
-                            if app.focused_panel == 0 {
+                            if app.focused_panel == App::PANEL_REGEX {
                                 app.commit_pattern_to_history();
                             }
                             app.focused_panel = (app.focused_panel + 1) % 5;
@@ -111,35 +148,41 @@ async fn main() -> anyhow::Result<()> {
                             app.switch_engine();
                         }
                         Action::Undo => {
-                            if app.focused_panel == 0 && app.regex_editor.undo() {
+                            if app.focused_panel == App::PANEL_REGEX && app.regex_editor.undo() {
                                 app.recompute();
-                            } else if app.focused_panel == 1 && app.test_editor.undo() {
+                            } else if app.focused_panel == App::PANEL_TEST && app.test_editor.undo()
+                            {
                                 app.rematch();
-                            } else if app.focused_panel == 2 && app.replace_editor.undo() {
+                            } else if app.focused_panel == App::PANEL_REPLACE
+                                && app.replace_editor.undo()
+                            {
                                 app.rereplace();
                             }
                         }
                         Action::Redo => {
-                            if app.focused_panel == 0 && app.regex_editor.redo() {
+                            if app.focused_panel == App::PANEL_REGEX && app.regex_editor.redo() {
                                 app.recompute();
-                            } else if app.focused_panel == 1 && app.test_editor.redo() {
+                            } else if app.focused_panel == App::PANEL_TEST && app.test_editor.redo()
+                            {
                                 app.rematch();
-                            } else if app.focused_panel == 2 && app.replace_editor.redo() {
+                            } else if app.focused_panel == App::PANEL_REPLACE
+                                && app.replace_editor.redo()
+                            {
                                 app.rereplace();
                             }
                         }
                         Action::HistoryPrev => {
-                            if app.focused_panel == 0 {
+                            if app.focused_panel == App::PANEL_REGEX {
                                 app.history_prev();
                             }
                         }
                         Action::HistoryNext => {
-                            if app.focused_panel == 0 {
+                            if app.focused_panel == App::PANEL_REGEX {
                                 app.history_next();
                             }
                         }
                         Action::CopyMatch => {
-                            if app.focused_panel == 3 {
+                            if app.focused_panel == App::PANEL_MATCHES {
                                 app.copy_selected_match();
                             }
                         }
@@ -169,120 +212,51 @@ async fn main() -> anyhow::Result<()> {
                         Action::ShowHelp => {
                             app.show_help = true;
                         }
-                        Action::InsertChar(c) => {
-                            if app.focused_panel == 0 {
+                        Action::InsertChar(c) => match app.focused_panel {
+                            App::PANEL_REGEX => {
                                 app.regex_editor.insert_char(c);
                                 app.recompute();
-                            } else if app.focused_panel == 1 {
+                            }
+                            App::PANEL_TEST => {
                                 app.test_editor.insert_char(c);
                                 app.rematch();
-                            } else if app.focused_panel == 2 {
+                            }
+                            App::PANEL_REPLACE => {
                                 app.replace_editor.insert_char(c);
                                 app.rereplace();
                             }
-                        }
+                            _ => {}
+                        },
                         Action::InsertNewline => {
-                            if app.focused_panel == 1 {
+                            if app.focused_panel == App::PANEL_TEST {
                                 app.test_editor.insert_newline();
                                 app.rematch();
                             }
                         }
-                        Action::DeleteBack => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.delete_back();
-                                app.recompute();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.delete_back();
-                                app.rematch();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.delete_back();
-                                app.rereplace();
-                            }
-                        }
-                        Action::DeleteForward => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.delete_forward();
-                                app.recompute();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.delete_forward();
-                                app.rematch();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.delete_forward();
-                                app.rereplace();
-                            }
-                        }
-                        Action::MoveCursorLeft => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.move_left();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.move_left();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.move_left();
-                            }
-                        }
-                        Action::MoveCursorRight => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.move_right();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.move_right();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.move_right();
-                            }
-                        }
+                        Action::DeleteBack => edit_focused(&mut app, Editor::delete_back),
+                        Action::DeleteForward => edit_focused(&mut app, Editor::delete_forward),
+                        Action::MoveCursorLeft => move_focused(&mut app, Editor::move_left),
+                        Action::MoveCursorRight => move_focused(&mut app, Editor::move_right),
                         Action::MoveCursorWordLeft => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.move_word_left();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.move_word_left();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.move_word_left();
-                            }
+                            move_focused(&mut app, Editor::move_word_left)
                         }
                         Action::MoveCursorWordRight => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.move_word_right();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.move_word_right();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.move_word_right();
-                            }
+                            move_focused(&mut app, Editor::move_word_right)
                         }
-                        Action::ScrollUp => {
-                            if app.focused_panel == 1 {
-                                app.test_editor.move_up();
-                            } else if app.focused_panel == 3 {
-                                app.select_match_prev();
-                            } else if app.focused_panel == 4 {
-                                app.scroll_explain_up();
-                            }
-                        }
-                        Action::ScrollDown => {
-                            if app.focused_panel == 1 {
-                                app.test_editor.move_down();
-                            } else if app.focused_panel == 3 {
-                                app.select_match_next();
-                            } else if app.focused_panel == 4 {
-                                app.scroll_explain_down();
-                            }
-                        }
-                        Action::MoveCursorHome => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.move_home();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.move_home();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.move_home();
-                            }
-                        }
-                        Action::MoveCursorEnd => {
-                            if app.focused_panel == 0 {
-                                app.regex_editor.move_end();
-                            } else if app.focused_panel == 1 {
-                                app.test_editor.move_end();
-                            } else if app.focused_panel == 2 {
-                                app.replace_editor.move_end();
-                            }
-                        }
+                        Action::ScrollUp => match app.focused_panel {
+                            App::PANEL_TEST => app.test_editor.move_up(),
+                            App::PANEL_MATCHES => app.select_match_prev(),
+                            App::PANEL_EXPLAIN => app.scroll_explain_up(),
+                            _ => {}
+                        },
+                        Action::ScrollDown => match app.focused_panel {
+                            App::PANEL_TEST => app.test_editor.move_down(),
+                            App::PANEL_MATCHES => app.select_match_next(),
+                            App::PANEL_EXPLAIN => app.scroll_explain_down(),
+                            _ => {}
+                        },
+                        Action::MoveCursorHome => move_focused(&mut app, Editor::move_home),
+                        Action::MoveCursorEnd => move_focused(&mut app, Editor::move_end),
                         Action::None => {}
                     }
                 }
@@ -295,12 +269,12 @@ async fn main() -> anyhow::Result<()> {
 
                             // Determine which panel was clicked
                             if contains(layout.regex_input, col, row) {
-                                app.focused_panel = 0;
+                                app.focused_panel = App::PANEL_REGEX;
                                 let x = col.saturating_sub(layout.regex_input.x + 1) as usize;
                                 app.regex_editor
                                     .set_cursor_by_col(x + app.regex_editor.scroll_offset());
                             } else if contains(layout.test_input, col, row) {
-                                app.focused_panel = 1;
+                                app.focused_panel = App::PANEL_TEST;
                                 let x = col.saturating_sub(layout.test_input.x + 1) as usize;
                                 let y = row.saturating_sub(layout.test_input.y + 1) as usize;
                                 let line = y + app.test_editor.vertical_scroll();
@@ -309,14 +283,14 @@ async fn main() -> anyhow::Result<()> {
                                     x + app.test_editor.scroll_offset(),
                                 );
                             } else if contains(layout.replace_input, col, row) {
-                                app.focused_panel = 2;
+                                app.focused_panel = App::PANEL_REPLACE;
                                 let x = col.saturating_sub(layout.replace_input.x + 1) as usize;
                                 app.replace_editor
                                     .set_cursor_by_col(x + app.replace_editor.scroll_offset());
                             } else if contains(layout.match_display, col, row) {
-                                app.focused_panel = 3;
+                                app.focused_panel = App::PANEL_MATCHES;
                             } else if contains(layout.explanation, col, row) {
-                                app.focused_panel = 4;
+                                app.focused_panel = App::PANEL_EXPLAIN;
                             }
                         }
                         MouseEventKind::ScrollUp => {

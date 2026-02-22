@@ -281,3 +281,108 @@ fn cross_engine_consistency() {
         );
     }
 }
+
+// --- Unicode edge cases ---
+
+fn test_engine_unicode_emoji(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags {
+        unicode: true,
+        ..Default::default()
+    };
+    let compiled = engine.compile(r"\p{Emoji}", &flags).unwrap();
+    let matches = compiled.find_matches("hello 🎉 world 🚀").unwrap();
+    assert!(matches.len() >= 2, "Should match emoji characters");
+}
+
+fn test_engine_unicode_cjk(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags {
+        unicode: true,
+        ..Default::default()
+    };
+    let compiled = engine.compile(r"\p{Han}+", &flags).unwrap();
+    let matches = compiled.find_matches("hello 你好世界 world").unwrap();
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].text, "你好世界");
+}
+
+fn test_engine_unicode_combining_marks(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags {
+        unicode: true,
+        ..Default::default()
+    };
+    // Match a base letter followed by combining marks
+    let compiled = engine.compile(r"e\p{M}", &flags).unwrap();
+    // e + combining acute accent (U+0301)
+    let text = "e\u{0301}";
+    let matches = compiled.find_matches(text).unwrap();
+    assert_eq!(matches.len(), 1);
+}
+
+fn test_engine_empty_pattern(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags::default();
+    // Empty pattern should compile and not error (returns empty matches)
+    let result = engine.compile("", &flags);
+    assert!(result.is_ok());
+}
+
+fn test_engine_empty_test_string(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags::default();
+    let compiled = engine.compile(r"\d+", &flags).unwrap();
+    let matches = compiled.find_matches("").unwrap();
+    assert_eq!(matches.len(), 0);
+}
+
+#[test]
+fn rust_regex_unicode_emoji() {
+    test_engine_unicode_emoji(EngineKind::RustRegex);
+}
+
+#[test]
+fn rust_regex_unicode_cjk() {
+    test_engine_unicode_cjk(EngineKind::RustRegex);
+}
+
+#[test]
+fn rust_regex_unicode_combining_marks() {
+    test_engine_unicode_combining_marks(EngineKind::RustRegex);
+}
+
+#[test]
+fn rust_regex_empty_pattern() {
+    test_engine_empty_pattern(EngineKind::RustRegex);
+}
+
+#[test]
+fn rust_regex_empty_test_string() {
+    test_engine_empty_test_string(EngineKind::RustRegex);
+}
+
+#[test]
+fn fancy_regex_unicode_emoji() {
+    test_engine_unicode_emoji(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_unicode_cjk() {
+    test_engine_unicode_cjk(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_unicode_combining_marks() {
+    test_engine_unicode_combining_marks(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_empty_pattern() {
+    test_engine_empty_pattern(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_empty_test_string() {
+    test_engine_empty_test_string(EngineKind::FancyRegex);
+}
