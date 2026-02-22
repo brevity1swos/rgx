@@ -73,7 +73,7 @@ impl<'a> Widget for TestInput<'a> {
 }
 
 /// Split a flat list of spans at newline characters into multiple Lines.
-fn split_spans_into_lines<'a>(spans: Vec<Span<'a>>) -> Vec<Line<'a>> {
+pub fn split_spans_into_lines<'a>(spans: Vec<Span<'a>>) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'a>> = Vec::new();
     let mut current_spans: Vec<Span<'a>> = Vec::new();
 

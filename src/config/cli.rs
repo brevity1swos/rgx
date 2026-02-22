@@ -35,6 +35,10 @@ pub struct Cli {
     /// Extended mode (ignore whitespace)
     #[arg(short = 'x', long)]
     pub extended: bool,
+
+    /// Initial replacement string
+    #[arg(short = 'r', long)]
+    pub replacement: Option<String>,
 }
 
 impl Cli {

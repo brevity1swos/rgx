@@ -48,6 +48,10 @@ async fn main() -> anyhow::Result<()> {
         app.set_pattern(pattern);
     }
 
+    if let Some(r) = &cli.replacement {
+        app.set_replacement(r);
+    }
+
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -74,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
                             app.should_quit = true;
                         }
                         Action::SwitchPanel => {
-                            app.focused_panel = (app.focused_panel + 1) % 4;
+                            app.focused_panel = (app.focused_panel + 1) % 5;
                         }
                         Action::SwitchEngine => {
                             app.switch_engine();
@@ -109,6 +113,9 @@ async fn main() -> anyhow::Result<()> {
                             } else if app.focused_panel == 1 {
                                 app.test_editor.insert_char(c);
                                 app.rematch();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.insert_char(c);
+                                app.rereplace();
                             }
                         }
                         Action::InsertNewline => {
@@ -124,6 +131,9 @@ async fn main() -> anyhow::Result<()> {
                             } else if app.focused_panel == 1 {
                                 app.test_editor.delete_back();
                                 app.rematch();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.delete_back();
+                                app.rereplace();
                             }
                         }
                         Action::DeleteForward => {
@@ -133,6 +143,9 @@ async fn main() -> anyhow::Result<()> {
                             } else if app.focused_panel == 1 {
                                 app.test_editor.delete_forward();
                                 app.rematch();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.delete_forward();
+                                app.rereplace();
                             }
                         }
                         Action::MoveCursorLeft => {
@@ -140,6 +153,8 @@ async fn main() -> anyhow::Result<()> {
                                 app.regex_editor.move_left();
                             } else if app.focused_panel == 1 {
                                 app.test_editor.move_left();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.move_left();
                             }
                         }
                         Action::MoveCursorRight => {
@@ -147,23 +162,25 @@ async fn main() -> anyhow::Result<()> {
                                 app.regex_editor.move_right();
                             } else if app.focused_panel == 1 {
                                 app.test_editor.move_right();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.move_right();
                             }
                         }
                         Action::ScrollUp => {
                             if app.focused_panel == 1 {
                                 app.test_editor.move_up();
-                            } else if app.focused_panel == 2 {
-                                app.scroll_match_up();
                             } else if app.focused_panel == 3 {
+                                app.scroll_match_up();
+                            } else if app.focused_panel == 4 {
                                 app.scroll_explain_up();
                             }
                         }
                         Action::ScrollDown => {
                             if app.focused_panel == 1 {
                                 app.test_editor.move_down();
-                            } else if app.focused_panel == 2 {
-                                app.scroll_match_down();
                             } else if app.focused_panel == 3 {
+                                app.scroll_match_down();
+                            } else if app.focused_panel == 4 {
                                 app.scroll_explain_down();
                             }
                         }
@@ -172,6 +189,8 @@ async fn main() -> anyhow::Result<()> {
                                 app.regex_editor.move_home();
                             } else if app.focused_panel == 1 {
                                 app.test_editor.move_home();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.move_home();
                             }
                         }
                         Action::MoveCursorEnd => {
@@ -179,6 +198,8 @@ async fn main() -> anyhow::Result<()> {
                                 app.regex_editor.move_end();
                             } else if app.focused_panel == 1 {
                                 app.test_editor.move_end();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.move_end();
                             }
                         }
                         Action::None => {}
