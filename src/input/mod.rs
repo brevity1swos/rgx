@@ -40,7 +40,7 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleDotAll,
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleUnicode,
         KeyCode::Char('x') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleExtended,
-        KeyCode::Char('?') => Action::ShowHelp,
+        KeyCode::F(1) => Action::ShowHelp,
         KeyCode::Char(c) => Action::InsertChar(c),
         KeyCode::Enter => Action::InsertNewline,
         KeyCode::Backspace => Action::DeleteBack,

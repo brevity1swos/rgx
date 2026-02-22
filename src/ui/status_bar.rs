@@ -59,7 +59,7 @@ impl Widget for StatusBar {
         }
 
         spans.push(Span::styled(
-            " | Ctrl+E: engine | Tab: switch | Esc: quit ",
+            " | Ctrl+E: engine | Tab: switch | F1: help | Esc: quit ",
             Style::default().fg(theme::SUBTEXT).bg(theme::SURFACE0),
         ));
 
