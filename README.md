@@ -11,7 +11,7 @@
 
 A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations. Written in Rust.
 
-![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif)
+![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif?v=2)
 
 *Press F1 in the app for a multi-page cheat sheet with keyboard shortcuts, regex syntax, and engine-specific features.*
 
