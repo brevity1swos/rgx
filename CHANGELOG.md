@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.9] - 2026-02-22
+
+### Features
+
+- Automate Homebrew tap publishing on release
+- Add publish-homebrew job to dist.yml that pushes formula to
+    brevity1swos/homebrew-tap on each release
+  - Add tap config to Cargo.toml for cargo-dist
+  - Formula is downloaded from release assets, renamed from rgx-cli.rb
+    to rgx.rb (class RgxCli -> Rgx) for `brew install brevity1swos/tap/rgx`
+
+
 ## [0.1.8] - 2026-02-22
 
 ### Bug Fixes
