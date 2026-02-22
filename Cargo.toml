@@ -1,0 +1,61 @@
+[package]
+name = "rgx"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+authors = ["rgx contributors"]
+description = "A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations"
+documentation = "https://github.com/brevity1swos/rgx"
+homepage = "https://github.com/brevity1swos/rgx"
+repository = "https://github.com/brevity1swos/rgx"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+keywords = ["regex", "tui", "terminal", "cli", "developer-tools"]
+categories = ["command-line-utilities", "text-processing", "development-tools"]
+
+[features]
+default = ["pcre2-engine"]
+pcre2-engine = ["dep:pcre2"]
+
+[dependencies]
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+tokio = { version = "1", features = ["full"] }
+regex = "1"
+regex-syntax = "0.8"
+fancy-regex = "0.14"
+pcre2 = { version = "0.2", optional = true }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+dirs = "6"
+unicode-width = "0.2"
+anyhow = "1"
+tokio-stream = "0.1"
+
+[dev-dependencies]
+insta = "1"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "engine_bench"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+# cargo-dist configuration
+[workspace.metadata.dist]
+cargo-dist-version = "0.27.0"
+ci = "github"
+installers = ["shell", "powershell", "homebrew"]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+install-path = "CARGO_HOME"

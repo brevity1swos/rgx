@@ -1,0 +1,115 @@
+use super::{
+    CaptureGroup, CompiledRegex, EngineError, EngineFlags, EngineKind, EngineResult, Match,
+    RegexEngine,
+};
+
+pub struct FancyRegexEngine;
+
+impl RegexEngine for FancyRegexEngine {
+    fn kind(&self) -> EngineKind {
+        EngineKind::FancyRegex
+    }
+
+    fn compile(&self, pattern: &str, flags: &EngineFlags) -> EngineResult<Box<dyn CompiledRegex>> {
+        let mut flag_prefix = String::new();
+        if flags.case_insensitive {
+            flag_prefix.push('i');
+        }
+        if flags.multi_line {
+            flag_prefix.push('m');
+        }
+        if flags.dot_matches_newline {
+            flag_prefix.push('s');
+        }
+        if flags.unicode {
+            flag_prefix.push('u');
+        }
+        if flags.extended {
+            flag_prefix.push('x');
+        }
+
+        let full_pattern = if flag_prefix.is_empty() {
+            pattern.to_string()
+        } else {
+            format!("(?{flag_prefix}){pattern}")
+        };
+
+        let re = fancy_regex::Regex::new(&full_pattern)
+            .map_err(|e| EngineError::CompileError(e.to_string()))?;
+
+        Ok(Box::new(FancyCompiledRegex { re }))
+    }
+}
+
+struct FancyCompiledRegex {
+    re: fancy_regex::Regex,
+}
+
+impl CompiledRegex for FancyCompiledRegex {
+    fn find_matches(&self, text: &str) -> EngineResult<Vec<Match>> {
+        let mut matches = Vec::new();
+
+        for result in self.re.captures_iter(text) {
+            let caps = result.map_err(|e| EngineError::MatchError(e.to_string()))?;
+            let overall = caps.get(0).unwrap();
+            let mut captures = Vec::new();
+
+            // fancy-regex doesn't expose capture names directly, so we iterate by index
+            for i in 1..caps.len() {
+                if let Some(m) = caps.get(i) {
+                    captures.push(CaptureGroup {
+                        index: i,
+                        name: None, // fancy-regex doesn't easily expose names
+                        start: m.start(),
+                        end: m.end(),
+                        text: m.as_str().to_string(),
+                    });
+                }
+            }
+
+            matches.push(Match {
+                start: overall.start(),
+                end: overall.end(),
+                text: overall.as_str().to_string(),
+                captures,
+            });
+        }
+
+        Ok(matches)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_match() {
+        let engine = FancyRegexEngine;
+        let flags = EngineFlags::default();
+        let compiled = engine.compile(r"\d+", &flags).unwrap();
+        let matches = compiled.find_matches("abc 123 def 456").unwrap();
+        assert_eq!(matches.len(), 2);
+        assert_eq!(matches[0].text, "123");
+    }
+
+    #[test]
+    fn test_lookahead() {
+        let engine = FancyRegexEngine;
+        let flags = EngineFlags::default();
+        let compiled = engine.compile(r"\w+(?=@)", &flags).unwrap();
+        let matches = compiled.find_matches("user@example.com").unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].text, "user");
+    }
+
+    #[test]
+    fn test_lookbehind() {
+        let engine = FancyRegexEngine;
+        let flags = EngineFlags::default();
+        let compiled = engine.compile(r"(?<=@)\w+", &flags).unwrap();
+        let matches = compiled.find_matches("user@example.com").unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].text, "example");
+    }
+}
