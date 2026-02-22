@@ -78,6 +78,48 @@ fn flag_toggles() {
 }
 
 #[test]
+fn match_display_shows_results() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("user@example");
+    app.set_pattern(r"(\w+)@(\w+)");
+
+    // Verify match data exists
+    assert_eq!(app.matches.len(), 1);
+    assert_eq!(app.matches[0].text, "user@example");
+    assert_eq!(app.matches[0].captures.len(), 2);
+
+    // Render and check that match text appears in the buffer
+    terminal.draw(|frame| ui::render(frame, &app)).unwrap();
+    let buffer = terminal.backend().buffer().clone();
+    let buffer_text: String = buffer
+        .content()
+        .iter()
+        .map(|cell| cell.symbol().chars().next().unwrap_or(' '))
+        .collect();
+    assert!(
+        buffer_text.contains("Match 1"),
+        "Buffer should contain 'Match 1' but got: {}",
+        buffer_text
+    );
+}
+
+#[test]
+fn multiline_test_string_renders() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("hello\nworld");
+    app.set_pattern(r"\w+");
+
+    // Should find matches on both lines
+    assert_eq!(app.matches.len(), 2);
+    assert_eq!(app.matches[0].text, "hello");
+    assert_eq!(app.matches[1].text, "world");
+
+    terminal.draw(|frame| ui::render(frame, &app)).unwrap();
+}
+
+#[test]
 fn narrow_terminal_layout() {
     // Test that narrow terminals don't crash
     let backend = TestBackend::new(40, 24);

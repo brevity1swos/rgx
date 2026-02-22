@@ -177,7 +177,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
             Span::styled("Toggle extended mode", Style::default().fg(theme::TEXT)),
         ]),
         Line::from(vec![
-            Span::styled("?         ", Style::default().fg(theme::GREEN)),
+            Span::styled("F1        ", Style::default().fg(theme::GREEN)),
             Span::styled("Show/hide this help", Style::default().fg(theme::TEXT)),
         ]),
         Line::from(vec![
