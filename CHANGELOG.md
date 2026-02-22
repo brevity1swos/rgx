@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-02-22
+
+### Bug Fixes
+
+- Remap help key from ? to F1 so ? can be typed in patterns
+The ? key was intercepted by ShowHelp before reaching InsertChar,
+  making it impossible to type common regex syntax like (?P<name>...),
+  \w+?, (?:...), etc. Remap help to F1 and add UI tests for match
+  display rendering and multi-line test strings.
+- Prevent subtraction overflow in regex input on zero-size terminals
+Use saturating_sub for title truncation width and cursor bounds checks
+  to avoid panicking when the render area has zero width or height.
+
+### Features
+
+- Fix named captures, add scrollable panels and multi-line editor
+- Fix named capture groups in fancy-regex and PCRE2 engines by using
+    capture_names() API instead of hardcoding None
+  - Add scrollable match display and explanation panels with focus cycling
+    across all 4 panels (Tab), scroll via Up/Down on focused panel
+  - Implement multi-line test string editor with Enter for newlines,
+    Up/Down cursor navigation, vertical scroll, and line-aware highlighting
+  - Grow test string area from 3 to 8 rows for multi-line content
+- Add regex pattern syntax highlighting in the input field
+Color parentheses, quantifiers, character classes, escapes, anchors,
+  and alternation operators using the Catppuccin palette. Walks the
+  regex-syntax AST to categorize tokens and builds colored ratatui spans.
+  Falls back to plain text on parse failure.
+- Add live replace/substitution mode with highlighted preview
+Add a replacement input panel between test string and results area,
+  enabling real-time substitution preview. Supports $1, ${name}, $0/$&,
+  and $$ syntax. Engine-agnostic replacement operates on computed match
+  data so it works identically across all three engines.
+
+  - Add ReplaceSegment, ReplaceResult, expand_replacement(), replace_all()
+  - Add replace_editor, replace_result state to App with rereplace() chain
+  - New ReplaceInput widget (single-line, panel index 2)
+  - MatchDisplay renders highlighted preview (green bg for replacements)
+  - Layout updated from 4 to 5 panels, Tab cycles all five
+  - CLI flag -r/--replacement for initial replacement string
+  - 12 new tests (7 unit + 5 integration)
+
+
 ## [0.1.9] - 2026-02-22
 
 ### Features
