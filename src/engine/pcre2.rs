@@ -55,13 +55,15 @@ impl CompiledRegex for Pcre2CompiledRegex {
             let abs_end = offset + overall.end();
 
             let mut captures = Vec::new();
+            let names = self.re.capture_names();
             for i in 1..caps.len() {
                 if let Some(m) = caps.get(i) {
                     let cap_start = offset + m.start();
                     let cap_end = offset + m.end();
+                    let name = names.get(i).and_then(|n| n.clone());
                     captures.push(CaptureGroup {
                         index: i,
-                        name: None,
+                        name,
                         start: cap_start,
                         end: cap_end,
                         text: text[cap_start..cap_end].to_string(),
@@ -99,6 +101,22 @@ mod tests {
         let matches = compiled.find_matches("abc 123 def 456").unwrap();
         assert_eq!(matches.len(), 2);
         assert_eq!(matches[0].text, "123");
+    }
+
+    #[test]
+    fn test_named_captures() {
+        let engine = Pcre2Engine;
+        let flags = EngineFlags::default();
+        let compiled = engine
+            .compile(r"(?P<user>\w+)@(?P<domain>\w+)", &flags)
+            .unwrap();
+        let matches = compiled.find_matches("user@example").unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].captures.len(), 2);
+        assert_eq!(matches[0].captures[0].name, Some("user".to_string()));
+        assert_eq!(matches[0].captures[0].text, "user");
+        assert_eq!(matches[0].captures[1].name, Some("domain".to_string()));
+        assert_eq!(matches[0].captures[1].text, "example");
     }
 
     #[test]

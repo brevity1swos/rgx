@@ -25,7 +25,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // regex input
-            Constraint::Length(3), // test string input
+            Constraint::Length(8), // test string input (6 visible lines)
             Constraint::Min(5),    // results area
             Constraint::Length(1), // status bar
         ])
@@ -77,6 +77,8 @@ pub fn render(frame: &mut Frame, app: &App) {
     frame.render_widget(
         MatchDisplay {
             matches: &app.matches,
+            scroll: app.match_scroll,
+            focused: app.focused_panel == 2,
         },
         results_chunks[0],
     );
@@ -86,6 +88,8 @@ pub fn render(frame: &mut Frame, app: &App) {
         ExplanationPanel {
             nodes: &app.explanation,
             error: error_str,
+            scroll: app.explain_scroll,
+            focused: app.focused_panel == 3,
         },
         results_chunks[1],
     );
@@ -109,7 +113,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
     };
 
     let help_width = 60.min(area.width.saturating_sub(4));
-    let help_height = 18.min(area.height.saturating_sub(4));
+    let help_height = 22.min(area.height.saturating_sub(4));
     let x = (area.width.saturating_sub(help_width)) / 2;
     let y = (area.height.saturating_sub(help_height)) / 2;
     let help_area = Rect::new(x, y, help_width, help_height);
@@ -127,7 +131,21 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
         Line::from(vec![
             Span::styled("Tab       ", Style::default().fg(theme::GREEN)),
             Span::styled(
-                "Switch between pattern/test string",
+                "Cycle focus: pattern/test/matches/explanation",
+                Style::default().fg(theme::TEXT),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Up/Down   ", Style::default().fg(theme::GREEN)),
+            Span::styled(
+                "Scroll focused panel / move cursor",
+                Style::default().fg(theme::TEXT),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Enter     ", Style::default().fg(theme::GREEN)),
+            Span::styled(
+                "Insert newline (test string)",
                 Style::default().fg(theme::TEXT),
             ),
         ]),

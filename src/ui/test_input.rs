@@ -33,10 +33,19 @@ impl<'a> Widget for TestInput<'a> {
             ));
 
         let content = self.editor.content();
-        let spans = build_highlighted_spans(content, self.matches);
-        let line = Line::from(spans);
+        let flat_spans = build_highlighted_spans(content, self.matches);
+        let lines = split_spans_into_lines(flat_spans);
 
-        let paragraph = Paragraph::new(line)
+        // Apply vertical scroll
+        let v_scroll = self.editor.vertical_scroll();
+        let inner_height = (area.height as usize).saturating_sub(2); // borders
+        let visible_lines: Vec<Line> = lines
+            .into_iter()
+            .skip(v_scroll)
+            .take(inner_height)
+            .collect();
+
+        let paragraph = Paragraph::new(visible_lines)
             .block(block)
             .style(Style::default().bg(theme::BASE));
 
@@ -44,8 +53,11 @@ impl<'a> Widget for TestInput<'a> {
 
         // Render cursor
         if self.focused {
-            let cursor_x = area.x + 1 + self.editor.visual_cursor() as u16;
-            let cursor_y = area.y + 1;
+            let (cursor_line, cursor_col) = self.editor.cursor_line_col();
+            let visual_col = cursor_col.saturating_sub(self.editor.scroll_offset());
+            let visual_row = cursor_line.saturating_sub(v_scroll);
+            let cursor_x = area.x + 1 + visual_col as u16;
+            let cursor_y = area.y + 1 + visual_row as u16;
             if cursor_x < area.x + area.width - 1 && cursor_y < area.y + area.height - 1 {
                 if let Some(cell) = buf.cell_mut((cursor_x, cursor_y)) {
                     cell.set_style(
@@ -58,6 +70,34 @@ impl<'a> Widget for TestInput<'a> {
             }
         }
     }
+}
+
+/// Split a flat list of spans at newline characters into multiple Lines.
+fn split_spans_into_lines<'a>(spans: Vec<Span<'a>>) -> Vec<Line<'a>> {
+    let mut lines: Vec<Line<'a>> = Vec::new();
+    let mut current_spans: Vec<Span<'a>> = Vec::new();
+
+    for span in spans {
+        let style = span.style;
+        let text: &str = span.content.as_ref();
+
+        let mut remaining = text;
+        while let Some(nl_pos) = remaining.find('\n') {
+            let before = &remaining[..nl_pos];
+            if !before.is_empty() {
+                current_spans.push(Span::styled(before.to_string(), style));
+            }
+            lines.push(Line::from(std::mem::take(&mut current_spans)));
+            remaining = &remaining[nl_pos + 1..];
+        }
+        if !remaining.is_empty() {
+            current_spans.push(Span::styled(remaining.to_string(), style));
+        }
+    }
+
+    // Final line (even if empty — this ensures we always have at least one line)
+    lines.push(Line::from(current_spans));
+    lines
 }
 
 fn build_highlighted_spans<'a>(text: &'a str, matches: &[engine::Match]) -> Vec<Span<'a>> {

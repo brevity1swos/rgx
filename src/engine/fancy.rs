@@ -54,12 +54,14 @@ impl CompiledRegex for FancyCompiledRegex {
             let overall = caps.get(0).unwrap();
             let mut captures = Vec::new();
 
-            // fancy-regex doesn't expose capture names directly, so we iterate by index
-            for i in 1..caps.len() {
+            for (i, name) in self.re.capture_names().enumerate() {
+                if i == 0 {
+                    continue;
+                }
                 if let Some(m) = caps.get(i) {
                     captures.push(CaptureGroup {
                         index: i,
-                        name: None, // fancy-regex doesn't easily expose names
+                        name: name.map(String::from),
                         start: m.start(),
                         end: m.end(),
                         text: m.as_str().to_string(),
@@ -101,6 +103,22 @@ mod tests {
         let matches = compiled.find_matches("user@example.com").unwrap();
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].text, "user");
+    }
+
+    #[test]
+    fn test_named_captures() {
+        let engine = FancyRegexEngine;
+        let flags = EngineFlags::default();
+        let compiled = engine
+            .compile(r"(?P<user>\w+)@(?P<domain>\w+)", &flags)
+            .unwrap();
+        let matches = compiled.find_matches("user@example").unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].captures.len(), 2);
+        assert_eq!(matches[0].captures[0].name, Some("user".to_string()));
+        assert_eq!(matches[0].captures[0].text, "user");
+        assert_eq!(matches[0].captures[1].name, Some("domain".to_string()));
+        assert_eq!(matches[0].captures[1].text, "example");
     }
 
     #[test]

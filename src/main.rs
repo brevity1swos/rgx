@@ -74,7 +74,7 @@ async fn main() -> anyhow::Result<()> {
                             app.should_quit = true;
                         }
                         Action::SwitchPanel => {
-                            app.focused_panel = if app.focused_panel == 0 { 1 } else { 0 };
+                            app.focused_panel = (app.focused_panel + 1) % 4;
                         }
                         Action::SwitchEngine => {
                             app.switch_engine();
@@ -106,8 +106,14 @@ async fn main() -> anyhow::Result<()> {
                             if app.focused_panel == 0 {
                                 app.regex_editor.insert_char(c);
                                 app.recompute();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.insert_char(c);
+                                app.rematch();
+                            }
+                        }
+                        Action::InsertNewline => {
+                            if app.focused_panel == 1 {
+                                app.test_editor.insert_newline();
                                 app.rematch();
                             }
                         }
@@ -115,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
                             if app.focused_panel == 0 {
                                 app.regex_editor.delete_back();
                                 app.recompute();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.delete_back();
                                 app.rematch();
                             }
@@ -124,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
                             if app.focused_panel == 0 {
                                 app.regex_editor.delete_forward();
                                 app.recompute();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.delete_forward();
                                 app.rematch();
                             }
@@ -132,28 +138,46 @@ async fn main() -> anyhow::Result<()> {
                         Action::MoveCursorLeft => {
                             if app.focused_panel == 0 {
                                 app.regex_editor.move_left();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.move_left();
                             }
                         }
                         Action::MoveCursorRight => {
                             if app.focused_panel == 0 {
                                 app.regex_editor.move_right();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.move_right();
+                            }
+                        }
+                        Action::ScrollUp => {
+                            if app.focused_panel == 1 {
+                                app.test_editor.move_up();
+                            } else if app.focused_panel == 2 {
+                                app.scroll_match_up();
+                            } else if app.focused_panel == 3 {
+                                app.scroll_explain_up();
+                            }
+                        }
+                        Action::ScrollDown => {
+                            if app.focused_panel == 1 {
+                                app.test_editor.move_down();
+                            } else if app.focused_panel == 2 {
+                                app.scroll_match_down();
+                            } else if app.focused_panel == 3 {
+                                app.scroll_explain_down();
                             }
                         }
                         Action::MoveCursorHome => {
                             if app.focused_panel == 0 {
                                 app.regex_editor.move_home();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.move_home();
                             }
                         }
                         Action::MoveCursorEnd => {
                             if app.focused_panel == 0 {
                                 app.regex_editor.move_end();
-                            } else {
+                            } else if app.focused_panel == 1 {
                                 app.test_editor.move_end();
                             }
                         }
