@@ -13,8 +13,8 @@ pub struct Cli {
     pub pattern: Option<String>,
 
     /// Engine to use: rust, fancy, or pcre2
-    #[arg(short, long, default_value = "rust")]
-    pub engine: String,
+    #[arg(short, long)]
+    pub engine: Option<String>,
 
     /// Case-insensitive matching
     #[arg(short = 'i', long)]
@@ -30,7 +30,7 @@ pub struct Cli {
 
     /// Unicode mode
     #[arg(short = 'u', long)]
-    pub unicode: bool,
+    pub unicode: Option<bool>,
 
     /// Extended mode (ignore whitespace)
     #[arg(short = 'x', long)]
@@ -39,15 +39,4 @@ pub struct Cli {
     /// Initial replacement string
     #[arg(short = 'r', long)]
     pub replacement: Option<String>,
-}
-
-impl Cli {
-    pub fn parse_engine(&self) -> crate::engine::EngineKind {
-        match self.engine.as_str() {
-            "fancy" => crate::engine::EngineKind::FancyRegex,
-            #[cfg(feature = "pcre2-engine")]
-            "pcre2" => crate::engine::EngineKind::Pcre2,
-            _ => crate::engine::EngineKind::RustRegex,
-        }
-    }
 }

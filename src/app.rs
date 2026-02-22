@@ -1,3 +1,6 @@
+use std::collections::VecDeque;
+use std::time::{Duration, Instant};
+
 use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
@@ -20,7 +23,7 @@ pub struct App {
     pub regex_editor: Editor,
     pub test_editor: Editor,
     pub replace_editor: Editor,
-    pub focused_panel: u8, // 0=regex, 1=test, 2=replace, 3=matches, 4=explanation
+    pub focused_panel: u8,
     pub engine_kind: EngineKind,
     pub flags: EngineFlags,
     pub matches: Vec<engine::Match>,
@@ -34,7 +37,7 @@ pub struct App {
     pub replace_scroll: u16,
     pub explain_scroll: u16,
     // Pattern history
-    pub pattern_history: Vec<String>,
+    pub pattern_history: VecDeque<String>,
     pub history_index: Option<usize>,
     history_temp: Option<String>,
     // Match selection + clipboard
@@ -43,8 +46,18 @@ pub struct App {
     pub clipboard_status: Option<String>,
     clipboard_status_ticks: u32,
     pub show_whitespace: bool,
+    pub compile_time: Option<Duration>,
+    pub match_time: Option<Duration>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
+}
+
+impl App {
+    pub const PANEL_REGEX: u8 = 0;
+    pub const PANEL_TEST: u8 = 1;
+    pub const PANEL_REPLACE: u8 = 2;
+    pub const PANEL_MATCHES: u8 = 3;
+    pub const PANEL_EXPLAIN: u8 = 4;
 }
 
 impl App {
@@ -67,7 +80,7 @@ impl App {
             match_scroll: 0,
             replace_scroll: 0,
             explain_scroll: 0,
-            pattern_history: Vec::new(),
+            pattern_history: VecDeque::new(),
             history_index: None,
             history_temp: None,
             selected_match: 0,
@@ -75,6 +88,8 @@ impl App {
             clipboard_status: None,
             clipboard_status_ticks: 0,
             show_whitespace: false,
+            compile_time: None,
+            match_time: None,
             engine,
             compiled: None,
         }
@@ -145,16 +160,21 @@ impl App {
             self.matches.clear();
             self.explanation.clear();
             self.error = None;
+            self.compile_time = None;
+            self.match_time = None;
             return;
         }
 
         // Compile
+        let compile_start = Instant::now();
         match self.engine.compile(&pattern, &self.flags) {
             Ok(compiled) => {
+                self.compile_time = Some(compile_start.elapsed());
                 self.compiled = Some(compiled);
                 self.error = None;
             }
             Err(e) => {
+                self.compile_time = Some(compile_start.elapsed());
                 self.compiled = None;
                 self.matches.clear();
                 self.error = Some(e.to_string());
@@ -185,17 +205,24 @@ impl App {
             if text.is_empty() {
                 self.matches.clear();
                 self.replace_result = None;
+                self.match_time = None;
                 return;
             }
+            let match_start = Instant::now();
             match compiled.find_matches(&text) {
-                Ok(m) => self.matches = m,
+                Ok(m) => {
+                    self.match_time = Some(match_start.elapsed());
+                    self.matches = m;
+                }
                 Err(e) => {
+                    self.match_time = Some(match_start.elapsed());
                     self.matches.clear();
                     self.error = Some(e.to_string());
                 }
             }
         } else {
             self.matches.clear();
+            self.match_time = None;
         }
         self.rereplace();
     }
@@ -207,12 +234,12 @@ impl App {
         if pattern.is_empty() {
             return;
         }
-        if self.pattern_history.last().map(|s| s.as_str()) == Some(&pattern) {
+        if self.pattern_history.back().map(|s| s.as_str()) == Some(&pattern) {
             return;
         }
-        self.pattern_history.push(pattern);
+        self.pattern_history.push_back(pattern);
         if self.pattern_history.len() > 100 {
-            self.pattern_history.remove(0);
+            self.pattern_history.pop_front();
         }
         self.history_index = None;
         self.history_temp = None;
@@ -309,7 +336,9 @@ impl App {
     }
 
     fn scroll_to_selected(&mut self) {
-        // Calculate the line index of the selected item
+        if self.matches.is_empty() || self.selected_match >= self.matches.len() {
+            return;
+        }
         let mut line = 0usize;
         for i in 0..self.selected_match {
             line += 1 + self.matches[i].captures.len();
@@ -317,7 +346,7 @@ impl App {
         if let Some(ci) = self.selected_capture {
             line += 1 + ci;
         }
-        self.match_scroll = line as u16;
+        self.match_scroll = u16::try_from(line).unwrap_or(u16::MAX);
     }
 
     pub fn copy_selected_match(&mut self) {

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -9,11 +11,22 @@ use ratatui::{
 use crate::engine::{EngineFlags, EngineKind};
 use crate::ui::theme;
 
+fn format_duration(d: Duration) -> String {
+    let micros = d.as_micros();
+    if micros < 1000 {
+        format!("{micros}\u{03bc}s")
+    } else {
+        format!("{:.1}ms", micros as f64 / 1000.0)
+    }
+}
+
 pub struct StatusBar {
     pub engine: EngineKind,
     pub match_count: usize,
     pub flags: EngineFlags,
     pub show_whitespace: bool,
+    pub compile_time: Option<Duration>,
+    pub match_time: Option<Duration>,
 }
 
 impl Widget for StatusBar {
@@ -37,6 +50,21 @@ impl Widget for StatusBar {
             ),
             Span::styled(" ", Style::default().bg(theme::SURFACE0)),
         ];
+
+        // Timing info
+        if self.compile_time.is_some() || self.match_time.is_some() {
+            let mut parts = Vec::new();
+            if let Some(ct) = self.compile_time {
+                parts.push(format!("compile: {}", format_duration(ct)));
+            }
+            if let Some(mt) = self.match_time {
+                parts.push(format!("match: {}", format_duration(mt)));
+            }
+            spans.push(Span::styled(
+                format!("{} ", parts.join(" | ")),
+                Style::default().fg(theme::SUBTEXT).bg(theme::SURFACE0),
+            ));
+        }
 
         // Flag indicators
         let flags = [

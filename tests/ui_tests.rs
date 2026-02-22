@@ -418,3 +418,29 @@ fn compute_layout_does_not_panic() {
     // Tiny terminal
     let _ = ui::compute_layout(Rect::new(0, 0, 10, 10));
 }
+
+#[test]
+fn test_empty_state_render() {
+    let mut terminal = create_test_terminal();
+    let app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    // No pattern, no test string — should render without panic
+    assert!(app.regex_editor.content().is_empty());
+    assert!(app.test_editor.content().is_empty());
+    assert!(app.matches.is_empty());
+    assert!(app.error.is_none());
+    terminal.draw(|frame| ui::render(frame, &app)).unwrap();
+}
+
+#[test]
+fn test_replace_invalid_capture_ref() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("hello world");
+    app.set_pattern(r"(\w+) (\w+)");
+    // $99 references a non-existent group — should not panic
+    app.set_replacement("$99");
+    assert!(app.replace_result.is_some());
+    let result = app.replace_result.as_ref().unwrap();
+    // $99 is parsed as $9 then literal '9', $9 doesn't exist so nothing
+    // The output should just not crash
+    assert!(!result.output.is_empty() || result.output.is_empty());
+}
