@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-02-22
+
+### Bug Fixes
+
+- Regenerate demo GIF with working rgx binary
+Previous demo GIF was recorded before rgx was installed, showing
+  a blank terminal. Regenerated with VHS using bash shell that
+  inherits PATH with ~/.cargo/bin.
+
+
 ## [0.1.3] - 2026-02-22
 
 ### Bug Fixes
