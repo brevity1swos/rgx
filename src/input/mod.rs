@@ -22,6 +22,11 @@ pub enum Action {
     ToggleUnicode,
     ToggleExtended,
     ShowHelp,
+    Undo,
+    Redo,
+    HistoryPrev,
+    HistoryNext,
+    CopyMatch,
     Quit,
     None,
 }
@@ -33,6 +38,15 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Esc => Action::Quit,
         KeyCode::Tab => Action::SwitchPanel,
         KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::SwitchEngine,
+        KeyCode::Char('z') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Undo,
+        KeyCode::Char('Z')
+            if key
+                .modifiers
+                .contains(KeyModifiers::CONTROL | KeyModifiers::SHIFT) =>
+        {
+            Action::Redo
+        }
+        KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::CopyMatch,
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive
         }
@@ -40,6 +54,8 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleDotAll,
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleUnicode,
         KeyCode::Char('x') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleExtended,
+        KeyCode::Up if key.modifiers.contains(KeyModifiers::ALT) => Action::HistoryPrev,
+        KeyCode::Down if key.modifiers.contains(KeyModifiers::ALT) => Action::HistoryNext,
         KeyCode::F(1) => Action::ShowHelp,
         KeyCode::Char(c) => Action::InsertChar(c),
         KeyCode::Enter => Action::InsertNewline,

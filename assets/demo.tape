@@ -1,14 +1,17 @@
 # VHS demo tape for rgx
 # https://github.com/charmbracelet/vhs
 # Run: PATH=$HOME/.cargo/bin:$PATH vhs assets/demo.tape
+#
+# NOTE: VHS does not support F1, so the cheat sheet overlay is not shown here.
+# The help overlay can be opened with F1 and paged with Left/Right in the app.
 
 Output assets/demo.gif
 
 Set FontSize 14
 Set Width 1200
-Set Height 600
+Set Height 650
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 50ms
+Set TypingSpeed 40ms
 Set Shell "bash"
 
 # Launch rgx
@@ -16,31 +19,84 @@ Type "rgx"
 Enter
 Sleep 1s
 
-# Type a regex pattern — email matching
+# --- Pattern matching with captures ---
 Type "(\w+)@(\w+)\.(\w+)"
 Sleep 2s
 
 # Switch to test string input
 Tab
-Sleep 500ms
+Sleep 300ms
 
-# Type test strings with email addresses
+# Type test strings
 Type "user@example.com admin@test.org"
-Sleep 3s
-
-# Switch engine to fancy-regex
-Ctrl+e
 Sleep 2s
 
-# Switch back to Rust regex
+# --- Replace mode ---
+Tab
+Sleep 300ms
+
+Type "$1 AT $2"
+Sleep 2s
+
+# --- Undo/Redo ---
+Ctrl+z
+Sleep 400ms
+Ctrl+z
+Sleep 400ms
+Ctrl+z
+Sleep 400ms
+Ctrl+z
+Sleep 400ms
+
+# Redo it back
+Ctrl+Shift+z
+Sleep 400ms
+Ctrl+Shift+z
+Sleep 400ms
+Ctrl+Shift+z
+Sleep 400ms
+Ctrl+Shift+z
+Sleep 1.5s
+
+# --- Match selection + clipboard ---
+Tab
+Sleep 300ms
+
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+Down
+Sleep 300ms
+
+# Copy selected match
+Ctrl+y
+Sleep 1.5s
+
+# Navigate back up
+Up
+Sleep 250ms
+Up
+Sleep 250ms
+Up
+Sleep 250ms
+Up
+Sleep 250ms
+
+Sleep 500ms
+
+# --- Engine switching ---
+Ctrl+e
+Sleep 1.5s
+
 Ctrl+e
 Sleep 1s
 
-# Toggle case insensitive flag
+# --- Flag toggle ---
 Alt+i
-Sleep 2s
-
-# Toggle it back off
+Sleep 1s
 Alt+i
 Sleep 1s
 

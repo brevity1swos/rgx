@@ -6,6 +6,8 @@ pub struct Editor {
     cursor: usize,
     scroll_offset: usize,
     vertical_scroll: usize,
+    undo_stack: Vec<(String, usize)>,
+    redo_stack: Vec<(String, usize)>,
 }
 
 impl Editor {
@@ -15,6 +17,8 @@ impl Editor {
             cursor: 0,
             scroll_offset: 0,
             vertical_scroll: 0,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
     }
 
@@ -25,6 +29,8 @@ impl Editor {
             cursor,
             scroll_offset: 0,
             vertical_scroll: 0,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
         }
     }
 
@@ -94,18 +100,51 @@ impl Editor {
         col.saturating_sub(self.scroll_offset)
     }
 
+    fn push_undo_snapshot(&mut self) {
+        self.undo_stack.push((self.content.clone(), self.cursor));
+        if self.undo_stack.len() > 500 {
+            self.undo_stack.remove(0);
+        }
+        self.redo_stack.clear();
+    }
+
+    pub fn undo(&mut self) -> bool {
+        if let Some((content, cursor)) = self.undo_stack.pop() {
+            self.redo_stack.push((self.content.clone(), self.cursor));
+            self.content = content;
+            self.cursor = cursor;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn redo(&mut self) -> bool {
+        if let Some((content, cursor)) = self.redo_stack.pop() {
+            self.undo_stack.push((self.content.clone(), self.cursor));
+            self.content = content;
+            self.cursor = cursor;
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn insert_char(&mut self, c: char) {
+        self.push_undo_snapshot();
         self.content.insert(self.cursor, c);
         self.cursor += c.len_utf8();
     }
 
     pub fn insert_newline(&mut self) {
+        self.push_undo_snapshot();
         self.content.insert(self.cursor, '\n');
         self.cursor += 1;
     }
 
     pub fn delete_back(&mut self) {
         if self.cursor > 0 {
+            self.push_undo_snapshot();
             let prev = self.prev_char_boundary();
             self.content.drain(prev..self.cursor);
             self.cursor = prev;
@@ -114,6 +153,7 @@ impl Editor {
 
     pub fn delete_forward(&mut self) {
         if self.cursor < self.content.len() {
+            self.push_undo_snapshot();
             let next = self.next_char_boundary();
             self.content.drain(self.cursor..next);
         }
@@ -182,6 +222,19 @@ impl Editor {
         } else if line >= self.vertical_scroll + visible_height {
             self.vertical_scroll = line - visible_height + 1;
         }
+    }
+
+    /// Set cursor by display column (single-line editors / mouse click).
+    pub fn set_cursor_by_col(&mut self, col: usize) {
+        self.cursor = byte_offset_at_width(&self.content, col);
+    }
+
+    /// Set cursor by (line, col) position (multi-line editors / mouse click).
+    pub fn set_cursor_by_position(&mut self, line: usize, col: usize) {
+        let target_line = line.min(self.line_count().saturating_sub(1));
+        let start = self.line_start(target_line);
+        let line_text = self.line_content(target_line);
+        self.cursor = start + byte_offset_at_width(line_text, col);
     }
 
     fn prev_char_boundary(&self) -> usize {
@@ -325,6 +378,68 @@ mod tests {
         editor.update_vertical_scroll(3);
         // cursor at line 4, visible_height 3 => scroll to 2
         assert_eq!(editor.vertical_scroll(), 2);
+    }
+
+    #[test]
+    fn test_undo_insert() {
+        let mut editor = Editor::new();
+        editor.insert_char('a');
+        editor.insert_char('b');
+        assert_eq!(editor.content(), "ab");
+        editor.undo();
+        assert_eq!(editor.content(), "a");
+        editor.undo();
+        assert_eq!(editor.content(), "");
+        // Undo on empty stack returns false
+        assert!(!editor.undo());
+    }
+
+    #[test]
+    fn test_undo_delete() {
+        let mut editor = Editor::with_content("abc".to_string());
+        editor.delete_back();
+        assert_eq!(editor.content(), "ab");
+        editor.undo();
+        assert_eq!(editor.content(), "abc");
+    }
+
+    #[test]
+    fn test_redo() {
+        let mut editor = Editor::new();
+        editor.insert_char('a');
+        editor.insert_char('b');
+        editor.undo();
+        assert_eq!(editor.content(), "a");
+        editor.redo();
+        assert_eq!(editor.content(), "ab");
+        // Redo on empty stack returns false
+        assert!(!editor.redo());
+    }
+
+    #[test]
+    fn test_redo_cleared_on_new_edit() {
+        let mut editor = Editor::new();
+        editor.insert_char('a');
+        editor.insert_char('b');
+        editor.undo();
+        // Now type something different — redo stack should clear
+        editor.insert_char('c');
+        assert_eq!(editor.content(), "ac");
+        assert!(!editor.redo());
+    }
+
+    #[test]
+    fn test_set_cursor_by_col() {
+        let mut editor = Editor::with_content("hello".to_string());
+        editor.set_cursor_by_col(3);
+        assert_eq!(editor.cursor(), 3);
+    }
+
+    #[test]
+    fn test_set_cursor_by_position() {
+        let mut editor = Editor::with_content("abc\ndef\nghi".to_string());
+        editor.set_cursor_by_position(1, 2);
+        assert_eq!(editor.cursor_line_col(), (1, 2));
     }
 
     #[test]
