@@ -5,13 +5,13 @@
 **regex101, but in your terminal**
 
 [![CI](https://github.com/brevity1swos/rgx/actions/workflows/ci.yml/badge.svg)](https://github.com/brevity1swos/rgx/actions/workflows/ci.yml)
-[![Crates.io](https://img.shields.io/crates/v/rgx.svg)](https://crates.io/crates/rgx)
-[![Downloads](https://img.shields.io/crates/d/rgx.svg)](https://crates.io/crates/rgx)
+[![Crates.io](https://img.shields.io/crates/v/rgx-cli.svg)](https://crates.io/crates/rgx-cli)
+[![Downloads](https://img.shields.io/crates/d/rgx-cli.svg)](https://crates.io/crates/rgx-cli)
 [![License](https://img.shields.io/crates/l/rgx.svg)](LICENSE-MIT)
 
 A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations. Written in Rust.
 
-<!-- ![demo](assets/demo.gif) -->
+![demo](assets/demo.gif)
 
 </div>
 
