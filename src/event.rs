@@ -1,4 +1,4 @@
-use crossterm::event::{Event, EventStream, KeyEvent};
+use crossterm::event::{Event, EventStream, KeyEvent, MouseEvent};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
@@ -6,6 +6,7 @@ use tokio_stream::StreamExt;
 #[derive(Debug)]
 pub enum AppEvent {
     Key(KeyEvent),
+    Mouse(MouseEvent),
     Tick,
     Resize(u16, u16),
 }
@@ -34,6 +35,11 @@ impl EventHandler {
                         match event {
                             Some(Ok(Event::Key(key))) => {
                                 if tx.send(AppEvent::Key(key)).is_err() {
+                                    break;
+                                }
+                            }
+                            Some(Ok(Event::Mouse(mouse))) => {
+                                if tx.send(AppEvent::Mouse(mouse)).is_err() {
                                     break;
                                 }
                             }

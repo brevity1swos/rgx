@@ -2,6 +2,14 @@ use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 
+fn truncate(s: &str, max_len: usize) -> String {
+    if s.len() <= max_len {
+        s.to_string()
+    } else {
+        format!("{}...", &s[..max_len])
+    }
+}
+
 pub struct App {
     pub regex_editor: Editor,
     pub test_editor: Editor,
@@ -14,10 +22,19 @@ pub struct App {
     pub explanation: Vec<ExplainNode>,
     pub error: Option<String>,
     pub show_help: bool,
+    pub help_page: usize,
     pub should_quit: bool,
     pub match_scroll: u16,
     pub replace_scroll: u16,
     pub explain_scroll: u16,
+    // Pattern history
+    pub pattern_history: Vec<String>,
+    pub history_index: Option<usize>,
+    history_temp: Option<String>,
+    // Match selection + clipboard
+    pub selected_match: usize,
+    pub selected_capture: Option<usize>,
+    pub clipboard_status: Option<String>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -37,10 +54,17 @@ impl App {
             explanation: Vec::new(),
             error: None,
             show_help: false,
+            help_page: 0,
             should_quit: false,
             match_scroll: 0,
             replace_scroll: 0,
             explain_scroll: 0,
+            pattern_history: Vec::new(),
+            history_index: None,
+            history_temp: None,
+            selected_match: 0,
+            selected_capture: None,
+            clipboard_status: None,
             engine,
             compiled: None,
         }
@@ -144,6 +168,8 @@ impl App {
 
     pub fn rematch(&mut self) {
         self.match_scroll = 0;
+        self.selected_match = 0;
+        self.selected_capture = None;
         if let Some(compiled) = &self.compiled {
             let text = self.test_editor.content().to_string();
             if text.is_empty() {
@@ -162,5 +188,151 @@ impl App {
             self.matches.clear();
         }
         self.rereplace();
+    }
+
+    // --- Pattern history ---
+
+    pub fn commit_pattern_to_history(&mut self) {
+        let pattern = self.regex_editor.content().to_string();
+        if pattern.is_empty() {
+            return;
+        }
+        if self.pattern_history.last().map(|s| s.as_str()) == Some(&pattern) {
+            return;
+        }
+        self.pattern_history.push(pattern);
+        if self.pattern_history.len() > 100 {
+            self.pattern_history.remove(0);
+        }
+        self.history_index = None;
+        self.history_temp = None;
+    }
+
+    pub fn history_prev(&mut self) {
+        if self.pattern_history.is_empty() {
+            return;
+        }
+        let new_index = match self.history_index {
+            Some(0) => return,
+            Some(idx) => idx - 1,
+            None => {
+                self.history_temp = Some(self.regex_editor.content().to_string());
+                self.pattern_history.len() - 1
+            }
+        };
+        self.history_index = Some(new_index);
+        let pattern = self.pattern_history[new_index].clone();
+        self.regex_editor = Editor::with_content(pattern);
+        self.recompute();
+    }
+
+    pub fn history_next(&mut self) {
+        let idx = match self.history_index {
+            Some(idx) => idx,
+            None => return,
+        };
+        if idx + 1 < self.pattern_history.len() {
+            let new_index = idx + 1;
+            self.history_index = Some(new_index);
+            let pattern = self.pattern_history[new_index].clone();
+            self.regex_editor = Editor::with_content(pattern);
+            self.recompute();
+        } else {
+            // Past end — restore temp
+            self.history_index = None;
+            let content = self.history_temp.take().unwrap_or_default();
+            self.regex_editor = Editor::with_content(content);
+            self.recompute();
+        }
+    }
+
+    // --- Match selection + clipboard ---
+
+    pub fn select_match_next(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
+        match self.selected_capture {
+            None => {
+                let m = &self.matches[self.selected_match];
+                if !m.captures.is_empty() {
+                    self.selected_capture = Some(0);
+                } else if self.selected_match + 1 < self.matches.len() {
+                    self.selected_match += 1;
+                }
+            }
+            Some(ci) => {
+                let m = &self.matches[self.selected_match];
+                if ci + 1 < m.captures.len() {
+                    self.selected_capture = Some(ci + 1);
+                } else if self.selected_match + 1 < self.matches.len() {
+                    self.selected_match += 1;
+                    self.selected_capture = None;
+                }
+            }
+        }
+        self.scroll_to_selected();
+    }
+
+    pub fn select_match_prev(&mut self) {
+        if self.matches.is_empty() {
+            return;
+        }
+        match self.selected_capture {
+            Some(0) => {
+                self.selected_capture = None;
+            }
+            Some(ci) => {
+                self.selected_capture = Some(ci - 1);
+            }
+            None => {
+                if self.selected_match > 0 {
+                    self.selected_match -= 1;
+                    let m = &self.matches[self.selected_match];
+                    if !m.captures.is_empty() {
+                        self.selected_capture = Some(m.captures.len() - 1);
+                    }
+                }
+            }
+        }
+        self.scroll_to_selected();
+    }
+
+    fn scroll_to_selected(&mut self) {
+        // Calculate the line index of the selected item
+        let mut line = 0usize;
+        for i in 0..self.selected_match {
+            line += 1 + self.matches[i].captures.len();
+        }
+        if let Some(ci) = self.selected_capture {
+            line += 1 + ci;
+        }
+        self.match_scroll = line as u16;
+    }
+
+    pub fn copy_selected_match(&mut self) {
+        let text = self.selected_text();
+        let Some(text) = text else { return };
+        match arboard::Clipboard::new() {
+            Ok(mut cb) => match cb.set_text(&text) {
+                Ok(()) => {
+                    self.clipboard_status = Some(format!("Copied: \"{}\"", truncate(&text, 40)));
+                }
+                Err(e) => {
+                    self.clipboard_status = Some(format!("Clipboard error: {e}"));
+                }
+            },
+            Err(e) => {
+                self.clipboard_status = Some(format!("Clipboard error: {e}"));
+            }
+        }
+    }
+
+    fn selected_text(&self) -> Option<String> {
+        let m = self.matches.get(self.selected_match)?;
+        match self.selected_capture {
+            None => Some(m.text.clone()),
+            Some(ci) => m.captures.get(ci).map(|c| c.text.clone()),
+        }
     }
 }

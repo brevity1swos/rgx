@@ -13,6 +13,8 @@ A terminal regex debugger with real-time matching, capture group highlighting, a
 
 ![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif)
 
+*Press F1 in the app for a multi-page cheat sheet with keyboard shortcuts, regex syntax, and engine-specific features.*
+
 </div>
 
 ---
@@ -23,6 +25,11 @@ A terminal regex debugger with real-time matching, capture group highlighting, a
 - **3 regex engines** — Rust `regex` (default), `fancy-regex` (lookaround/backrefs), PCRE2 (full features)
 - **Capture group highlighting** — distinct colors per group, nested group support
 - **Plain-English explanations** — walks the regex AST to generate human-readable breakdowns
+- **Replace/substitution mode** — live preview with `$1`, `${name}`, `$0`/`$&` syntax
+- **Match detail + clipboard** — navigate matches/captures with Up/Down, copy with Ctrl+Y
+- **Pattern history + undo** — Ctrl+Z/Ctrl+Shift+Z undo/redo, Alt+Up/Down browse history
+- **Context-sensitive cheat sheet** — F1 multi-page help: shortcuts, regex syntax, engine-specific features
+- **Mouse support** — click to focus/position cursor, scroll to navigate panels
 - **Engine selector** — switch engines with Ctrl+E, see where behavior differs
 - **Regex flags** — toggle case-insensitive, multiline, dotall, unicode, extended
 - **Stdin pipe support** — `echo "test string" | rgx '\d+'`
@@ -88,20 +95,27 @@ rgx --engine fancy '\w+(?=@)'
 
 # With flags
 rgx -i 'hello'
+
+# With replacement template
+rgx -r '$2/$1' '(\w+)@(\w+)'
 ```
 
 ## Keyboard Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Switch between pattern / test string |
+| `Tab` | Cycle focus: pattern / test / replace / matches / explanation |
+| `Up/Down` | Scroll panel / move cursor / select match |
+| `Enter` | Insert newline (test string) |
 | `Ctrl+E` | Cycle regex engine |
-| `Alt+i` | Toggle case-insensitive |
-| `Alt+m` | Toggle multi-line |
-| `Alt+s` | Toggle dot-matches-newline |
-| `Alt+u` | Toggle unicode mode |
-| `Alt+x` | Toggle extended mode |
-| `?` | Show help |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Shift+Z` | Redo |
+| `Ctrl+Y` | Copy selected match to clipboard |
+| `Alt+Up/Down` | Browse pattern history |
+| `Alt+i/m/s/u/x` | Toggle flags (case, multiline, dotall, unicode, extended) |
+| `F1` | Show help (Left/Right to page through) |
+| `Mouse click` | Focus panel and position cursor |
+| `Mouse scroll` | Scroll panel under cursor |
 | `Esc` | Quit |
 
 ## Engines
@@ -120,6 +134,10 @@ rgx -i 'hello'
 | Multiple engines | 3 | 2 | 1 | 8 |
 | Capture group highlighting | Yes | No | No | Yes |
 | Plain-English explanations | Yes | No | No | Yes |
+| Replace/substitution | Yes | No | No | Yes |
+| Match clipboard copy | Yes | No | No | Yes |
+| Undo/redo | Yes | No | No | Yes |
+| Mouse support | Yes | No | No | N/A |
 | Regex flags toggle | Yes | Yes | No | Yes |
 | Stdin pipe support | Yes | Yes | Yes | No |
 | Offline / no browser | Yes | Yes | Yes | No |

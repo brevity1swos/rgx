@@ -9,10 +9,14 @@ pub mod theme;
 
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
+    style::{Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
 
 use crate::app::App;
+use crate::engine::EngineKind;
 use explanation::ExplanationPanel;
 use match_display::MatchDisplay;
 use regex_input::RegexInput;
@@ -20,38 +24,57 @@ use replace_input::ReplaceInput;
 use status_bar::StatusBar;
 use test_input::TestInput;
 
-pub fn render(frame: &mut Frame, app: &App) {
-    let size = frame.area();
+/// Panel layout rectangles for mouse hit-testing.
+pub struct PanelLayout {
+    pub regex_input: Rect,
+    pub test_input: Rect,
+    pub replace_input: Rect,
+    pub match_display: Rect,
+    pub explanation: Rect,
+    pub status_bar: Rect,
+}
 
-    // Main layout: inputs on top, results on bottom, status bar at very bottom
+pub fn compute_layout(size: Rect) -> PanelLayout {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3), // regex input
-            Constraint::Length(8), // test string input (6 visible lines)
+            Constraint::Length(8), // test string input
             Constraint::Length(3), // replacement input
             Constraint::Min(5),    // results area
             Constraint::Length(1), // status bar
         ])
         .split(size);
 
-    // Results area: split horizontally between matches and explanation
     let results_chunks = if main_chunks[3].width > 80 {
         Layout::default()
             .direction(Direction::Horizontal)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(main_chunks[3])
     } else {
-        // Stack vertically on narrow terminals
         Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(main_chunks[3])
     };
 
+    PanelLayout {
+        regex_input: main_chunks[0],
+        test_input: main_chunks[1],
+        replace_input: main_chunks[2],
+        match_display: results_chunks[0],
+        explanation: results_chunks[1],
+        status_bar: main_chunks[4],
+    }
+}
+
+pub fn render(frame: &mut Frame, app: &App) {
+    let size = frame.area();
+    let layout = compute_layout(size);
+
     // Help overlay
     if app.show_help {
-        render_help_overlay(frame, size);
+        render_help_overlay(frame, size, app.engine_kind, app.help_page);
         return;
     }
 
@@ -64,7 +87,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             focused: app.focused_panel == 0,
             error: error_str,
         },
-        main_chunks[0],
+        layout.regex_input,
     );
 
     // Test string input
@@ -74,7 +97,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             focused: app.focused_panel == 1,
             matches: &app.matches,
         },
-        main_chunks[1],
+        layout.test_input,
     );
 
     // Replacement input
@@ -83,7 +106,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             editor: &app.replace_editor,
             focused: app.focused_panel == 2,
         },
-        main_chunks[2],
+        layout.replace_input,
     );
 
     // Match display
@@ -93,8 +116,11 @@ pub fn render(frame: &mut Frame, app: &App) {
             replace_result: app.replace_result.as_ref(),
             scroll: app.match_scroll,
             focused: app.focused_panel == 3,
+            selected_match: app.selected_match,
+            selected_capture: app.selected_capture,
+            clipboard_status: app.clipboard_status.as_deref(),
         },
-        results_chunks[0],
+        layout.match_display,
     );
 
     // Explanation panel
@@ -105,7 +131,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             scroll: app.explain_scroll,
             focused: app.focused_panel == 4,
         },
-        results_chunks[1],
+        layout.explanation,
     );
 
     // Status bar
@@ -115,18 +141,133 @@ pub fn render(frame: &mut Frame, app: &App) {
             match_count: app.matches.len(),
             flags: app.flags.clone(),
         },
-        main_chunks[4],
+        layout.status_bar,
     );
 }
 
-fn render_help_overlay(frame: &mut Frame, area: Rect) {
-    use ratatui::{
-        style::Style,
-        text::{Line, Span},
-        widgets::{Block, Borders, Clear, Paragraph, Wrap},
+pub const HELP_PAGE_COUNT: usize = 3;
+
+fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
+    let shortcut = |key: &'static str, desc: &'static str| -> Line<'static> {
+        Line::from(vec![
+            Span::styled(format!("{key:<14}"), Style::default().fg(theme::GREEN)),
+            Span::styled(desc, Style::default().fg(theme::TEXT)),
+        ])
     };
 
-    let help_width = 60.min(area.width.saturating_sub(4));
+    // Page 0: Keyboard shortcuts
+    let page0 = vec![
+        shortcut("Tab", "Cycle focus: pattern/test/replace/matches/explain"),
+        shortcut("Up/Down", "Scroll panel / move cursor / select match"),
+        shortcut("Enter", "Insert newline (test string)"),
+        shortcut("Ctrl+E", "Cycle regex engine"),
+        shortcut("Ctrl+Z", "Undo"),
+        shortcut("Ctrl+Shift+Z", "Redo"),
+        shortcut("Ctrl+Y", "Copy selected match to clipboard"),
+        shortcut("Alt+Up/Down", "Browse pattern history"),
+        shortcut("Alt+i", "Toggle case-insensitive"),
+        shortcut("Alt+m", "Toggle multi-line"),
+        shortcut("Alt+s", "Toggle dot-matches-newline"),
+        shortcut("Alt+u", "Toggle unicode mode"),
+        shortcut("Alt+x", "Toggle extended mode"),
+        shortcut("F1", "Show/hide help (Left/Right to page)"),
+        shortcut("Esc", "Quit"),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Mouse: click to focus/position, scroll to navigate",
+            Style::default().fg(theme::SUBTEXT),
+        )),
+    ];
+
+    // Page 1: Common regex syntax
+    let page1 = vec![
+        shortcut(".", "Any character (except newline by default)"),
+        shortcut("\\d  \\D", "Digit / non-digit"),
+        shortcut("\\w  \\W", "Word char / non-word char"),
+        shortcut("\\s  \\S", "Whitespace / non-whitespace"),
+        shortcut("\\b  \\B", "Word boundary / non-boundary"),
+        shortcut("^  $", "Start / end of line"),
+        shortcut("[abc]", "Character class"),
+        shortcut("[^abc]", "Negated character class"),
+        shortcut("[a-z]", "Character range"),
+        shortcut("(group)", "Capturing group"),
+        shortcut("(?:group)", "Non-capturing group"),
+        shortcut("(?P<n>...)", "Named capturing group"),
+        shortcut("a|b", "Alternation (a or b)"),
+        shortcut("*  +  ?", "0+, 1+, 0 or 1 (greedy)"),
+        shortcut("*?  +?  ??", "Lazy quantifiers"),
+        shortcut("{n}  {n,m}", "Exact / range repetition"),
+        Line::from(""),
+        Line::from(Span::styled(
+            "Replacement: $1, ${name}, $0/$&, $$ for literal $",
+            Style::default().fg(theme::SUBTEXT),
+        )),
+    ];
+
+    // Page 2: Engine-specific
+    let engine_name = format!("{engine}");
+    let page2 = match engine {
+        EngineKind::RustRegex => vec![
+            Line::from(Span::styled(
+                "Rust regex engine — linear time guarantee",
+                Style::default().fg(theme::BLUE),
+            )),
+            Line::from(""),
+            shortcut("Unicode", "Full Unicode support by default"),
+            shortcut("No lookbehind", "Use fancy-regex or PCRE2 for lookaround"),
+            shortcut("No backrefs", "Use fancy-regex or PCRE2 for backrefs"),
+            shortcut("\\p{Letter}", "Unicode category"),
+            shortcut("(?i)", "Inline case-insensitive flag"),
+            shortcut("(?m)", "Inline multi-line flag"),
+            shortcut("(?s)", "Inline dot-matches-newline flag"),
+            shortcut("(?x)", "Inline extended/verbose flag"),
+        ],
+        EngineKind::FancyRegex => vec![
+            Line::from(Span::styled(
+                "fancy-regex engine — lookaround + backreferences",
+                Style::default().fg(theme::BLUE),
+            )),
+            Line::from(""),
+            shortcut("(?=...)", "Positive lookahead"),
+            shortcut("(?!...)", "Negative lookahead"),
+            shortcut("(?<=...)", "Positive lookbehind"),
+            shortcut("(?<!...)", "Negative lookbehind"),
+            shortcut("\\1  \\2", "Backreferences"),
+            shortcut("(?>...)", "Atomic group"),
+            Line::from(""),
+            Line::from(Span::styled(
+                "Delegates to Rust regex for non-fancy patterns",
+                Style::default().fg(theme::SUBTEXT),
+            )),
+        ],
+        #[cfg(feature = "pcre2-engine")]
+        EngineKind::Pcre2 => vec![
+            Line::from(Span::styled(
+                "PCRE2 engine — full-featured",
+                Style::default().fg(theme::BLUE),
+            )),
+            Line::from(""),
+            shortcut("(?=...)(?!...)", "Lookahead"),
+            shortcut("(?<=...)(?<!..)", "Lookbehind"),
+            shortcut("\\1  \\2", "Backreferences"),
+            shortcut("(?>...)", "Atomic group"),
+            shortcut("(*SKIP)(*FAIL)", "Backtracking control verbs"),
+            shortcut("(?R)  (?1)", "Recursion / subroutine calls"),
+            shortcut("(?(cond)y|n)", "Conditional patterns"),
+            shortcut("\\K", "Reset match start"),
+            shortcut("(*UTF)", "Force UTF-8 mode"),
+        ],
+    };
+
+    vec![
+        ("Keyboard Shortcuts".to_string(), page0),
+        ("Common Regex Syntax".to_string(), page1),
+        (format!("Engine: {engine_name}"), page2),
+    ]
+}
+
+fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: usize) {
+    let help_width = 64.min(area.width.saturating_sub(4));
     let help_height = 24.min(area.height.saturating_sub(4));
     let x = (area.width.saturating_sub(help_width)) / 2;
     let y = (area.height.saturating_sub(help_height)) / 2;
@@ -134,81 +275,31 @@ fn render_help_overlay(frame: &mut Frame, area: Rect) {
 
     frame.render_widget(Clear, help_area);
 
-    let lines = vec![
+    let pages = build_help_pages(engine);
+    let current = page.min(pages.len() - 1);
+    let (title, content) = &pages[current];
+
+    let mut lines: Vec<Line<'static>> = vec![
         Line::from(Span::styled(
-            "rgx - Keyboard Shortcuts",
+            title.clone(),
             Style::default()
                 .fg(theme::BLUE)
-                .add_modifier(ratatui::style::Modifier::BOLD),
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("Tab       ", Style::default().fg(theme::GREEN)),
-            Span::styled(
-                "Cycle focus: pattern/test/replace/matches/explanation",
-                Style::default().fg(theme::TEXT),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("Up/Down   ", Style::default().fg(theme::GREEN)),
-            Span::styled(
-                "Scroll focused panel / move cursor",
-                Style::default().fg(theme::TEXT),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("Enter     ", Style::default().fg(theme::GREEN)),
-            Span::styled(
-                "Insert newline (test string)",
-                Style::default().fg(theme::TEXT),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("Ctrl+E    ", Style::default().fg(theme::GREEN)),
-            Span::styled("Cycle regex engine", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(vec![
-            Span::styled("Alt+i     ", Style::default().fg(theme::GREEN)),
-            Span::styled("Toggle case-insensitive", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(vec![
-            Span::styled("Alt+m     ", Style::default().fg(theme::GREEN)),
-            Span::styled("Toggle multi-line", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(vec![
-            Span::styled("Alt+s     ", Style::default().fg(theme::GREEN)),
-            Span::styled(
-                "Toggle dot-matches-newline",
-                Style::default().fg(theme::TEXT),
-            ),
-        ]),
-        Line::from(vec![
-            Span::styled("Alt+u     ", Style::default().fg(theme::GREEN)),
-            Span::styled("Toggle unicode mode", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(vec![
-            Span::styled("Alt+x     ", Style::default().fg(theme::GREEN)),
-            Span::styled("Toggle extended mode", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(vec![
-            Span::styled("F1        ", Style::default().fg(theme::GREEN)),
-            Span::styled("Show/hide this help", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(vec![
-            Span::styled("Esc       ", Style::default().fg(theme::GREEN)),
-            Span::styled("Quit", Style::default().fg(theme::TEXT)),
-        ]),
-        Line::from(""),
-        Line::from(Span::styled(
-            "Replacement: $1, ${name}, $0/$&, $$ for literal $",
-            Style::default().fg(theme::SUBTEXT),
-        )),
-        Line::from(""),
-        Line::from(Span::styled(
-            "Press any key to close",
-            Style::default().fg(theme::SUBTEXT),
-        )),
     ];
+    lines.extend(content.iter().cloned());
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!(" Page {}/{} ", current + 1, pages.len()),
+            Style::default().fg(theme::BASE).bg(theme::BLUE),
+        ),
+        Span::styled(
+            " Left/Right: page | Any other key: close ",
+            Style::default().fg(theme::SUBTEXT),
+        ),
+    ]));
 
     let block = Block::default()
         .borders(Borders::ALL)
