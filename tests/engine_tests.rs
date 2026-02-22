@@ -158,6 +158,21 @@ mod pcre2_tests {
     }
 
     #[test]
+    fn pcre2_multiline() {
+        test_engine_multiline_matching(EngineKind::Pcre2);
+    }
+
+    #[test]
+    fn pcre2_multiline_anchors() {
+        test_engine_multiline_line_anchors(EngineKind::Pcre2);
+    }
+
+    #[test]
+    fn pcre2_dotall() {
+        test_engine_dotall_flag(EngineKind::Pcre2);
+    }
+
+    #[test]
     fn pcre2_backreference() {
         let engine = create_engine(EngineKind::Pcre2);
         let flags = EngineFlags::default();
@@ -166,6 +181,78 @@ mod pcre2_tests {
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].text, "hello hello");
     }
+}
+
+fn test_engine_multiline_matching(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags {
+        multi_line: true,
+        ..Default::default()
+    };
+    let compiled = engine.compile(r"^\w+$", &flags).unwrap();
+    let matches = compiled.find_matches("hello\nworld\nfoo").unwrap();
+    assert_eq!(matches.len(), 3);
+    assert_eq!(matches[0].text, "hello");
+    assert_eq!(matches[1].text, "world");
+    assert_eq!(matches[2].text, "foo");
+}
+
+fn test_engine_multiline_line_anchors(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags {
+        multi_line: true,
+        ..Default::default()
+    };
+    let compiled = engine.compile(r"^line\d+$", &flags).unwrap();
+    let matches = compiled
+        .find_matches("line1\nno match\nline42\nline100")
+        .unwrap();
+    assert_eq!(matches.len(), 3);
+    assert_eq!(matches[0].text, "line1");
+    assert_eq!(matches[1].text, "line42");
+    assert_eq!(matches[2].text, "line100");
+}
+
+fn test_engine_dotall_flag(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags {
+        dot_matches_newline: true,
+        ..Default::default()
+    };
+    let compiled = engine.compile(r"a.b", &flags).unwrap();
+    let matches = compiled.find_matches("a\nb").unwrap();
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].text, "a\nb");
+}
+
+#[test]
+fn rust_regex_multiline() {
+    test_engine_multiline_matching(EngineKind::RustRegex);
+}
+
+#[test]
+fn rust_regex_multiline_anchors() {
+    test_engine_multiline_line_anchors(EngineKind::RustRegex);
+}
+
+#[test]
+fn rust_regex_dotall() {
+    test_engine_dotall_flag(EngineKind::RustRegex);
+}
+
+#[test]
+fn fancy_regex_multiline() {
+    test_engine_multiline_matching(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_multiline_anchors() {
+    test_engine_multiline_line_anchors(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_dotall() {
+    test_engine_dotall_flag(EngineKind::FancyRegex);
 }
 
 #[test]

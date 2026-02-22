@@ -143,6 +143,9 @@ async fn main() -> anyhow::Result<()> {
                                 app.copy_selected_match();
                             }
                         }
+                        Action::ToggleWhitespace => {
+                            app.show_whitespace = !app.show_whitespace;
+                        }
                         Action::ToggleCaseInsensitive => {
                             app.flags.toggle_case_insensitive();
                             app.recompute();
@@ -224,6 +227,24 @@ async fn main() -> anyhow::Result<()> {
                                 app.test_editor.move_right();
                             } else if app.focused_panel == 2 {
                                 app.replace_editor.move_right();
+                            }
+                        }
+                        Action::MoveCursorWordLeft => {
+                            if app.focused_panel == 0 {
+                                app.regex_editor.move_word_left();
+                            } else if app.focused_panel == 1 {
+                                app.test_editor.move_word_left();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.move_word_left();
+                            }
+                        }
+                        Action::MoveCursorWordRight => {
+                            if app.focused_panel == 0 {
+                                app.regex_editor.move_word_right();
+                            } else if app.focused_panel == 1 {
+                                app.test_editor.move_word_right();
+                            } else if app.focused_panel == 2 {
+                                app.replace_editor.move_word_right();
                             }
                         }
                         Action::ScrollUp => {
@@ -328,10 +349,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
                 AppEvent::Tick => {
-                    // Auto-dismiss clipboard status
-                    if app.clipboard_status.is_some() {
-                        app.clipboard_status = None;
-                    }
+                    app.tick_clipboard_status();
                 }
                 AppEvent::Resize(_, _) => {}
             }

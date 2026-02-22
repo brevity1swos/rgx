@@ -12,6 +12,8 @@ pub enum Action {
     MoveCursorRight,
     MoveCursorHome,
     MoveCursorEnd,
+    MoveCursorWordLeft,
+    MoveCursorWordRight,
     ScrollUp,
     ScrollDown,
     SwitchPanel,
@@ -27,6 +29,7 @@ pub enum Action {
     HistoryPrev,
     HistoryNext,
     CopyMatch,
+    ToggleWhitespace,
     Quit,
     None,
 }
@@ -47,6 +50,9 @@ pub fn key_to_action(key: KeyEvent) -> Action {
             Action::Redo
         }
         KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::CopyMatch,
+        KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::ToggleWhitespace
+        }
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive
         }
@@ -61,6 +67,12 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Enter => Action::InsertNewline,
         KeyCode::Backspace => Action::DeleteBack,
         KeyCode::Delete => Action::DeleteForward,
+        KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::MoveCursorWordLeft
+        }
+        KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::MoveCursorWordRight
+        }
         KeyCode::Left => Action::MoveCursorLeft,
         KeyCode::Right => Action::MoveCursorRight,
         KeyCode::Up => Action::ScrollUp,

@@ -2,11 +2,17 @@ use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 
-fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
+fn truncate(s: &str, max_chars: usize) -> String {
+    let char_count = s.chars().count();
+    if char_count <= max_chars {
         s.to_string()
     } else {
-        format!("{}...", &s[..max_len])
+        let end = s
+            .char_indices()
+            .nth(max_chars)
+            .map(|(i, _)| i)
+            .unwrap_or(s.len());
+        format!("{}...", &s[..end])
     }
 }
 
@@ -35,6 +41,8 @@ pub struct App {
     pub selected_match: usize,
     pub selected_capture: Option<usize>,
     pub clipboard_status: Option<String>,
+    clipboard_status_ticks: u32,
+    pub show_whitespace: bool,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -65,6 +73,8 @@ impl App {
             selected_match: 0,
             selected_capture: None,
             clipboard_status: None,
+            clipboard_status_ticks: 0,
+            show_whitespace: false,
             engine,
             compiled: None,
         }
@@ -317,15 +327,31 @@ impl App {
             Ok(mut cb) => match cb.set_text(&text) {
                 Ok(()) => {
                     self.clipboard_status = Some(format!("Copied: \"{}\"", truncate(&text, 40)));
+                    self.clipboard_status_ticks = 40; // ~2 sec at 50ms tick
                 }
                 Err(e) => {
                     self.clipboard_status = Some(format!("Clipboard error: {e}"));
+                    self.clipboard_status_ticks = 40;
                 }
             },
             Err(e) => {
                 self.clipboard_status = Some(format!("Clipboard error: {e}"));
+                self.clipboard_status_ticks = 40;
             }
         }
+    }
+
+    /// Tick down the clipboard status timer. Returns true if status was cleared.
+    pub fn tick_clipboard_status(&mut self) -> bool {
+        if self.clipboard_status.is_some() {
+            if self.clipboard_status_ticks > 0 {
+                self.clipboard_status_ticks -= 1;
+            } else {
+                self.clipboard_status = None;
+                return true;
+            }
+        }
+        false
     }
 
     fn selected_text(&self) -> Option<String> {

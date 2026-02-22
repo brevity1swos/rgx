@@ -364,6 +364,51 @@ fn help_page_clamped() {
 }
 
 #[test]
+fn multiline_flag_matching() {
+    let mut app = App::new(
+        EngineKind::RustRegex,
+        EngineFlags {
+            multi_line: true,
+            ..Default::default()
+        },
+    );
+    app.set_test_string("line1\nno match\nline42");
+    app.set_pattern(r"^line\d+$");
+    assert_eq!(app.matches.len(), 2);
+    assert_eq!(app.matches[0].text, "line1");
+    assert_eq!(app.matches[1].text, "line42");
+}
+
+#[test]
+fn dotall_flag_matching() {
+    let mut app = App::new(
+        EngineKind::RustRegex,
+        EngineFlags {
+            dot_matches_newline: true,
+            ..Default::default()
+        },
+    );
+    app.set_test_string("a\nb");
+    app.set_pattern("a.b");
+    assert_eq!(app.matches.len(), 1);
+    assert_eq!(app.matches[0].text, "a\nb");
+}
+
+#[test]
+fn whitespace_visualization_toggle() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    assert!(!app.show_whitespace);
+    app.show_whitespace = true;
+    assert!(app.show_whitespace);
+
+    // Rendering with whitespace mode should not panic
+    let mut terminal = create_test_terminal();
+    app.set_test_string("hello world\nfoo bar");
+    app.set_pattern(r"\w+");
+    terminal.draw(|frame| ui::render(frame, &app)).unwrap();
+}
+
+#[test]
 fn compute_layout_does_not_panic() {
     use ratatui::layout::Rect;
     // Wide terminal
