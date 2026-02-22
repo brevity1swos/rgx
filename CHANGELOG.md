@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-02-22
+
+### Documentation
+
+- Cache-bust demo GIF URL for GitHub CDN
+
+### Features
+
+- Add match detail/clipboard, cheat sheet, history/undo, mouse support
+- Undo/redo (Ctrl+Z / Ctrl+Shift+Z) for all editor panels with 500-entry stack
+  - Pattern history (Alt+Up/Down) with dedup and 100-entry cap
+  - Match selection (Up/Down in matches panel) with >> highlight and capture navigation
+  - Copy selected match to clipboard (Ctrl+Y) via arboard with status feedback
+  - Context-sensitive 3-page F1 cheat sheet: shortcuts, regex syntax, engine-specific
+  - Mouse support: click to focus/position cursor, scroll to navigate panels
+  - Extract layout computation for mouse hit-testing (PanelLayout struct)
+  - Update status bar hints, README features/shortcuts/comparison, demo assets
+
+
 ## [0.2.0] - 2026-02-22
 
 ### Bug Fixes
