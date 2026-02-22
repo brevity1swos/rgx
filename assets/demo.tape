@@ -1,6 +1,6 @@
 # VHS demo tape for rgx
 # https://github.com/charmbracelet/vhs
-# Run: vhs assets/demo.tape
+# Run: PATH=$HOME/.cargo/bin:$PATH vhs assets/demo.tape
 
 Output assets/demo.gif
 
@@ -9,7 +9,7 @@ Set Width 1200
 Set Height 600
 Set Theme "Catppuccin Mocha"
 Set TypingSpeed 50ms
-Set Shell "zsh"
+Set Shell "bash"
 
 # Launch rgx
 Type "rgx"
@@ -29,10 +29,6 @@ Type "user@example.com admin@test.org"
 Sleep 3s
 
 # Switch engine to fancy-regex
-Ctrl+e
-Sleep 2s
-
-# Switch engine to PCRE2
 Ctrl+e
 Sleep 2s
 
