@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2026-02-22
+
+### Documentation
+
+- Update demo tape for multi-line input and whitespace visualization
+- Add launch post drafts and submission materials
+Show HN, r/rust, r/commandline post drafts, Terminal Trove submission
+  details, and awesome-rust draft entry (deferred until star/download
+  threshold is met). awesome-ratatui PR already submitted ([#248](https://github.com/brevity1swos/rgx/pull/248)).
+- Add launch playbook with step-by-step visibility guide
+
+
 ## [0.4.0] - 2026-02-22
 
 ### Features
