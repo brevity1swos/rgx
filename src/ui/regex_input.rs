@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::input::editor::Editor;
-use crate::ui::theme;
+use crate::ui::{syntax_highlight, theme};
 
 pub struct RegexInput<'a> {
     pub editor: &'a Editor,
@@ -42,10 +42,16 @@ impl<'a> Widget for RegexInput<'a> {
             .title(Span::styled(title, title_style));
 
         let content = self.editor.content();
-        let line = Line::from(vec![Span::styled(
-            content.to_string(),
-            Style::default().fg(theme::TEXT),
-        )]);
+        let tokens = syntax_highlight::highlight(content);
+        let spans = if tokens.is_empty() {
+            vec![Span::styled(
+                content.to_string(),
+                Style::default().fg(theme::TEXT),
+            )]
+        } else {
+            syntax_highlight::build_highlighted_spans(content, &tokens)
+        };
+        let line = Line::from(spans);
 
         let paragraph = Paragraph::new(line)
             .block(block)
