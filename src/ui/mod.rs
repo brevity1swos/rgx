@@ -2,6 +2,7 @@ pub mod explanation;
 pub mod match_display;
 pub mod regex_input;
 pub mod status_bar;
+pub mod syntax_highlight;
 pub mod test_input;
 pub mod theme;
 
