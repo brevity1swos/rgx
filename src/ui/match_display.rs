@@ -11,14 +11,21 @@ use crate::ui::theme;
 
 pub struct MatchDisplay<'a> {
     pub matches: &'a [engine::Match],
+    pub scroll: u16,
+    pub focused: bool,
 }
 
 impl<'a> Widget for MatchDisplay<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = format!(" Matches ({}) ", self.matches.len());
+        let border_color = if self.focused {
+            theme::BLUE
+        } else {
+            theme::OVERLAY
+        };
         let block = Block::default()
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(theme::OVERLAY))
+            .border_style(Style::default().fg(border_color))
             .title(Span::styled(title, Style::default().fg(theme::TEXT)));
 
         if self.matches.is_empty() {
@@ -74,7 +81,8 @@ impl<'a> Widget for MatchDisplay<'a> {
         let paragraph = Paragraph::new(lines)
             .block(block)
             .style(Style::default().bg(theme::BASE))
-            .wrap(Wrap { trim: false });
+            .wrap(Wrap { trim: false })
+            .scroll((self.scroll, 0));
 
         paragraph.render(area, buf);
     }

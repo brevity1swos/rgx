@@ -42,6 +42,21 @@ fn test_engine_case_insensitive(kind: EngineKind) {
     assert_eq!(matches.len(), 3);
 }
 
+fn test_engine_named_captures(kind: EngineKind) {
+    let engine = create_engine(kind);
+    let flags = EngineFlags::default();
+    let compiled = engine
+        .compile(r"(?P<user>\w+)@(?P<domain>\w+)", &flags)
+        .unwrap();
+    let matches = compiled.find_matches("user@example").unwrap();
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].captures.len(), 2);
+    assert_eq!(matches[0].captures[0].name, Some("user".to_string()));
+    assert_eq!(matches[0].captures[0].text, "user");
+    assert_eq!(matches[0].captures[1].name, Some("domain".to_string()));
+    assert_eq!(matches[0].captures[1].text, "example");
+}
+
 fn test_engine_compile_error(kind: EngineKind) {
     let engine = create_engine(kind);
     let flags = EngineFlags::default();
@@ -69,6 +84,11 @@ fn rust_regex_case_insensitive() {
 }
 
 #[test]
+fn rust_regex_named_captures() {
+    test_engine_named_captures(EngineKind::RustRegex);
+}
+
+#[test]
 fn rust_regex_compile_error() {
     test_engine_compile_error(EngineKind::RustRegex);
 }
@@ -91,6 +111,11 @@ fn fancy_regex_no_match() {
 #[test]
 fn fancy_regex_case_insensitive() {
     test_engine_case_insensitive(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_named_captures() {
+    test_engine_named_captures(EngineKind::FancyRegex);
 }
 
 #[test]
@@ -120,6 +145,11 @@ mod pcre2_tests {
     #[test]
     fn pcre2_case_insensitive() {
         test_engine_case_insensitive(EngineKind::Pcre2);
+    }
+
+    #[test]
+    fn pcre2_named_captures() {
+        test_engine_named_captures(EngineKind::Pcre2);
     }
 
     #[test]

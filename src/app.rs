@@ -5,7 +5,7 @@ use crate::input::editor::Editor;
 pub struct App {
     pub regex_editor: Editor,
     pub test_editor: Editor,
-    pub focused_panel: u8, // 0 = regex, 1 = test string
+    pub focused_panel: u8, // 0 = regex, 1 = test, 2 = matches, 3 = explanation
     pub engine_kind: EngineKind,
     pub flags: EngineFlags,
     pub matches: Vec<engine::Match>,
@@ -13,6 +13,8 @@ pub struct App {
     pub error: Option<String>,
     pub show_help: bool,
     pub should_quit: bool,
+    pub match_scroll: u16,
+    pub explain_scroll: u16,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -31,6 +33,8 @@ impl App {
             error: None,
             show_help: false,
             should_quit: false,
+            match_scroll: 0,
+            explain_scroll: 0,
             engine,
             compiled: None,
         }
@@ -52,8 +56,26 @@ impl App {
         self.recompute();
     }
 
+    pub fn scroll_match_up(&mut self) {
+        self.match_scroll = self.match_scroll.saturating_sub(1);
+    }
+
+    pub fn scroll_match_down(&mut self) {
+        self.match_scroll = self.match_scroll.saturating_add(1);
+    }
+
+    pub fn scroll_explain_up(&mut self) {
+        self.explain_scroll = self.explain_scroll.saturating_sub(1);
+    }
+
+    pub fn scroll_explain_down(&mut self) {
+        self.explain_scroll = self.explain_scroll.saturating_add(1);
+    }
+
     pub fn recompute(&mut self) {
         let pattern = self.regex_editor.content().to_string();
+        self.match_scroll = 0;
+        self.explain_scroll = 0;
 
         if pattern.is_empty() {
             self.compiled = None;
@@ -92,6 +114,7 @@ impl App {
     }
 
     pub fn rematch(&mut self) {
+        self.match_scroll = 0;
         if let Some(compiled) = &self.compiled {
             let text = self.test_editor.content().to_string();
             if text.is_empty() {
