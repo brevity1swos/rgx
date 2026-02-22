@@ -24,7 +24,8 @@ impl<'a> Widget for RegexInput<'a> {
         };
 
         let title = if let Some(err) = self.error {
-            let truncated: String = err.chars().take(area.width as usize - 10).collect();
+            let truncated: String =
+                err.chars().take((area.width as usize).saturating_sub(10)).collect();
             format!(" Pattern (Error: {truncated}) ")
         } else {
             " Pattern ".to_string()
@@ -63,7 +64,9 @@ impl<'a> Widget for RegexInput<'a> {
         if self.focused {
             let cursor_x = area.x + 1 + self.editor.visual_cursor() as u16;
             let cursor_y = area.y + 1;
-            if cursor_x < area.x + area.width - 1 && cursor_y < area.y + area.height - 1 {
+            if cursor_x < area.x + area.width.saturating_sub(1)
+                && cursor_y < area.y + area.height.saturating_sub(1)
+            {
                 if let Some(cell) = buf.cell_mut((cursor_x, cursor_y)) {
                     cell.set_style(
                         Style::default()
