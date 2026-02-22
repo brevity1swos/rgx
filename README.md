@@ -11,7 +11,7 @@
 
 A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations. Written in Rust.
 
-![demo](assets/demo.gif?v=2)
+![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif)
 
 </div>
 
