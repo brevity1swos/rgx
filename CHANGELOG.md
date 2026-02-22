@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-02-22
+
+### Features
+
+- Pre-launch polish — fix UTF-8 bugs, add whitespace viz, word movement, clipboard timer
+- Fix expand_replacement() byte-level `as char` casting that broke on non-ASCII
+    replacement templates; rewrite to iterate by char_indices
+  - Fix truncate() char boundary panic on multi-byte UTF-8 by using char_indices().nth()
+  - Add whitespace visualization toggle (Ctrl+W): spaces as ·, newlines as ↵, tabs as →
+  - Add Ctrl+Left/Right word-level cursor movement (move_word_left/move_word_right)
+  - Extend clipboard status display from instant dismiss to ~2 seconds (40 tick counter)
+  - Add multi-line matching tests (multiline flag, line anchors, dotall) for all engines
+  - Update GitHub repo description to mention all v0.3.0 features
+  - Update README with new keyboard shortcuts and whitespace visualization feature
+
+
 ## [0.3.0] - 2026-02-22
 
 ### Documentation
