@@ -27,9 +27,21 @@ Sleep 2s
 Tab
 Sleep 300ms
 
-# Type test strings
-Type "user@example.com admin@test.org"
+# Type multi-line test string
+Type "user@example.com"
+Enter
+Type "admin@test.org"
+Enter
+Type "hello world"
 Sleep 2s
+
+# --- Whitespace visualization ---
+Ctrl+w
+Sleep 2s
+
+# Toggle off
+Ctrl+w
+Sleep 1s
 
 # --- Replace mode ---
 Tab
@@ -73,7 +85,7 @@ Sleep 300ms
 
 # Copy selected match
 Ctrl+y
-Sleep 1.5s
+Sleep 2s
 
 # Navigate back up
 Up
