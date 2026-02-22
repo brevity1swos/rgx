@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.6] - 2026-02-22
+
+### Miscellaneous
+
+- Set up cargo-dist v0.30.4 for prebuilt binary distribution
+Adds dist.yml workflow triggered by version tags to build binaries for
+  5 targets (linux x86_64/aarch64, macOS x86_64/aarch64, Windows x86_64)
+  and upload them to GitHub Releases created by release-plz.
+
+
 ## [0.1.5] - 2026-02-22
 
 ### Bug Fixes
