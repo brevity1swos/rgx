@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.7] - 2026-02-22
+
+### Bug Fixes
+
+- Add allow-dirty for cargo-dist CI workflow validation
+cargo-dist validates that .github/workflows/release.yml matches its
+  expected content, but we use a custom dist.yml workflow that integrates
+  with release-plz. The allow-dirty = ["ci"] setting skips this check.
+
+
 ## [0.1.6] - 2026-02-22
 
 ### Miscellaneous
