@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-02-22
+
+### Bug Fixes
+
+- Update crossterm to 0.29, clean up dead_code allows, add logo
+- Bump crossterm from 0.28 to 0.29 to align with ratatui 0.30
+  - Remove #![allow(dead_code)] from main.rs, lib.rs, and settings.rs
+  - Have main.rs use the rgx library crate instead of re-declaring modules
+  - Fix duplicate changelog header
+  - Add SVG logo asset
+  - Add PCRE2 to engine benchmarks (behind feature gate)
+
+
 ## [0.1.2] - 2026-02-22
 
 ### Documentation
