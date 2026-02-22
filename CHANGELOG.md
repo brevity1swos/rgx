@@ -30,7 +30,3 @@ Interactive TUI with real-time matching, 3 regex engines (Rust regex,
 
   Includes full CI/CD automation (test matrix, clippy, fmt, coverage,
   release-plz, cargo-dist), dependabot config, and issue templates.
-
-# Changelog
-
-All notable changes to this project will be documented in this file.

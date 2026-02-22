@@ -24,6 +24,15 @@ fn bench_compile_and_match(c: &mut Criterion) {
         });
     });
 
+    #[cfg(feature = "pcre2-engine")]
+    group.bench_function("pcre2", |b| {
+        let engine = create_engine(EngineKind::Pcre2);
+        b.iter(|| {
+            let compiled = engine.compile(black_box(pattern), &flags).unwrap();
+            compiled.find_matches(black_box(text)).unwrap()
+        });
+    });
+
     group.finish();
 }
 

@@ -1,13 +1,3 @@
-#![allow(dead_code)]
-
-mod app;
-mod config;
-mod engine;
-mod event;
-mod explain;
-mod input;
-mod ui;
-
 use std::io::{self, IsTerminal, Read};
 use std::time::Duration;
 
@@ -19,11 +9,12 @@ use crossterm::{
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
-use app::App;
-use config::cli::Cli;
-use engine::EngineFlags;
-use event::{AppEvent, EventHandler};
-use input::{key_to_action, Action};
+use rgx::app::App;
+use rgx::config::cli::Cli;
+use rgx::engine::EngineFlags;
+use rgx::event::{AppEvent, EventHandler};
+use rgx::input::{key_to_action, Action};
+use rgx::ui;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
