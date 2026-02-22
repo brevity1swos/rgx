@@ -96,6 +96,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             editor: &app.test_editor,
             focused: app.focused_panel == 1,
             matches: &app.matches,
+            show_whitespace: app.show_whitespace,
         },
         layout.test_input,
     );
@@ -140,6 +141,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             engine: app.engine_kind,
             match_count: app.matches.len(),
             flags: app.flags.clone(),
+            show_whitespace: app.show_whitespace,
         },
         layout.status_bar,
     );
@@ -164,6 +166,8 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+Z", "Undo"),
         shortcut("Ctrl+Shift+Z", "Redo"),
         shortcut("Ctrl+Y", "Copy selected match to clipboard"),
+        shortcut("Ctrl+W", "Toggle whitespace visualization"),
+        shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),
         shortcut("Alt+i", "Toggle case-insensitive"),
         shortcut("Alt+m", "Toggle multi-line"),

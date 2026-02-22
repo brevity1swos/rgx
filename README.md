@@ -29,6 +29,7 @@ A terminal regex debugger with real-time matching, capture group highlighting, a
 - **Match detail + clipboard** — navigate matches/captures with Up/Down, copy with Ctrl+Y
 - **Pattern history + undo** — Ctrl+Z/Ctrl+Shift+Z undo/redo, Alt+Up/Down browse history
 - **Context-sensitive cheat sheet** — F1 multi-page help: shortcuts, regex syntax, engine-specific features
+- **Whitespace visualization** — toggle with Ctrl+W to show spaces as `·`, newlines as `↵`, tabs as `→`
 - **Mouse support** — click to focus/position cursor, scroll to navigate panels
 - **Engine selector** — switch engines with Ctrl+E, see where behavior differs
 - **Regex flags** — toggle case-insensitive, multiline, dotall, unicode, extended
@@ -111,6 +112,8 @@ rgx -r '$2/$1' '(\w+)@(\w+)'
 | `Ctrl+Z` | Undo |
 | `Ctrl+Shift+Z` | Redo |
 | `Ctrl+Y` | Copy selected match to clipboard |
+| `Ctrl+W` | Toggle whitespace visualization |
+| `Ctrl+Left/Right` | Move cursor by word |
 | `Alt+Up/Down` | Browse pattern history |
 | `Alt+i/m/s/u/x` | Toggle flags (case, multiline, dotall, unicode, extended) |
 | `F1` | Show help (Left/Right to page through) |
@@ -137,6 +140,7 @@ rgx -r '$2/$1' '(\w+)@(\w+)'
 | Replace/substitution | Yes | No | No | Yes |
 | Match clipboard copy | Yes | No | No | Yes |
 | Undo/redo | Yes | No | No | Yes |
+| Whitespace visualization | Yes | Yes | No | No |
 | Mouse support | Yes | No | No | N/A |
 | Regex flags toggle | Yes | Yes | No | Yes |
 | Stdin pipe support | Yes | Yes | Yes | No |

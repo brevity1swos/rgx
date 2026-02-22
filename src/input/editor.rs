@@ -171,6 +171,78 @@ impl Editor {
         }
     }
 
+    /// Move cursor left by one word (to previous word boundary).
+    pub fn move_word_left(&mut self) {
+        if self.cursor == 0 {
+            return;
+        }
+        let before = &self.content[..self.cursor];
+        let mut chars = before.char_indices().rev();
+        // Skip any non-word chars immediately before cursor
+        let mut last_idx = self.cursor;
+        for (i, c) in &mut chars {
+            if c.is_alphanumeric() || c == '_' {
+                last_idx = i;
+                break;
+            }
+            last_idx = i;
+        }
+        // Skip word chars to find the start of the word
+        if last_idx < self.cursor {
+            let before_word = &self.content[..last_idx];
+            for (i, c) in before_word.char_indices().rev() {
+                if !(c.is_alphanumeric() || c == '_') {
+                    self.cursor = i + c.len_utf8();
+                    return;
+                }
+            }
+            // Reached start of string
+            self.cursor = 0;
+        } else {
+            self.cursor = 0;
+        }
+    }
+
+    /// Move cursor right by one word (to next word boundary).
+    pub fn move_word_right(&mut self) {
+        if self.cursor >= self.content.len() {
+            return;
+        }
+        let after = &self.content[self.cursor..];
+        let mut chars = after.char_indices();
+        // Skip any word chars from current position
+        let mut advanced = false;
+        for (i, c) in &mut chars {
+            if !(c.is_alphanumeric() || c == '_') {
+                if advanced {
+                    self.cursor += i;
+                    // Skip non-word chars to reach next word
+                    let remaining = &self.content[self.cursor..];
+                    for (j, c2) in remaining.char_indices() {
+                        if c2.is_alphanumeric() || c2 == '_' {
+                            self.cursor += j;
+                            return;
+                        }
+                    }
+                    self.cursor = self.content.len();
+                    return;
+                }
+                // We started on non-word chars, skip them
+                let remaining = &self.content[self.cursor + i + c.len_utf8()..];
+                for (j, c2) in remaining.char_indices() {
+                    if c2.is_alphanumeric() || c2 == '_' {
+                        self.cursor = self.cursor + i + c.len_utf8() + j;
+                        return;
+                    }
+                }
+                self.cursor = self.content.len();
+                return;
+            }
+            advanced = true;
+        }
+        self.cursor = self.content.len();
+    }
+
     pub fn move_up(&mut self) {
         let (line, col) = self.cursor_line_col();
         if line > 0 {
@@ -440,6 +512,31 @@ mod tests {
         let mut editor = Editor::with_content("abc\ndef\nghi".to_string());
         editor.set_cursor_by_position(1, 2);
         assert_eq!(editor.cursor_line_col(), (1, 2));
+    }
+
+    #[test]
+    fn test_move_word_right() {
+        let mut editor = Editor::with_content("hello world foo".to_string());
+        editor.cursor = 0;
+        editor.move_word_right();
+        // Should skip past "hello" and stop at start of "world"
+        assert_eq!(editor.cursor(), 6);
+        editor.move_word_right();
+        assert_eq!(editor.cursor(), 12);
+        editor.move_word_right();
+        assert_eq!(editor.cursor(), 15); // end
+    }
+
+    #[test]
+    fn test_move_word_left() {
+        let mut editor = Editor::with_content("hello world foo".to_string());
+        // cursor at end
+        editor.move_word_left();
+        assert_eq!(editor.cursor(), 12); // start of "foo"
+        editor.move_word_left();
+        assert_eq!(editor.cursor(), 6); // start of "world"
+        editor.move_word_left();
+        assert_eq!(editor.cursor(), 0); // start of "hello"
     }
 
     #[test]

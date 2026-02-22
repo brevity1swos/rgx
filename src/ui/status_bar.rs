@@ -13,6 +13,7 @@ pub struct StatusBar {
     pub engine: EngineKind,
     pub match_count: usize,
     pub flags: EngineFlags,
+    pub show_whitespace: bool,
 }
 
 impl Widget for StatusBar {
@@ -58,8 +59,18 @@ impl Widget for StatusBar {
             spans.push(Span::styled(format!(" {name} "), style));
         }
 
+        if self.show_whitespace {
+            spans.push(Span::styled(
+                " \u{00b7} ",
+                Style::default()
+                    .fg(theme::BASE)
+                    .bg(theme::TEAL)
+                    .add_modifier(Modifier::BOLD),
+            ));
+        }
+
         spans.push(Span::styled(
-            " | Tab: switch | Ctrl+E: engine | Ctrl+Z: undo | Ctrl+Y: copy | F1: help ",
+            " | Tab: switch | Ctrl+E: engine | Ctrl+W: ws | F1: help ",
             Style::default().fg(theme::SUBTEXT).bg(theme::SURFACE0),
         ));
 

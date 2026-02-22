@@ -14,6 +14,7 @@ pub struct TestInput<'a> {
     pub editor: &'a Editor,
     pub focused: bool,
     pub matches: &'a [engine::Match],
+    pub show_whitespace: bool,
 }
 
 impl<'a> Widget for TestInput<'a> {
@@ -34,6 +35,11 @@ impl<'a> Widget for TestInput<'a> {
 
         let content = self.editor.content();
         let flat_spans = build_highlighted_spans(content, self.matches);
+        let flat_spans = if self.show_whitespace {
+            visualize_whitespace(flat_spans)
+        } else {
+            flat_spans
+        };
         let lines = split_spans_into_lines(flat_spans);
 
         // Apply vertical scroll
@@ -98,6 +104,47 @@ pub fn split_spans_into_lines<'a>(spans: Vec<Span<'a>>) -> Vec<Line<'a>> {
     // Final line (even if empty — this ensures we always have at least one line)
     lines.push(Line::from(current_spans));
     lines
+}
+
+/// Replace spaces with `·` and insert `↵` before newlines for whitespace visualization.
+fn visualize_whitespace<'a>(spans: Vec<Span<'a>>) -> Vec<Span<'a>> {
+    let mut result = Vec::new();
+    for span in spans {
+        let style = span.style;
+        let text: &str = span.content.as_ref();
+        let ws_style = Style::default().fg(theme::OVERLAY);
+        let mut segment = String::new();
+
+        for c in text.chars() {
+            match c {
+                ' ' => {
+                    if !segment.is_empty() {
+                        result.push(Span::styled(std::mem::take(&mut segment), style));
+                    }
+                    result.push(Span::styled("\u{00b7}", ws_style)); // ·
+                }
+                '\n' => {
+                    if !segment.is_empty() {
+                        result.push(Span::styled(std::mem::take(&mut segment), style));
+                    }
+                    result.push(Span::styled("\u{21b5}\n", ws_style)); // ↵ + actual newline
+                }
+                '\t' => {
+                    if !segment.is_empty() {
+                        result.push(Span::styled(std::mem::take(&mut segment), style));
+                    }
+                    result.push(Span::styled("\u{2192}", ws_style)); // →
+                }
+                _ => {
+                    segment.push(c);
+                }
+            }
+        }
+        if !segment.is_empty() {
+            result.push(Span::styled(segment, style));
+        }
+    }
+    result
 }
 
 fn build_highlighted_spans<'a>(text: &'a str, matches: &[engine::Match]) -> Vec<Span<'a>> {

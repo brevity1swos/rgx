@@ -149,62 +149,63 @@ pub struct ReplaceResult {
 /// `${name}` (named groups), `$$` (literal `$`).
 fn expand_replacement(template: &str, m: &Match) -> String {
     let mut result = String::new();
-    let bytes = template.as_bytes();
-    let len = bytes.len();
-    let mut i = 0;
+    let mut chars = template.char_indices().peekable();
 
-    while i < len {
-        if bytes[i] == b'$' {
-            if i + 1 >= len {
-                result.push('$');
-                i += 1;
-                continue;
-            }
-            let next = bytes[i + 1];
-            if next == b'$' {
-                // Literal $
-                result.push('$');
-                i += 2;
-            } else if next == b'&' {
-                // $& = whole match ($0)
-                result.push_str(&m.text);
-                i += 2;
-            } else if next == b'{' {
-                // ${name} or ${number}
-                if let Some(close) = template[i + 2..].find('}') {
-                    let ref_name = &template[i + 2..i + 2 + close];
-                    if let Some(text) = lookup_capture(m, ref_name) {
-                        result.push_str(text);
-                    }
-                    i = i + 2 + close + 1;
-                } else {
-                    // No closing brace, emit literal
+    while let Some((_i, c)) = chars.next() {
+        if c == '$' {
+            match chars.peek() {
+                None => {
                     result.push('$');
-                    i += 1;
                 }
-            } else if next.is_ascii_digit() {
-                // $1..$99
-                let start = i + 1;
-                let mut end = start + 1;
-                // Grab up to 2 digits
-                if end < len && bytes[end].is_ascii_digit() {
-                    end += 1;
+                Some(&(_, '$')) => {
+                    chars.next();
+                    result.push('$');
                 }
-                let num_str = &template[start..end];
-                let idx: usize = num_str.parse().unwrap_or(0);
-                if idx == 0 {
+                Some(&(_, '&')) => {
+                    chars.next();
                     result.push_str(&m.text);
-                } else if let Some(cap) = m.captures.iter().find(|c| c.index == idx) {
-                    result.push_str(&cap.text);
                 }
-                i = end;
-            } else {
-                result.push('$');
-                i += 1;
+                Some(&(_, '{')) => {
+                    chars.next(); // consume '{'
+                    let brace_start = chars.peek().map(|&(idx, _)| idx).unwrap_or(template.len());
+                    if let Some(close) = template[brace_start..].find('}') {
+                        let ref_name = &template[brace_start..brace_start + close];
+                        if let Some(text) = lookup_capture(m, ref_name) {
+                            result.push_str(text);
+                        }
+                        // Advance past the content and closing brace
+                        let end_byte = brace_start + close + 1;
+                        while chars.peek().is_some_and(|&(idx, _)| idx < end_byte) {
+                            chars.next();
+                        }
+                    } else {
+                        result.push('$');
+                        result.push('{');
+                    }
+                }
+                Some(&(_, next_c)) if next_c.is_ascii_digit() => {
+                    let (_, d1) = chars.next().unwrap();
+                    let mut num_str = String::from(d1);
+                    // Grab a second digit if present
+                    if let Some(&(_, d2)) = chars.peek() {
+                        if d2.is_ascii_digit() {
+                            chars.next();
+                            num_str.push(d2);
+                        }
+                    }
+                    let idx: usize = num_str.parse().unwrap_or(0);
+                    if idx == 0 {
+                        result.push_str(&m.text);
+                    } else if let Some(cap) = m.captures.iter().find(|c| c.index == idx) {
+                        result.push_str(&cap.text);
+                    }
+                }
+                Some(_) => {
+                    result.push('$');
+                }
             }
         } else {
-            result.push(bytes[i] as char);
-            i += 1;
+            result.push(c);
         }
     }
 
@@ -366,6 +367,16 @@ mod tests {
         assert_eq!(expand_replacement("$0", &m), "hello");
         assert_eq!(expand_replacement("$&", &m), "hello");
         assert_eq!(expand_replacement("[$0]", &m), "[hello]");
+    }
+
+    #[test]
+    fn test_expand_replacement_non_ascii() {
+        let m = make_match(0, 5, "hello", vec![]);
+        // Non-ASCII characters in replacement template should work correctly
+        assert_eq!(expand_replacement("café $0", &m), "café hello");
+        assert_eq!(expand_replacement("→$0←", &m), "→hello←");
+        assert_eq!(expand_replacement("日本語", &m), "日本語");
+        assert_eq!(expand_replacement("über $& cool", &m), "über hello cool");
     }
 
     #[test]
