@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-02-26
+
+### Bug Fixes
+
+- Bounds safety, VecDeque history, config wiring, and code quality
+- Fix scroll_to_selected() bounds check and u16 overflow safety
+  - Change pattern_history from Vec to VecDeque for O(1) front-removal
+  - Add Copy derive to EngineFlags; extract wrap_pattern() to deduplicate
+    flag prefix logic in rust_regex.rs and fancy.rs
+  - Add named panel constants (PANEL_REGEX, PANEL_TEST, etc.) replacing
+    magic numbers; consolidate editor dispatch with closures
+  - Expand Settings with flag fields, parse_engine(); make CLI engine/unicode
+    optional so config defaults apply; wire settings loading in main
+  - Add Unicode edge case tests (emoji, CJK, combining marks), empty
+    state tests, invalid capture ref test, and config deserialization tests
+- Resolve clippy field_reassign_with_default and add launch monitor
+Use struct initialization with ..Default::default() instead of mutable
+  field reassignment in config_tests to satisfy clippy on Rust 1.93.
+
+  Also adds HN/Reddit comment notification monitor script and updates
+  .gitignore for monitor state file.
+
+### Documentation
+
+- Regenerate demo GIF with current features
+- Add syntax highlighting to feature list and bump demo GIF cache
+
+
 ## [0.4.1] - 2026-02-22
 
 ### Documentation
