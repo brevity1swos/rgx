@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2026-02-26
+
+### Documentation
+
+- Revise Show HN post for launch
+Tighten copy for HN audience: shorter title, personal pain point
+  opening, fewer feature bullets, remove self-promotional comparison
+  table, reframe closing CTA around user workflows.
+- Revise r/rust post for launch
+Tighten for r/rust audience: rename technical section to highlight
+  architecture discussion, emphasize trait design and pure Rust build,
+  trim feature list, add concrete details that invite technical feedback.
+
+
 ## [0.5.0] - 2026-02-26
 
 ### Bug Fixes
