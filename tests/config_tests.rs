@@ -16,15 +16,22 @@ fn test_settings_defaults() {
 
 #[test]
 fn test_settings_parse_engine() {
-    let mut settings = Settings::default();
-
-    settings.default_engine = "rust".to_string();
+    let settings = Settings {
+        default_engine: "rust".to_string(),
+        ..Default::default()
+    };
     assert_eq!(settings.parse_engine(), EngineKind::RustRegex);
 
-    settings.default_engine = "fancy".to_string();
+    let settings = Settings {
+        default_engine: "fancy".to_string(),
+        ..Default::default()
+    };
     assert_eq!(settings.parse_engine(), EngineKind::FancyRegex);
 
-    settings.default_engine = "unknown".to_string();
+    let settings = Settings {
+        default_engine: "unknown".to_string(),
+        ..Default::default()
+    };
     assert_eq!(settings.parse_engine(), EngineKind::RustRegex);
 }
 
