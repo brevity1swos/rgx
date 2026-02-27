@@ -39,4 +39,16 @@ pub struct Cli {
     /// Initial replacement string
     #[arg(short = 'r', long)]
     pub replacement: Option<String>,
+
+    /// Read test string from file
+    #[arg(short = 'f', long)]
+    pub file: Option<String>,
+
+    /// Test string (alternative to stdin or file)
+    #[arg(short = 't', long)]
+    pub text: Option<String>,
+
+    /// Load workspace from file
+    #[arg(short = 'l', long)]
+    pub load: Option<String>,
 }

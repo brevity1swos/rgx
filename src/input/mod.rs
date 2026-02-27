@@ -30,6 +30,8 @@ pub enum Action {
     HistoryNext,
     CopyMatch,
     ToggleWhitespace,
+    OutputAndQuit,
+    SaveWorkspace,
     Quit,
     None,
 }
@@ -52,6 +54,12 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::CopyMatch,
         KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             Action::ToggleWhitespace
+        }
+        KeyCode::Char('o') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::OutputAndQuit
+        }
+        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::SaveWorkspace
         }
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive

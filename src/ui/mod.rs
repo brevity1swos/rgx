@@ -86,6 +86,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             editor: &app.regex_editor,
             focused: app.focused_panel == 0,
             error: error_str,
+            error_offset: app.error_offset,
         },
         layout.regex_input,
     );
@@ -168,6 +169,8 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+Z", "Undo"),
         shortcut("Ctrl+Shift+Z", "Redo"),
         shortcut("Ctrl+Y", "Copy selected match to clipboard"),
+        shortcut("Ctrl+O", "Output results to stdout and quit"),
+        shortcut("Ctrl+S", "Save workspace"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),

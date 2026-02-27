@@ -13,6 +13,7 @@ pub struct RegexInput<'a> {
     pub editor: &'a Editor,
     pub focused: bool,
     pub error: Option<&'a str>,
+    pub error_offset: Option<usize>,
 }
 
 impl<'a> Widget for RegexInput<'a> {
@@ -61,6 +62,22 @@ impl<'a> Widget for RegexInput<'a> {
             .style(Style::default().bg(theme::BASE));
 
         paragraph.render(area, buf);
+
+        // Highlight error character
+        if let Some(offset) = self.error_offset {
+            let scroll = self.editor.scroll_offset();
+            if offset >= scroll {
+                let err_x = area.x + 1 + (offset - scroll) as u16;
+                let err_y = area.y + 1;
+                if err_x < area.x + area.width.saturating_sub(1)
+                    && err_y < area.y + area.height.saturating_sub(1)
+                {
+                    if let Some(cell) = buf.cell_mut((err_x, err_y)) {
+                        cell.set_style(Style::default().fg(theme::TEXT).bg(theme::RED));
+                    }
+                }
+            }
+        }
 
         // Render cursor
         if self.focused {

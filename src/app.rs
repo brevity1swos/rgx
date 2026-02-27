@@ -48,6 +48,9 @@ pub struct App {
     pub show_whitespace: bool,
     pub compile_time: Option<Duration>,
     pub match_time: Option<Duration>,
+    pub error_offset: Option<usize>,
+    pub output_on_quit: bool,
+    pub workspace_path: Option<String>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -90,6 +93,9 @@ impl App {
             show_whitespace: false,
             compile_time: None,
             match_time: None,
+            error_offset: None,
+            output_on_quit: false,
+            workspace_path: None,
             engine,
             compiled: None,
         }
@@ -134,6 +140,11 @@ impl App {
         self.recompute();
     }
 
+    pub fn switch_engine_to(&mut self, kind: EngineKind) {
+        self.engine_kind = kind;
+        self.engine = engine::create_engine(kind);
+    }
+
     pub fn scroll_match_up(&mut self) {
         self.match_scroll = self.match_scroll.saturating_sub(1);
     }
@@ -154,6 +165,7 @@ impl App {
         let pattern = self.regex_editor.content().to_string();
         self.match_scroll = 0;
         self.explain_scroll = 0;
+        self.error_offset = None;
 
         if pattern.is_empty() {
             self.compiled = None;
@@ -184,10 +196,13 @@ impl App {
         // Explain (uses regex-syntax, independent of engine)
         match explain::explain(&pattern) {
             Ok(nodes) => self.explanation = nodes,
-            Err(e) => {
+            Err((msg, offset)) => {
                 self.explanation.clear();
+                if self.error_offset.is_none() {
+                    self.error_offset = offset;
+                }
                 if self.error.is_none() {
-                    self.error = Some(e);
+                    self.error = Some(msg);
                 }
             }
         }
@@ -368,6 +383,11 @@ impl App {
                 self.clipboard_status_ticks = 40;
             }
         }
+    }
+
+    pub fn set_status_message(&mut self, message: String) {
+        self.clipboard_status = Some(message);
+        self.clipboard_status_ticks = 40; // ~2 sec at 50ms tick
     }
 
     /// Tick down the clipboard status timer. Returns true if status was cleared.

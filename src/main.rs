@@ -46,6 +46,14 @@ async fn main() -> anyhow::Result<()> {
         app.show_whitespace = true;
     }
 
+    // Load workspace if --load is set
+    if let Some(ref load_path) = cli.load {
+        use rgx::config::workspace::Workspace;
+        let ws = Workspace::load(std::path::Path::new(load_path))?;
+        ws.apply(&mut app);
+        app.workspace_path = Some(load_path.clone());
+    }
+
     // Read stdin if piped
     let stdin_text = if !io::stdin().is_terminal() {
         let mut buf = String::new();
@@ -56,6 +64,11 @@ async fn main() -> anyhow::Result<()> {
     };
 
     if let Some(text) = &stdin_text {
+        app.set_test_string(text);
+    } else if let Some(path) = &cli.file {
+        let text = std::fs::read_to_string(path)?;
+        app.set_test_string(&text);
+    } else if let Some(text) = &cli.text {
         app.set_test_string(text);
     }
 
@@ -137,6 +150,39 @@ async fn main() -> anyhow::Result<()> {
                     match key_to_action(key) {
                         Action::Quit => {
                             app.should_quit = true;
+                        }
+                        Action::OutputAndQuit => {
+                            app.output_on_quit = true;
+                            app.should_quit = true;
+                        }
+                        Action::SaveWorkspace => {
+                            use rgx::config::workspace::Workspace;
+                            let ws = Workspace::from_app(&app);
+                            let path = app
+                                .workspace_path
+                                .clone()
+                                .or_else(|| {
+                                    dirs::config_dir().map(|d| {
+                                        d.join("rgx")
+                                            .join("workspace.toml")
+                                            .to_string_lossy()
+                                            .into_owned()
+                                    })
+                                })
+                                .unwrap_or_else(|| "workspace.toml".to_string());
+                            let save_path = std::path::Path::new(&path);
+                            if let Some(parent) = save_path.parent() {
+                                let _ = std::fs::create_dir_all(parent);
+                            }
+                            match ws.save(save_path) {
+                                Ok(()) => {
+                                    app.workspace_path = Some(path.clone());
+                                    app.set_status_message(format!("Saved: {path}"));
+                                }
+                                Err(e) => {
+                                    app.set_status_message(format!("Save error: {e}"));
+                                }
+                            }
                         }
                         Action::SwitchPanel => {
                             if app.focused_panel == App::PANEL_REGEX {
@@ -342,6 +388,16 @@ async fn main() -> anyhow::Result<()> {
         crossterm::event::DisableMouseCapture
     )?;
     terminal.show_cursor()?;
+
+    if app.output_on_quit {
+        if let Some(ref result) = app.replace_result {
+            print!("{}", result.output);
+        } else {
+            for m in &app.matches {
+                println!("{}", m.text);
+            }
+        }
+    }
 
     Ok(())
 }

@@ -10,14 +10,15 @@ pub struct ExplainNode {
     pub description: String,
 }
 
-pub fn explain(pattern: &str) -> Result<Vec<ExplainNode>, String> {
+pub fn explain(pattern: &str) -> Result<Vec<ExplainNode>, (String, Option<usize>)> {
     if pattern.is_empty() {
         return Ok(vec![]);
     }
 
-    let ast = Parser::new()
-        .parse(pattern)
-        .map_err(|e| format!("Parse error: {e}"))?;
+    let ast = Parser::new().parse(pattern).map_err(|e| {
+        let offset = pattern[..e.span().start.offset].chars().count();
+        (format!("Parse error: {e}"), Some(offset))
+    })?;
 
     let mut visitor = ExplainVisitor::new();
     visitor.visit(&ast);
@@ -60,5 +61,8 @@ mod tests {
     fn test_invalid_pattern() {
         let result = explain(r"(unclosed");
         assert!(result.is_err());
+        let (msg, offset) = result.unwrap_err();
+        assert!(msg.contains("Parse error"));
+        assert!(offset.is_some());
     }
 }
