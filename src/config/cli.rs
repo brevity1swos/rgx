@@ -4,8 +4,8 @@ use clap::Parser;
 #[command(
     name = "rgx",
     version,
-    about = "regex101, but in your terminal",
-    long_about = "A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations."
+    about = "Terminal regex tester with real-time matching and multi-engine support",
+    long_about = "Test and debug regular expressions without leaving your terminal. Supports 3 engines (Rust regex, fancy-regex, PCRE2), capture group highlighting, plain-English explanations, and replace mode. Useful for remote work, shell pipelines, and engine-specific testing."
 )]
 pub struct Cli {
     /// Initial regex pattern

@@ -2,14 +2,14 @@
 
 # rgx
 
-**regex101, but in your terminal**
+**A terminal regex tester with real-time matching and multi-engine support**
 
 [![CI](https://github.com/brevity1swos/rgx/actions/workflows/ci.yml/badge.svg)](https://github.com/brevity1swos/rgx/actions/workflows/ci.yml)
 [![Crates.io](https://img.shields.io/crates/v/rgx-cli.svg)](https://crates.io/crates/rgx-cli)
 [![Downloads](https://img.shields.io/crates/d/rgx-cli.svg)](https://crates.io/crates/rgx-cli)
 [![License](https://img.shields.io/crates/l/rgx.svg)](LICENSE-MIT)
 
-A terminal regex debugger with real-time matching, capture group highlighting, and plain-English explanations. Written in Rust.
+Test and debug regular expressions without leaving your terminal. Written in Rust.
 
 ![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif?v=3)
 
@@ -18,6 +18,17 @@ A terminal regex debugger with real-time matching, capture group highlighting, a
 </div>
 
 ---
+
+## Who is this for?
+
+rgx is useful if you:
+
+- **Work on remote servers** where opening a browser isn't practical — SSH sessions, containers, air-gapped environments
+- **Want to pipe regex results** into other commands (`echo "log" | rgx '\d+' | ...`) — regex101 can't do this
+- **Need to test against specific engine behavior** — check if your pattern works in Rust's `regex` crate vs PCRE2 without guessing
+- **Prefer staying in the terminal** and find the context switch to a browser tab disruptive
+
+If you write regex a few times a month and regex101.com works fine for you, it probably still will. rgx is strongest for developers who do regex-heavy work in terminal-centric workflows.
 
 ## Features
 
@@ -132,21 +143,30 @@ rgx -r '$2/$1' '(\w+)@(\w+)'
 
 ## Comparison
 
-| Feature | rgx | regex-tui | rexi | regex101.com |
-|---------|:---:|:---------:|:----:|:------------:|
-| Real-time matching | Yes | Yes | Yes | Yes |
-| Multiple engines | 3 | 2 | 1 | 8 |
-| Capture group highlighting | Yes | No | No | Yes |
-| Plain-English explanations | Yes | No | No | Yes |
-| Replace/substitution | Yes | No | No | Yes |
-| Match clipboard copy | Yes | No | No | Yes |
-| Undo/redo | Yes | No | No | Yes |
-| Whitespace visualization | Yes | Yes | No | No |
-| Mouse support | Yes | No | No | N/A |
-| Regex flags toggle | Yes | Yes | No | Yes |
-| Stdin pipe support | Yes | Yes | Yes | No |
-| Offline / no browser | Yes | Yes | Yes | No |
-| Cross-platform binary | Yes | Yes | No | N/A |
+### vs. terminal alternatives
+
+| Feature | rgx | regex-tui | rexi |
+|---------|:---:|:---------:|:----:|
+| Real-time matching | Yes | Yes | Yes |
+| Multiple engines | 3 | 2 | 1 |
+| Capture group highlighting | Yes | No | No |
+| Plain-English explanations | Yes | No | No |
+| Replace/substitution | Yes | No | No |
+| Match clipboard copy | Yes | No | No |
+| Undo/redo | Yes | No | No |
+| Whitespace visualization | Yes | Yes | No |
+| Mouse support | Yes | No | No |
+| Regex flags toggle | Yes | Yes | No |
+| Stdin pipe support | Yes | Yes | Yes |
+
+### vs. regex101.com
+
+regex101.com is the more capable tool overall — it has 8 engines, step-through debugging, code generation, shareable permalinks, and a community pattern library. rgx doesn't try to replace it. Where rgx is useful instead:
+
+- **Offline/remote work** — no browser or internet needed
+- **Pipeline integration** — pipe stdin in, pipe results out with `Ctrl+O`
+- **Engine-specific testing** — test against Rust's `regex` crate directly (regex101 doesn't have this engine)
+- **Workspace save/restore** — save your session and pick up later
 
 ## Configuration
 

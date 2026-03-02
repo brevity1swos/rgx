@@ -2,11 +2,11 @@
 
 ## Title
 
-rgx — a TUI regex debugger with live matching, 3 engines, and replace mode
+rgx — a TUI regex tester with live matching, 3 engines, and stdin pipe support
 
 ## Body
 
-I built **rgx** because I was tired of alt-tabbing to regex101.com every time I needed to test a pattern.
+I built **rgx** for testing regex patterns without leaving the terminal.
 
 **GitHub:** https://github.com/brevity1swos/rgx
 
@@ -25,8 +25,18 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brevity1swos/rgx/releas
 - Plain-English explanations of your pattern
 - Replace/substitution with live preview
 - Pipe from stdin: `echo "test 123" | rgx '\d+'`
-- Undo/redo, pattern history (Alt+Up/Down), whitespace visualization (Ctrl+W), mouse support
+- Output results to stdout: Ctrl+O — fits into shell pipelines
+- Whitespace visualization (Ctrl+W), undo/redo, pattern history
 
-Cross-platform (Linux, macOS, Windows). Single binary, no runtime dependencies.
+Cross-platform (Linux, macOS, Windows). Single binary.
 
-Feedback welcome — especially on what would make this more useful in your daily workflow.
+### Who this is for
+
+Mostly useful if you:
+- Work on remote machines where opening a browser isn't practical
+- Want regex results piped into other commands
+- Need to test patterns against specific engine behavior (e.g., PCRE2 vs Rust regex)
+
+If regex101.com works fine for your workflow, it's the more feature-rich tool overall. rgx fills a gap for terminal-centric use.
+
+Feedback welcome — especially on what would make this more useful for scripting and pipeline workflows.

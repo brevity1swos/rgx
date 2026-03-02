@@ -2,16 +2,16 @@
 
 ## Title
 
-rgx — a terminal regex debugger with 3 engines and plain-English explanations (ratatui + crossterm)
+rgx — a terminal regex tester with 3 engines, built with ratatui + regex-syntax
 
 ## Body
 
-I built **rgx**, a TUI regex debugger — basically regex101.com for the terminal.
+I built **rgx**, a TUI for testing regex patterns without leaving the terminal.
 
 **GitHub:** https://github.com/brevity1swos/rgx
 **Install:** `cargo install rgx-cli` or `brew install brevity1swos/tap/rgx`
 
-### Features
+### What it does
 
 - Live matching that updates on every keystroke
 - 3 regex engines — Rust `regex`, `fancy-regex` (lookaround/backrefs), PCRE2 — switch with Ctrl+E
@@ -20,16 +20,20 @@ I built **rgx**, a TUI regex debugger — basically regex101.com for the termina
 - Replace/substitution with live preview (`$1`, `${name}`, `$0`)
 - Syntax highlighting, undo/redo, pattern history, mouse support, whitespace visualization
 
+### Where it's actually useful
+
+Being honest: if regex101.com works for you, it'll keep working — it has more engines, shareable links, and a community pattern library. rgx is for a narrower set of situations:
+
+- **Testing against the Rust `regex` crate directly** — regex101 doesn't have this engine, so you can't know if your pattern will compile with Rust's linear-time guarantee
+- **Remote/offline work** — SSH sessions, containers, air-gapped environments
+- **Pipeline use** — `echo "data" | rgx '\d+'`, then Ctrl+O to output results to stdout
+
 ### Architecture bits that might interest r/rust
 
-The engine switching was the most interesting design problem. There's a `RegexEngine` trait (compile) and a `CompiledRegex` trait (find matches). Each engine implements both, and an `EngineKind` enum + factory selects the active one. Adding a new engine is ~100 lines of trait impls plus a variant.
+The engine switching uses a `RegexEngine` trait (compile) and a `CompiledRegex` trait (find matches). Each engine implements both, and an `EngineKind` enum + factory selects the active one. Adding a new engine is ~100 lines of trait impls plus a variant.
 
-PCRE2 is behind a feature flag (`pcre2-engine`) so the default build is pure Rust with zero C dependencies. `cargo install rgx-cli --no-default-features` gets you a fully static binary.
+PCRE2 is behind a feature flag (`pcre2-engine`) so `cargo install rgx-cli --no-default-features` gives you a fully static binary with zero C dependencies.
 
-The `regex-syntax` crate's HIR made the explanation feature straightforward — visitor pattern over the AST, formatter turns it into English. If anyone's considered doing AST-level analysis of regex patterns, I'd recommend starting there.
+The `regex-syntax` crate's HIR made the explanation feature straightforward — visitor pattern over the AST, formatter turns it into English.
 
-### Motivation
-
-I kept alt-tabbing between my terminal and regex101.com. The multi-engine switching is what I use most — instantly checking if a lookahead works in Rust's `regex` crate vs PCRE2 without leaving the terminal.
-
-Feedback welcome, especially on the TUI patterns and anything that feels off in the engine abstraction.
+Feedback welcome, especially on the TUI patterns and engine abstraction.

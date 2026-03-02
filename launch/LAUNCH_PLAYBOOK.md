@@ -31,9 +31,9 @@ Before posting anywhere, verify:
 
 **Tips:**
 - Respond to every comment within the first 2 hours
-- Be genuine about limitations — HN respects honesty
+- Be upfront about limitations — HN respects honesty over salesmanship
+- If asked "why not just use regex101?" — be honest: regex101 is more capable overall, rgx fills specific gaps (offline, pipelines, engine-specific testing)
 - If asked about performance, mention the Criterion benchmarks
-- Upvote early is critical — ask friends/colleagues to check it out
 
 ### Step 2: Post to r/rust
 
@@ -121,12 +121,12 @@ When threshold is met:
    ```
 3. Create PR — see [`launch/awesome_rust_draft.md`](awesome_rust_draft.md)
 
-### Step 9: grex Cross-Promotion
+### Step 9: grex Cross-Reference
 
-1. Open an issue on [grex](https://github.com/pemistahl/grex) (8K+ stars)
-2. Suggest adding a usage example: `grex "foo" "bar" | rgx` to their README
-3. Be polite and frame it as a complementary tool, not self-promotion
-4. grex generates regex from examples → rgx debugs/refines them. Natural workflow.
+1. If rgx gains enough traction to be credible, consider opening an issue on [grex](https://github.com/pemistahl/grex) (8K+ stars)
+2. Suggest `grex "foo" "bar" | rgx` as a complementary workflow in their README
+3. Only do this if rgx has real users — otherwise it reads as self-promotion
+4. grex generates regex from examples → rgx tests/refines them. Natural workflow, but only worth mentioning if both tools' maintainers see mutual value.
 
 ### Step 10: Package Manager Submissions
 
@@ -199,10 +199,12 @@ Growth:
 
 ## Key Metrics to Track
 
-| Metric | Where to Check | Target (30 days) |
-|--------|---------------|-------------------|
-| GitHub stars | `gh api repos/brevity1swos/rgx --jq '.stargazers_count'` | 100+ |
-| crates.io downloads | `curl -s https://crates.io/api/v1/crates/rgx-cli \| jq '.crate.downloads'` | 2000+ |
-| GitHub traffic | Settings → Traffic on GitHub | — |
-| HN points | Check the post | 50+ |
-| Reddit upvotes | Check posts | 50+ combined |
+| Metric | Where to Check |
+|--------|---------------|
+| GitHub stars | `gh api repos/brevity1swos/rgx --jq '.stargazers_count'` |
+| crates.io downloads | `curl -s https://crates.io/api/v1/crates/rgx-cli \| jq '.crate.downloads'` |
+| GitHub traffic | Settings → Traffic on GitHub |
+| HN points | Check the post |
+| Reddit upvotes | Check posts |
+
+Note: Star count will likely exceed actual regular users — that's normal for developer tools. Focus on whether the people who try it find it genuinely useful for their workflow rather than chasing star numbers.

@@ -13,10 +13,10 @@ rgx
 github.com/brevity1swos/rgx
 
 ### Tagline (~120 chars)
-regex101 for the terminal — real-time matching, 3 engines, capture groups, replace mode, and plain-English explanations
+Terminal regex tester with real-time matching, 3 engines, capture groups, replace mode, and plain-English explanations
 
 ### What the tool does
-rgx is a terminal regex debugger that brings the regex101.com experience to the command line. It provides real-time matching that updates on every keystroke, with support for 3 regex engines (Rust regex, fancy-regex, PCRE2), capture group highlighting, and human-readable pattern explanations.
+rgx is a terminal regex tester for developers who do regex-heavy work in terminal-centric environments. It provides real-time matching that updates on every keystroke, with support for 3 regex engines (Rust regex, fancy-regex, PCRE2), capture group highlighting, and human-readable pattern explanations. Particularly useful for remote/SSH work, shell pipelines, and testing against specific engine behavior.
 
 ### 2-3 Standout Features
 1. **3 regex engines** — switch between Rust regex, fancy-regex (lookaround/backrefs), and PCRE2 (full features) with Ctrl+E to compare behavior
@@ -34,7 +34,7 @@ rgx is a terminal regex debugger that brings the regex101.com experience to the 
 - Stdin pipe support
 
 ### Target Audience
-Developers who work with regular expressions and want a fast, offline alternative to regex101.com. Particularly useful for Rust developers testing patterns across different regex engines, DevOps engineers debugging log patterns, and anyone who wants to stay in the terminal.
+Developers who do regex-heavy work in terminal-centric workflows. Most useful for: DevOps/infra engineers debugging log patterns on remote servers, Rust developers who need to test patterns against the actual `regex` crate behavior, and developers who want to pipe regex results into shell pipelines.
 
 ### Primary Programming Language
 Rust
