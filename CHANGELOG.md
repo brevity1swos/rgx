@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2] - 2026-03-02
+
+### Documentation
+
+- Rewrite positioning with honest audience framing
+Drop "regex101, but in your terminal" tagline in favor of grounded
+  positioning that acknowledges regex101.com as the more capable tool
+  overall. Add "Who is this for?" section to README targeting the actual
+  niche: remote/SSH work, shell pipelines, and engine-specific testing.
+
+  Split comparison table into terminal alternatives (factual) and vs.
+  regex101 (honest prose). Update all launch posts, CLI about string,
+  and Cargo.toml description to match.
+
+
 ## [0.5.1] - 2026-02-26
 
 ### Documentation
