@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2026-03-06
+
+### Features
+
+- Add non-interactive batch mode and pipeline integration
+Add --print/-p flag for non-interactive batch mode that skips the TUI
+  entirely when pattern and input are provided. Add --output-pattern/-P
+  to capture the final pattern after an interactive session.
+
+  Exit codes: 0 = match found, 1 = no match, 2 = error.
+  Input priority: --text > --file > stdin (prevents blocking).
+
+  Update launch posts and playbook with pipeline examples.
+
+
 ## [0.5.2] - 2026-03-02
 
 ### Documentation
