@@ -26,7 +26,7 @@ Being honest: if regex101.com works for you, it'll keep working — it has more 
 
 - **Testing against the Rust `regex` crate directly** — regex101 doesn't have this engine, so you can't know if your pattern will compile with Rust's linear-time guarantee
 - **Remote/offline work** — SSH sessions, containers, air-gapped environments
-- **Pipeline use** — `echo "data" | rgx '\d+'`, then Ctrl+O to output results to stdout
+- **Pipeline use** — `echo "data" | rgx -p '\d+'` prints matches to stdout and exits (exit codes: 0 = match, 1 = no match, 2 = error). Or use interactively and press Ctrl+O to output
 
 ### Architecture bits that might interest r/rust
 

@@ -24,8 +24,11 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brevity1swos/rgx/releas
 - Capture group highlighting with named groups
 - Plain-English explanations of your pattern
 - Replace/substitution with live preview
-- Pipe from stdin: `echo "test 123" | rgx '\d+'`
-- Output results to stdout: Ctrl+O — fits into shell pipelines
+- Non-interactive batch mode: `echo "test 123" | rgx -p '\d+'` — prints matches to stdout and exits
+- Pipeline composability: `cat log | rgx -p 'ERROR: (.*)' | sort | uniq -c`
+- Exit codes: 0 = match found, 1 = no match, 2 = error — works with `&&`, `||`, `set -e`
+- Interactive output: Ctrl+O outputs results to stdout when leaving the TUI
+- Capture pattern: `PATTERN=$(rgx -P)` — edit interactively, capture the final pattern
 - Whitespace visualization (Ctrl+W), undo/redo, pattern history
 
 Cross-platform (Linux, macOS, Windows). Single binary.
@@ -39,4 +42,4 @@ Mostly useful if you:
 
 If regex101.com works fine for your workflow, it's the more feature-rich tool overall. rgx fills a gap for terminal-centric use.
 
-Feedback welcome — especially on what would make this more useful for scripting and pipeline workflows.
+Feedback welcome — especially on what would make this more useful for your workflow.

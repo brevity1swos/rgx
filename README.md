@@ -24,7 +24,7 @@ Test and debug regular expressions without leaving your terminal. Written in Rus
 rgx is useful if you:
 
 - **Work on remote servers** where opening a browser isn't practical — SSH sessions, containers, air-gapped environments
-- **Want to pipe regex results** into other commands (`echo "log" | rgx '\d+' | ...`) — regex101 can't do this
+- **Want to pipe regex results** into other commands (`echo "log" | rgx -p '\d+' | sort`) — regex101 can't do this
 - **Need to test against specific engine behavior** — check if your pattern works in Rust's `regex` crate vs PCRE2 without guessing
 - **Prefer staying in the terminal** and find the context switch to a browser tab disruptive
 
@@ -46,6 +46,8 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Engine selector** — switch engines with Ctrl+E, see where behavior differs
 - **Regex flags** — toggle case-insensitive, multiline, dotall, unicode, extended
 - **Stdin pipe support** — `echo "test string" | rgx '\d+'`
+- **Non-interactive batch mode** — `rgx -p -t "input" 'pattern'` prints matches to stdout and exits
+- **Pipeline composability** — pipe in, filter, pipe out: `cat log | rgx -p '\d+' | sort -n`
 - **Cross-platform** — Linux, macOS, Windows
 
 ## Installation
@@ -111,6 +113,22 @@ rgx -i 'hello'
 
 # With replacement template
 rgx -r '$2/$1' '(\w+)@(\w+)'
+
+# Non-interactive batch mode (--print / -p)
+rgx -p -t "hello 42 world 99" '\d+'    # prints: 42\n99
+echo "log line 404" | rgx -p '\d+'     # prints: 404
+
+# Batch replacement
+rgx -p -t "user@host" -r '$2=$1' '(\w+)@(\w+)'   # prints: host=user
+
+# Pipeline composability
+cat server.log | rgx -p 'ERROR: (.*)' | sort | uniq -c
+
+# Capture final pattern after interactive editing
+PATTERN=$(rgx -P)
+
+# Exit codes: 0 = match found, 1 = no match, 2 = error
+rgx -p -t "test" '\d+' || echo "no digits found"
 ```
 
 ## Keyboard Shortcuts
@@ -125,6 +143,8 @@ rgx -r '$2/$1' '(\w+)@(\w+)'
 | `Ctrl+Shift+Z` | Redo |
 | `Ctrl+Y` | Copy selected match to clipboard |
 | `Ctrl+W` | Toggle whitespace visualization |
+| `Ctrl+O` | Output results to stdout and quit |
+| `Ctrl+S` | Save workspace |
 | `Ctrl+Left/Right` | Move cursor by word |
 | `Alt+Up/Down` | Browse pattern history |
 | `Alt+i/m/s/u/x` | Toggle flags (case, multiline, dotall, unicode, extended) |
@@ -158,13 +178,14 @@ rgx -r '$2/$1' '(\w+)@(\w+)'
 | Mouse support | Yes | No | No |
 | Regex flags toggle | Yes | Yes | No |
 | Stdin pipe support | Yes | Yes | Yes |
+| Non-interactive batch mode | Yes | No | No |
 
 ### vs. regex101.com
 
 regex101.com is the more capable tool overall — it has 8 engines, step-through debugging, code generation, shareable permalinks, and a community pattern library. rgx doesn't try to replace it. Where rgx is useful instead:
 
 - **Offline/remote work** — no browser or internet needed
-- **Pipeline integration** — pipe stdin in, pipe results out with `Ctrl+O`
+- **Pipeline integration** — `echo data | rgx -p 'pattern' | next-command` — non-interactive batch mode with proper exit codes
 - **Engine-specific testing** — test against Rust's `regex` crate directly (regex101 doesn't have this engine)
 - **Workspace save/restore** — save your session and pick up later
 

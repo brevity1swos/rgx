@@ -51,4 +51,14 @@ pub struct Cli {
     /// Load workspace from file
     #[arg(short = 'l', long)]
     pub load: Option<String>,
+
+    /// Print matches to stdout and exit (non-interactive batch mode).
+    /// Requires a pattern and input (stdin, --file, or --text).
+    #[arg(short = 'p', long)]
+    pub print: bool,
+
+    /// After interactive session, print the final pattern to stdout instead of matches.
+    /// Useful for: eval $(rgx -P)
+    #[arg(short = 'P', long)]
+    pub output_pattern: bool,
 }

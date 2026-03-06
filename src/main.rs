@@ -1,4 +1,5 @@
 use std::io::{self, IsTerminal, Read};
+use std::process::ExitCode;
 use std::time::Duration;
 
 use clap::Parser;
@@ -20,7 +21,17 @@ use rgx::input::{key_to_action, Action};
 use rgx::ui;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(code) => code,
+        Err(e) => {
+            eprintln!("rgx: {e}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+async fn run() -> anyhow::Result<ExitCode> {
     let cli = Cli::parse();
     let settings = Settings::load();
 
@@ -54,22 +65,16 @@ async fn main() -> anyhow::Result<()> {
         app.workspace_path = Some(load_path.clone());
     }
 
-    // Read stdin if piped
-    let stdin_text = if !io::stdin().is_terminal() {
-        let mut buf = String::new();
-        io::stdin().read_to_string(&mut buf)?;
-        Some(buf)
-    } else {
-        None
-    };
-
-    if let Some(text) = &stdin_text {
+    // Load test string: --text and --file take priority over stdin
+    if let Some(text) = &cli.text {
         app.set_test_string(text);
     } else if let Some(path) = &cli.file {
         let text = std::fs::read_to_string(path)?;
         app.set_test_string(&text);
-    } else if let Some(text) = &cli.text {
-        app.set_test_string(text);
+    } else if !io::stdin().is_terminal() {
+        let mut buf = String::new();
+        io::stdin().read_to_string(&mut buf)?;
+        app.set_test_string(&buf);
     }
 
     if let Some(pattern) = &cli.pattern {
@@ -78,6 +83,36 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(r) = &cli.replacement {
         app.set_replacement(r);
+    }
+
+    // Non-interactive batch mode: --print
+    if cli.print {
+        let pattern = app.regex_editor.content().to_string();
+        if pattern.is_empty() {
+            eprintln!("rgx: --print requires a pattern");
+            return Ok(ExitCode::from(2));
+        }
+        let text = app.test_editor.content().to_string();
+        if text.is_empty() {
+            eprintln!("rgx: --print requires input (stdin, --file, or --text)");
+            return Ok(ExitCode::from(2));
+        }
+        if let Some(ref err) = app.error {
+            eprintln!("rgx: {err}");
+            return Ok(ExitCode::from(2));
+        }
+        if let Some(ref result) = app.replace_result {
+            print!("{}", result.output);
+        } else {
+            for m in &app.matches {
+                println!("{}", m.text);
+            }
+        }
+        return Ok(if app.matches.is_empty() {
+            ExitCode::from(1)
+        } else {
+            ExitCode::SUCCESS
+        });
     }
 
     // Setup terminal
@@ -389,7 +424,12 @@ async fn main() -> anyhow::Result<()> {
     )?;
     terminal.show_cursor()?;
 
-    if app.output_on_quit {
+    if cli.output_pattern {
+        let pattern = app.regex_editor.content();
+        if !pattern.is_empty() {
+            println!("{pattern}");
+        }
+    } else if app.output_on_quit {
         if let Some(ref result) = app.replace_result {
             print!("{}", result.output);
         } else {
@@ -399,7 +439,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    Ok(())
+    Ok(ExitCode::SUCCESS)
 }
 
 fn contains(rect: ratatui::layout::Rect, col: u16, row: u16) -> bool {

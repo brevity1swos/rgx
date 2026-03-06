@@ -8,12 +8,16 @@ Step-by-step instructions to increase visibility for rgx. Follow in order — ea
 
 Before posting anywhere, verify:
 
-- [x] Demo GIF is up to date (`assets/demo.gif` shows v0.4.0 features)
+- [x] Demo GIF is up to date (`assets/demo.gif`)
+- [x] Screenshot PNG for Terminal Trove (`assets/social-preview.png`)
 - [x] README comparison table is current
+- [x] README documents pipeline features (`--print`, `--output-pattern`, exit codes)
 - [x] GitHub repo description is updated
 - [x] crates.io listing is live (`cargo install rgx-cli` works)
 - [x] Homebrew formula works (`brew install brevity1swos/tap/rgx`)
-- [ ] **Re-record demo GIF** if needed (run `PATH=$HOME/.cargo/bin:$PATH vhs assets/demo.tape` — requires [VHS](https://github.com/charmbracelet/vhs))
+- [x] All tests pass (`cargo test --no-default-features`)
+- [x] Clippy clean (`cargo clippy --no-default-features -- -D warnings`)
+- [ ] **Verify demo GIF shows current features** — re-record with `PATH=$HOME/.cargo/bin:$PATH vhs assets/demo.tape` if needed
 
 ---
 
@@ -21,10 +25,10 @@ Before posting anywhere, verify:
 
 ### Step 1: Post to Hacker News (Show HN)
 
-**When:** Tuesday or Wednesday, 8–10 AM EST (best traffic)
+**When:** Tuesday or Wednesday, 8-10 AM EST (best traffic)
 
 1. Go to https://news.ycombinator.com/submit
-2. **Title:** `Show HN: rgx – regex101 for the terminal, with 3 engines and plain-English explanations`
+2. **Title:** `Show HN: rgx – a terminal regex tester with live matching and 3 engines`
 3. **URL:** `https://github.com/brevity1swos/rgx`
 4. **Text:** Copy the body from [`launch/show_hn.md`](show_hn.md) (the "Text" section)
 5. After posting, note the HN URL for use in Reddit posts
@@ -34,32 +38,34 @@ Before posting anywhere, verify:
 - Be upfront about limitations — HN respects honesty over salesmanship
 - If asked "why not just use regex101?" — be honest: regex101 is more capable overall, rgx fills specific gaps (offline, pipelines, engine-specific testing)
 - If asked about performance, mention the Criterion benchmarks
+- Highlight the pipeline story: `cat log | rgx -p 'ERROR: (.*)' | sort` — HN loves composable Unix tools
 
 ### Step 2: Post to r/rust
 
-**When:** Same day as HN, 1–2 hours after
+**When:** Same day as HN, 1-2 hours after
 
 1. Go to https://www.reddit.com/r/rust/submit
-2. **Title:** `rgx — a terminal regex debugger with 3 engines, syntax highlighting, and plain-English explanations (built with ratatui)`
+2. **Title:** `rgx — a terminal regex tester with 3 engines, built with ratatui + regex-syntax`
 3. **Body:** Copy from [`launch/r_rust.md`](r_rust.md)
 4. **Flair:** Use "Show" or "Tools & Libraries" flair if available
 
 **Tips:**
 - r/rust loves technical details — the ratatui + regex-syntax stack is interesting
 - Mention the engine abstraction pattern — Rust devs appreciate clean trait design
+- The `--no-default-features` zero-C-dependency story resonates with Rust purists
 - Link to the HN discussion if it's getting traction
 
 ### Step 3: Post to r/commandline
 
-**When:** Same day, 2–3 hours after HN
+**When:** Same day, 2-3 hours after HN
 
 1. Go to https://www.reddit.com/r/commandline/submit
-2. **Title:** `rgx — regex101 for your terminal (real-time matching, 3 engines, replace mode, explanations)`
+2. **Title:** `rgx — a TUI regex tester with live matching, 3 engines, and stdin pipe support`
 3. **Body:** Copy from [`launch/r_commandline.md`](r_commandline.md)
 
 **Tips:**
 - This audience cares about practical utility, not implementation details
-- Emphasize stdin pipe support (`echo "test" | rgx '\d+'`) — fits their workflow
+- Lead with pipeline features: `echo "data" | rgx -p '\d+'`, exit codes, `$(rgx -P)` pattern capture
 - The comparison table is your strongest asset here
 
 ### Step 4: Submit to Terminal Trove
@@ -68,12 +74,12 @@ Before posting anywhere, verify:
 
 1. Go to https://terminaltrove.com/post/
 2. Fill in the form using details from [`launch/terminal_trove.md`](terminal_trove.md)
-3. For the preview image, upload the demo GIF or link to: `https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif`
+3. Upload `assets/social-preview.png` as the preview image
 4. Submit and wait for curator review
 
 ---
 
-## Phase 2: First Week (Days 2–7)
+## Phase 2: First Week (Days 2-7)
 
 ### Step 5: Monitor and Engage
 
@@ -126,7 +132,7 @@ When threshold is met:
 1. If rgx gains enough traction to be credible, consider opening an issue on [grex](https://github.com/pemistahl/grex) (8K+ stars)
 2. Suggest `grex "foo" "bar" | rgx` as a complementary workflow in their README
 3. Only do this if rgx has real users — otherwise it reads as self-promotion
-4. grex generates regex from examples → rgx tests/refines them. Natural workflow, but only worth mentioning if both tools' maintainers see mutual value.
+4. grex generates regex from examples -> rgx tests/refines them. Natural workflow, but only worth mentioning if both tools' maintainers see mutual value.
 
 ### Step 10: Package Manager Submissions
 
@@ -150,9 +156,7 @@ Create these issues to signal active development and invite contribution:
    - Label: `enhancement`
 3. **"Export/share functionality"** — copy as formatted text or generate regex101 URL
    - Label: `enhancement`, `good first issue`
-4. **"Shell integration"** — `eval $(rgx --output-pattern)` to pipe pattern back
-   - Label: `enhancement`
-5. **"Theme customization"** — user-configured themes via config.toml
+4. **"Theme customization"** — user-configured themes via config.toml
    - Label: `enhancement`, `good first issue`
 
 ### Step 12: Write a Blog Post
@@ -203,7 +207,7 @@ Growth:
 |--------|---------------|
 | GitHub stars | `gh api repos/brevity1swos/rgx --jq '.stargazers_count'` |
 | crates.io downloads | `curl -s https://crates.io/api/v1/crates/rgx-cli \| jq '.crate.downloads'` |
-| GitHub traffic | Settings → Traffic on GitHub |
+| GitHub traffic | Settings -> Traffic on GitHub |
 | HN points | Check the post |
 | Reddit upvotes | Check posts |
 
