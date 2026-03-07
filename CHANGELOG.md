@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2026-03-07
+
+### Refactoring
+
+- Extract print_output method and add CLI flag conflict
+- Extract duplicated output block into App::print_output()
+  - Add conflicts_with = "print" to --output-pattern flag
+  - Remove unnecessary .to_string() clones in batch mode checks
+  - Update terminal_trove.md categories and license
+
+
 ## [0.6.0] - 2026-03-06
 
 ### Features
