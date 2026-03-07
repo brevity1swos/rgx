@@ -42,15 +42,17 @@ Developers who do regex-heavy work in terminal-centric workflows. Most useful fo
 Rust
 
 ### License
-MIT / Apache-2.0 (dual-licensed)
+Apache-2.0
 
 ### Preview Image
 Upload `assets/social-preview.png` (1280x640 PNG with tagline, feature badges, and TUI mockup)
 
 ### Categories
-- Development Tools
-- Text Processing
-- Productivity
+- REGEX
+- TUI
+- TEXT-PROCESSING
+- CLI
+- PRODUCTIVITY
 
 ### Installation Commands
 

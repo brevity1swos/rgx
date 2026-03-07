@@ -59,6 +59,6 @@ pub struct Cli {
 
     /// After interactive session, print the final pattern to stdout instead of matches.
     /// Useful for: eval $(rgx -P)
-    #[arg(short = 'P', long)]
+    #[arg(short = 'P', long, conflicts_with = "print")]
     pub output_pattern: bool,
 }

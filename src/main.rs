@@ -87,13 +87,11 @@ async fn run() -> anyhow::Result<ExitCode> {
 
     // Non-interactive batch mode: --print
     if cli.print {
-        let pattern = app.regex_editor.content().to_string();
-        if pattern.is_empty() {
+        if app.regex_editor.content().is_empty() {
             eprintln!("rgx: --print requires a pattern");
             return Ok(ExitCode::from(2));
         }
-        let text = app.test_editor.content().to_string();
-        if text.is_empty() {
+        if app.test_editor.content().is_empty() {
             eprintln!("rgx: --print requires input (stdin, --file, or --text)");
             return Ok(ExitCode::from(2));
         }
@@ -101,13 +99,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             eprintln!("rgx: {err}");
             return Ok(ExitCode::from(2));
         }
-        if let Some(ref result) = app.replace_result {
-            print!("{}", result.output);
-        } else {
-            for m in &app.matches {
-                println!("{}", m.text);
-            }
-        }
+        app.print_output();
         return Ok(if app.matches.is_empty() {
             ExitCode::from(1)
         } else {
@@ -430,13 +422,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             println!("{pattern}");
         }
     } else if app.output_on_quit {
-        if let Some(ref result) = app.replace_result {
-            print!("{}", result.output);
-        } else {
-            for m in &app.matches {
-                println!("{}", m.text);
-            }
-        }
+        app.print_output();
     }
 
     Ok(ExitCode::SUCCESS)

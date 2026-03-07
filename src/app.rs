@@ -403,6 +403,17 @@ impl App {
         false
     }
 
+    /// Print match results or replacement output to stdout.
+    pub fn print_output(&self) {
+        if let Some(ref result) = self.replace_result {
+            print!("{}", result.output);
+        } else {
+            for m in &self.matches {
+                println!("{}", m.text);
+            }
+        }
+    }
+
     fn selected_text(&self) -> Option<String> {
         let m = self.matches.get(self.selected_match)?;
         match self.selected_capture {
