@@ -51,6 +51,8 @@ pub struct App {
     pub error_offset: Option<usize>,
     pub output_on_quit: bool,
     pub workspace_path: Option<String>,
+    pub show_recipes: bool,
+    pub recipe_index: usize,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -96,6 +98,8 @@ impl App {
             error_offset: None,
             output_on_quit: false,
             workspace_path: None,
+            show_recipes: false,
+            recipe_index: 0,
             engine,
             compiled: None,
         }

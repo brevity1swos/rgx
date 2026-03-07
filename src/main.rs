@@ -18,6 +18,7 @@ use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
 use rgx::input::editor::Editor;
 use rgx::input::{key_to_action, Action};
+use rgx::recipe::RECIPES;
 use rgx::ui;
 
 #[tokio::main]
@@ -146,6 +147,30 @@ async fn run() -> anyhow::Result<ExitCode> {
                             _ => {
                                 app.show_help = false;
                                 app.help_page = 0;
+                            }
+                        }
+                        continue;
+                    }
+
+                    if app.show_recipes {
+                        use crossterm::event::KeyCode;
+                        match key.code {
+                            KeyCode::Up => {
+                                app.recipe_index = app.recipe_index.saturating_sub(1);
+                            }
+                            KeyCode::Down => {
+                                if app.recipe_index + 1 < RECIPES.len() {
+                                    app.recipe_index += 1;
+                                }
+                            }
+                            KeyCode::Enter => {
+                                let recipe = &RECIPES[app.recipe_index];
+                                app.set_test_string(recipe.test_string);
+                                app.set_pattern(recipe.pattern);
+                                app.show_recipes = false;
+                            }
+                            _ => {
+                                app.show_recipes = false;
                             }
                         }
                         continue;
@@ -284,6 +309,10 @@ async fn run() -> anyhow::Result<ExitCode> {
                         }
                         Action::ShowHelp => {
                             app.show_help = true;
+                        }
+                        Action::OpenRecipes => {
+                            app.show_recipes = true;
+                            app.recipe_index = 0;
                         }
                         Action::InsertChar(c) => match app.focused_panel {
                             App::PANEL_REGEX => {

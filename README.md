@@ -48,6 +48,7 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Stdin pipe support** — `echo "test string" | rgx '\d+'`
 - **Non-interactive batch mode** — `rgx -p -t "input" 'pattern'` prints matches to stdout and exits
 - **Pipeline composability** — pipe in, filter, pipe out: `cat log | rgx -p '\d+' | sort -n`
+- **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
 - **Cross-platform** — Linux, macOS, Windows
 
 ## Installation
@@ -142,6 +143,7 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `Ctrl+Z` | Undo |
 | `Ctrl+Shift+Z` | Redo |
 | `Ctrl+Y` | Copy selected match to clipboard |
+| `Ctrl+R` | Open regex recipe library |
 | `Ctrl+W` | Toggle whitespace visualization |
 | `Ctrl+O` | Output results to stdout and quit |
 | `Ctrl+S` | Save workspace |
@@ -178,6 +180,7 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | Mouse support | Yes | No | No |
 | Regex flags toggle | Yes | Yes | No |
 | Stdin pipe support | Yes | Yes | Yes |
+| Built-in recipe library | Yes | No | No |
 | Non-interactive batch mode | Yes | No | No |
 
 ### vs. regex101.com

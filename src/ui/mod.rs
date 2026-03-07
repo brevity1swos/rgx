@@ -17,6 +17,7 @@ use ratatui::{
 
 use crate::app::App;
 use crate::engine::EngineKind;
+use crate::recipe::RECIPES;
 use explanation::ExplanationPanel;
 use match_display::MatchDisplay;
 use regex_input::RegexInput;
@@ -72,9 +73,13 @@ pub fn render(frame: &mut Frame, app: &App) {
     let size = frame.area();
     let layout = compute_layout(size);
 
-    // Help overlay
+    // Overlays
     if app.show_help {
         render_help_overlay(frame, size, app.engine_kind, app.help_page);
+        return;
+    }
+    if app.show_recipes {
+        render_recipe_overlay(frame, size, app.recipe_index);
         return;
     }
 
@@ -171,6 +176,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+Y", "Copy selected match to clipboard"),
         shortcut("Ctrl+O", "Output results to stdout and quit"),
         shortcut("Ctrl+S", "Save workspace"),
+        shortcut("Ctrl+R", "Open regex recipe library"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),
@@ -321,4 +327,59 @@ fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: 
         .wrap(Wrap { trim: false });
 
     frame.render_widget(paragraph, help_area);
+}
+
+fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
+    let overlay_width = 70.min(area.width.saturating_sub(4));
+    let overlay_height = (RECIPES.len() as u16 + 6).min(area.height.saturating_sub(4));
+    let x = (area.width.saturating_sub(overlay_width)) / 2;
+    let y = (area.height.saturating_sub(overlay_height)) / 2;
+    let overlay_area = Rect::new(x, y, overlay_width, overlay_height);
+
+    frame.render_widget(Clear, overlay_area);
+
+    let mut lines: Vec<Line<'static>> = vec![
+        Line::from(Span::styled(
+            "Select a recipe to load",
+            Style::default()
+                .fg(theme::BLUE)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+    ];
+
+    for (i, recipe) in RECIPES.iter().enumerate() {
+        let is_selected = i == selected;
+        let marker = if is_selected { ">" } else { " " };
+        let style = if is_selected {
+            Style::default().fg(theme::BASE).bg(theme::BLUE)
+        } else {
+            Style::default().fg(theme::TEXT)
+        };
+        lines.push(Line::from(Span::styled(
+            format!("{marker} {:<24} {}", recipe.name, recipe.description),
+            style,
+        )));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        " Up/Down: select | Enter: load | Esc: cancel ",
+        Style::default().fg(theme::SUBTEXT),
+    )));
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme::GREEN))
+        .title(Span::styled(
+            " Recipes (Ctrl+R) ",
+            Style::default().fg(theme::TEXT),
+        ))
+        .style(Style::default().bg(theme::BASE));
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(paragraph, overlay_area);
 }

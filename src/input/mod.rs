@@ -32,6 +32,7 @@ pub enum Action {
     ToggleWhitespace,
     OutputAndQuit,
     SaveWorkspace,
+    OpenRecipes,
     Quit,
     None,
 }
@@ -61,6 +62,7 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             Action::SaveWorkspace
         }
+        KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::OpenRecipes,
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive
         }
