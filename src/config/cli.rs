@@ -61,4 +61,9 @@ pub struct Cli {
     /// Useful for: eval $(rgx -P)
     #[arg(short = 'P', long, conflicts_with = "print")]
     pub output_pattern: bool,
+
+    /// Print a specific capture group instead of the full match (use with --print).
+    /// Accepts a group number (1, 2, ...) or a named group.
+    #[arg(short = 'g', long, requires = "print")]
+    pub group: Option<String>,
 }

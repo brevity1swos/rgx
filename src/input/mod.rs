@@ -33,6 +33,7 @@ pub enum Action {
     OutputAndQuit,
     SaveWorkspace,
     OpenRecipes,
+    Benchmark,
     Quit,
     None,
 }
@@ -63,6 +64,7 @@ pub fn key_to_action(key: KeyEvent) -> Action {
             Action::SaveWorkspace
         }
         KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::OpenRecipes,
+        KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Benchmark,
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive
         }

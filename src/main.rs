@@ -100,7 +100,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             eprintln!("rgx: {err}");
             return Ok(ExitCode::from(2));
         }
-        app.print_output();
+        app.print_output(cli.group.as_deref());
         return Ok(if app.matches.is_empty() {
             ExitCode::from(1)
         } else {
@@ -173,6 +173,11 @@ async fn run() -> anyhow::Result<ExitCode> {
                                 app.show_recipes = false;
                             }
                         }
+                        continue;
+                    }
+
+                    if app.show_benchmark {
+                        app.show_benchmark = false;
                         continue;
                     }
 
@@ -314,6 +319,9 @@ async fn run() -> anyhow::Result<ExitCode> {
                             app.show_recipes = true;
                             app.recipe_index = 0;
                         }
+                        Action::Benchmark => {
+                            app.run_benchmark();
+                        }
                         Action::InsertChar(c) => match app.focused_panel {
                             App::PANEL_REGEX => {
                                 app.regex_editor.insert_char(c);
@@ -451,7 +459,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             println!("{pattern}");
         }
     } else if app.output_on_quit {
-        app.print_output();
+        app.print_output(None);
     }
 
     Ok(ExitCode::SUCCESS)

@@ -5,6 +5,15 @@ use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 
+#[derive(Debug, Clone)]
+pub struct BenchmarkResult {
+    pub engine: EngineKind,
+    pub compile_time: Duration,
+    pub match_time: Duration,
+    pub match_count: usize,
+    pub error: Option<String>,
+}
+
 fn truncate(s: &str, max_chars: usize) -> String {
     let char_count = s.chars().count();
     if char_count <= max_chars {
@@ -53,6 +62,8 @@ pub struct App {
     pub workspace_path: Option<String>,
     pub show_recipes: bool,
     pub recipe_index: usize,
+    pub show_benchmark: bool,
+    pub benchmark_results: Vec<BenchmarkResult>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -100,6 +111,8 @@ impl App {
             workspace_path: None,
             show_recipes: false,
             recipe_index: 0,
+            show_benchmark: false,
+            benchmark_results: Vec::new(),
             engine,
             compiled: None,
         }
@@ -408,13 +421,38 @@ impl App {
     }
 
     /// Print match results or replacement output to stdout.
-    pub fn print_output(&self) {
+    pub fn print_output(&self, group: Option<&str>) {
         if let Some(ref result) = self.replace_result {
             print!("{}", result.output);
+        } else if let Some(group_spec) = group {
+            for m in &self.matches {
+                if let Some(text) = Self::lookup_group(m, group_spec) {
+                    println!("{text}");
+                } else {
+                    eprintln!("rgx: group '{group_spec}' not found in match");
+                }
+            }
         } else {
             for m in &self.matches {
                 println!("{}", m.text);
             }
+        }
+    }
+
+    fn lookup_group<'a>(m: &'a engine::Match, spec: &str) -> Option<&'a str> {
+        if let Ok(idx) = spec.parse::<usize>() {
+            if idx == 0 {
+                return Some(&m.text);
+            }
+            m.captures
+                .iter()
+                .find(|c| c.index == idx)
+                .map(|c| c.text.as_str())
+        } else {
+            m.captures
+                .iter()
+                .find(|c| c.name.as_deref() == Some(spec))
+                .map(|c| c.text.as_str())
         }
     }
 
@@ -424,5 +462,56 @@ impl App {
             None => Some(m.text.clone()),
             Some(ci) => m.captures.get(ci).map(|c| c.text.clone()),
         }
+    }
+
+    pub fn run_benchmark(&mut self) {
+        let pattern = self.regex_editor.content().to_string();
+        let text = self.test_editor.content().to_string();
+        if pattern.is_empty() || text.is_empty() {
+            return;
+        }
+
+        let mut results = Vec::new();
+        for kind in EngineKind::all() {
+            let eng = engine::create_engine(kind);
+            let compile_start = Instant::now();
+            match eng.compile(&pattern, &self.flags) {
+                Ok(compiled) => {
+                    let compile_time = compile_start.elapsed();
+                    let match_start = Instant::now();
+                    match compiled.find_matches(&text) {
+                        Ok(matches) => {
+                            results.push(BenchmarkResult {
+                                engine: kind,
+                                compile_time,
+                                match_time: match_start.elapsed(),
+                                match_count: matches.len(),
+                                error: None,
+                            });
+                        }
+                        Err(e) => {
+                            results.push(BenchmarkResult {
+                                engine: kind,
+                                compile_time,
+                                match_time: match_start.elapsed(),
+                                match_count: 0,
+                                error: Some(e.to_string()),
+                            });
+                        }
+                    }
+                }
+                Err(e) => {
+                    results.push(BenchmarkResult {
+                        engine: kind,
+                        compile_time: compile_start.elapsed(),
+                        match_time: Duration::ZERO,
+                        match_count: 0,
+                        error: Some(e.to_string()),
+                    });
+                }
+            }
+        }
+        self.benchmark_results = results;
+        self.show_benchmark = true;
     }
 }

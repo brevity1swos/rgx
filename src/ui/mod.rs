@@ -15,7 +15,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::app::App;
+use crate::app::{App, BenchmarkResult};
 use crate::engine::EngineKind;
 use crate::recipe::RECIPES;
 use explanation::ExplanationPanel;
@@ -80,6 +80,10 @@ pub fn render(frame: &mut Frame, app: &App) {
     }
     if app.show_recipes {
         render_recipe_overlay(frame, size, app.recipe_index);
+        return;
+    }
+    if app.show_benchmark {
+        render_benchmark_overlay(frame, size, &app.benchmark_results);
         return;
     }
 
@@ -177,6 +181,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+O", "Output results to stdout and quit"),
         shortcut("Ctrl+S", "Save workspace"),
         shortcut("Ctrl+R", "Open regex recipe library"),
+        shortcut("Ctrl+B", "Benchmark pattern across all engines"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),
@@ -373,6 +378,111 @@ fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
         .border_style(Style::default().fg(theme::GREEN))
         .title(Span::styled(
             " Recipes (Ctrl+R) ",
+            Style::default().fg(theme::TEXT),
+        ))
+        .style(Style::default().bg(theme::BASE));
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(paragraph, overlay_area);
+}
+
+fn format_duration(d: std::time::Duration) -> String {
+    let micros = d.as_micros();
+    if micros < 1000 {
+        format!("{micros}us")
+    } else {
+        format!("{:.1}ms", d.as_secs_f64() * 1000.0)
+    }
+}
+
+fn render_benchmark_overlay(frame: &mut Frame, area: Rect, results: &[BenchmarkResult]) {
+    let overlay_width = 70.min(area.width.saturating_sub(4));
+    let overlay_height = (results.len() as u16 + 8).min(area.height.saturating_sub(4));
+    let x = (area.width.saturating_sub(overlay_width)) / 2;
+    let y = (area.height.saturating_sub(overlay_height)) / 2;
+    let overlay_area = Rect::new(x, y, overlay_width, overlay_height);
+
+    frame.render_widget(Clear, overlay_area);
+
+    let fastest_idx = results
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r.error.is_none())
+        .min_by_key(|(_, r)| r.compile_time + r.match_time)
+        .map(|(i, _)| i);
+
+    let mut lines: Vec<Line<'static>> = vec![
+        Line::from(Span::styled(
+            "Performance Comparison",
+            Style::default()
+                .fg(theme::BLUE)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+        Line::from(vec![Span::styled(
+            format!(
+                "{:<16} {:>10} {:>10} {:>10} {:>8}",
+                "Engine", "Compile", "Match", "Total", "Matches"
+            ),
+            Style::default()
+                .fg(theme::SUBTEXT)
+                .add_modifier(Modifier::BOLD),
+        )]),
+    ];
+
+    for (i, result) in results.iter().enumerate() {
+        let is_fastest = fastest_idx == Some(i);
+        if let Some(ref err) = result.error {
+            let line_text = format!("{:<16} {}", result.engine.to_string(), err);
+            lines.push(Line::from(Span::styled(
+                line_text,
+                Style::default().fg(theme::RED),
+            )));
+        } else {
+            let total = result.compile_time + result.match_time;
+            let line_text = format!(
+                "{:<16} {:>10} {:>10} {:>10} {:>8}",
+                result.engine.to_string(),
+                format_duration(result.compile_time),
+                format_duration(result.match_time),
+                format_duration(total),
+                result.match_count,
+            );
+            let style = if is_fastest {
+                Style::default()
+                    .fg(theme::GREEN)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme::TEXT)
+            };
+            let mut spans = vec![Span::styled(line_text, style)];
+            if is_fastest {
+                spans.push(Span::styled(" *", Style::default().fg(theme::GREEN)));
+            }
+            lines.push(Line::from(spans));
+        }
+    }
+
+    lines.push(Line::from(""));
+    if fastest_idx.is_some() {
+        lines.push(Line::from(Span::styled(
+            "* = fastest",
+            Style::default().fg(theme::GREEN),
+        )));
+    }
+    lines.push(Line::from(Span::styled(
+        " Any key: close ",
+        Style::default().fg(theme::SUBTEXT),
+    )));
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme::PEACH))
+        .title(Span::styled(
+            " Benchmark (Ctrl+B) ",
             Style::default().fg(theme::TEXT),
         ))
         .style(Style::default().bg(theme::BASE));
