@@ -26,7 +26,7 @@ use status_bar::StatusBar;
 use test_input::TestInput;
 
 /// Returns the border type based on the rounded_borders flag.
-pub fn border_type(rounded: bool) -> BorderType {
+pub(crate) fn border_type(rounded: bool) -> BorderType {
     if rounded {
         BorderType::Rounded
     } else {
@@ -170,6 +170,15 @@ pub fn render(frame: &mut Frame, app: &App) {
             show_whitespace: app.show_whitespace,
             compile_time: app.compile_time,
             match_time: app.match_time,
+            vim_mode: app.vim_mode,
+            vim_mode_name: if app.vim_mode {
+                match app.vim_state.mode {
+                    crate::input::vim::VimMode::Normal => "NORMAL",
+                    crate::input::vim::VimMode::Insert => "INSERT",
+                }
+            } else {
+                ""
+            },
         },
         layout.status_bar,
     );
@@ -187,7 +196,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
 
     // Page 0: Keyboard shortcuts
     let page0 = vec![
-        shortcut("Tab", "Cycle focus: pattern/test/replace/matches/explain"),
+        shortcut("Tab/Shift+Tab", "Cycle focus forward/backward"),
         shortcut("Up/Down", "Scroll panel / move cursor / select match"),
         shortcut("Enter", "Insert newline (test string)"),
         shortcut("Ctrl+E", "Cycle regex engine"),
@@ -209,6 +218,10 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("F1", "Show/hide help (Left/Right to page)"),
         shortcut("Esc", "Quit"),
         Line::from(""),
+        Line::from(Span::styled(
+            "Vim: --vim flag | Normal: hjkl wb e 0$^ gg/G x dd cc o/O u p",
+            Style::default().fg(theme::SUBTEXT),
+        )),
         Line::from(Span::styled(
             "Mouse: click to focus/position, scroll to navigate",
             Style::default().fg(theme::SUBTEXT),

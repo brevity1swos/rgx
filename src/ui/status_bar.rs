@@ -27,29 +27,46 @@ pub struct StatusBar {
     pub show_whitespace: bool,
     pub compile_time: Option<Duration>,
     pub match_time: Option<Duration>,
+    pub vim_mode: bool,
+    pub vim_mode_name: &'static str,
 }
 
 impl Widget for StatusBar {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let mut spans = vec![
-            Span::styled(
-                format!(" {} ", self.engine),
+        let mut spans = Vec::new();
+
+        if self.vim_mode {
+            let (mode_text, mode_bg) = match self.vim_mode_name {
+                "INSERT" => (" INSERT ", theme::GREEN),
+                _ => (" NORMAL ", theme::BLUE),
+            };
+            spans.push(Span::styled(
+                mode_text,
                 Style::default()
                     .fg(theme::BASE)
-                    .bg(theme::BLUE)
+                    .bg(mode_bg)
                     .add_modifier(Modifier::BOLD),
+            ));
+            spans.push(Span::styled(" ", Style::default().bg(theme::SURFACE0)));
+        }
+
+        spans.push(Span::styled(
+            format!(" {} ", self.engine),
+            Style::default()
+                .fg(theme::BASE)
+                .bg(theme::BLUE)
+                .add_modifier(Modifier::BOLD),
+        ));
+        spans.push(Span::styled(" ", Style::default().bg(theme::SURFACE0)));
+        spans.push(Span::styled(
+            format!(
+                " {} match{} ",
+                self.match_count,
+                if self.match_count == 1 { "" } else { "es" }
             ),
-            Span::styled(" ", Style::default().bg(theme::SURFACE0)),
-            Span::styled(
-                format!(
-                    " {} match{} ",
-                    self.match_count,
-                    if self.match_count == 1 { "" } else { "es" }
-                ),
-                Style::default().fg(theme::TEXT).bg(theme::SURFACE0),
-            ),
-            Span::styled(" ", Style::default().bg(theme::SURFACE0)),
-        ];
+            Style::default().fg(theme::TEXT).bg(theme::SURFACE0),
+        ));
+        spans.push(Span::styled(" ", Style::default().bg(theme::SURFACE0)));
 
         // Timing info
         if self.compile_time.is_some() || self.match_time.is_some() {
