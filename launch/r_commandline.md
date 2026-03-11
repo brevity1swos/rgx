@@ -1,12 +1,12 @@
-# r/commandline Post
+# r/commandline Post (v2 — March 2026)
 
 ## Title
 
-rgx — a TUI regex tester with live matching, 3 engines, and stdin pipe support
+rgx — test regex patterns from the terminal with live matching, batch mode, and 3 engines
 
 ## Body
 
-I built **rgx** for testing regex patterns without leaving the terminal.
+I built **rgx** for testing and debugging regex patterns without leaving the terminal.
 
 **GitHub:** https://github.com/brevity1swos/rgx
 
@@ -17,29 +17,39 @@ brew install brevity1swos/tap/rgx
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brevity1swos/rgx/releases/latest/download/rgx-installer.sh | sh
 ```
 
-### What it does
+### Two modes
 
-- Live matching — updates as you type
-- 3 regex engines (Rust regex, fancy-regex, PCRE2) — Ctrl+E to switch and compare
+**Interactive TUI** — type a pattern and test string, see matches highlighted in real time:
+- 3 regex engines (Rust regex, fancy-regex, PCRE2) — Ctrl+E to compare behavior
 - Capture group highlighting with named groups
-- Plain-English explanations of your pattern
 - Replace/substitution with live preview
-- Non-interactive batch mode: `echo "test 123" | rgx -p '\d+'` — prints matches to stdout and exits
-- Pipeline composability: `cat log | rgx -p 'ERROR: (.*)' | sort | uniq -c`
-- Exit codes: 0 = match found, 1 = no match, 2 = error — works with `&&`, `||`, `set -e`
-- Interactive output: Ctrl+O outputs results to stdout when leaving the TUI
-- Capture pattern: `PATTERN=$(rgx -P)` — edit interactively, capture the final pattern
-- Whitespace visualization (Ctrl+W), undo/redo, pattern history
+- Plain-English pattern explanations
+- Built-in regex recipe library (Ctrl+R) — common patterns for emails, IPs, dates, etc.
 
-Cross-platform (Linux, macOS, Windows). Single binary.
+**Batch mode** — fits into pipelines without entering the TUI:
+```
+# Extract matches to stdout
+echo "error at line 42" | rgx -p '\d+'
+# 42
+
+# Chain with other commands
+cat server.log | rgx -p 'ERROR: (.*)' | sort | uniq -c
+
+# Capture a pattern interactively, use it in a script
+PATTERN=$(rgx -P)
+grep -P "$PATTERN" *.log
+```
+
+Exit codes: 0 = match, 1 = no match, 2 = error — works with `&&`, `||`, `set -e`.
 
 ### Who this is for
 
-Mostly useful if you:
-- Work on remote machines where opening a browser isn't practical
+- Working over SSH or in containers where opening a browser isn't practical
 - Want regex results piped into other commands
-- Need to test patterns against specific engine behavior (e.g., PCRE2 vs Rust regex)
+- Need to test against a specific engine (PCRE2 behaves differently from Rust's `regex` crate)
 
-If regex101.com works fine for your workflow, it's the more feature-rich tool overall. rgx fills a gap for terminal-centric use.
+If regex101.com works for your workflow, it's the more feature-rich tool. rgx fills a gap for terminal-centric work.
 
-Feedback welcome — especially on what would make this more useful for your workflow.
+Cross-platform (Linux, macOS, Windows). Single binary.
+
+Feedback welcome — what would make this more useful for your workflow?

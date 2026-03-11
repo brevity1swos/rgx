@@ -119,6 +119,12 @@ rgx -r '$2/$1' '(\w+)@(\w+)'
 rgx -p -t "hello 42 world 99" '\d+'    # prints: 42\n99
 echo "log line 404" | rgx -p '\d+'     # prints: 404
 
+# Count matches only (--count / -c)
+echo "a1 b2 c3" | rgx -p -c '\d+'     # prints: 3
+
+# Extract a specific capture group (--group / -g)
+echo "user@host" | rgx -p -g 1 '(\w+)@(\w+)'  # prints: user
+
 # Batch replacement
 rgx -p -t "user@host" -r '$2=$1' '(\w+)@(\w+)'   # prints: host=user
 

@@ -100,11 +100,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             eprintln!("rgx: {err}");
             return Ok(ExitCode::from(2));
         }
-        if cli.count {
-            println!("{}", app.matches.len());
-        } else {
-            app.print_output(cli.group.as_deref());
-        }
+        app.print_output(cli.group.as_deref(), cli.count);
         return Ok(if app.matches.is_empty() {
             ExitCode::from(1)
         } else {
@@ -463,7 +459,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             println!("{pattern}");
         }
     } else if app.output_on_quit {
-        app.print_output(None);
+        app.print_output(None, false);
     }
 
     Ok(ExitCode::SUCCESS)

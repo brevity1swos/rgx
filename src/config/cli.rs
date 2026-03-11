@@ -64,10 +64,10 @@ pub struct Cli {
 
     /// Print a specific capture group instead of the full match (use with --print).
     /// Accepts a group number (1, 2, ...) or a named group.
-    #[arg(short = 'g', long, requires = "print")]
+    #[arg(short = 'g', long, requires = "print", conflicts_with = "count")]
     pub group: Option<String>,
 
     /// Print only the count of matches (use with --print).
-    #[arg(short = 'c', long, requires = "print")]
+    #[arg(short = 'c', long, requires = "print", conflicts_with = "group")]
     pub count: bool,
 }

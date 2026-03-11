@@ -421,7 +421,11 @@ impl App {
     }
 
     /// Print match results or replacement output to stdout.
-    pub fn print_output(&self, group: Option<&str>) {
+    pub fn print_output(&self, group: Option<&str>, count: bool) {
+        if count {
+            println!("{}", self.matches.len());
+            return;
+        }
         if let Some(ref result) = self.replace_result {
             print!("{}", result.output);
         } else if let Some(group_spec) = group {
