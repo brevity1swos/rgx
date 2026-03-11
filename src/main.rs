@@ -248,13 +248,14 @@ async fn run() -> anyhow::Result<ExitCode> {
                             if app.focused_panel == App::PANEL_REGEX {
                                 app.commit_pattern_to_history();
                             }
-                            app.focused_panel = (app.focused_panel + 1) % 5;
+                            app.focused_panel = (app.focused_panel + 1) % App::PANEL_COUNT;
                         }
                         Action::SwitchPanelBack => {
                             if app.focused_panel == App::PANEL_REGEX {
                                 app.commit_pattern_to_history();
                             }
-                            app.focused_panel = (app.focused_panel + 4) % 5;
+                            app.focused_panel =
+                                (app.focused_panel + App::PANEL_COUNT - 1) % App::PANEL_COUNT;
                         }
                         Action::SwitchEngine => {
                             app.switch_engine();
@@ -376,6 +377,24 @@ async fn run() -> anyhow::Result<ExitCode> {
                         },
                         Action::MoveCursorHome => move_focused(&mut app, Editor::move_home),
                         Action::MoveCursorEnd => move_focused(&mut app, Editor::move_end),
+                        // Vim-specific actions (handled in Task 6)
+                        Action::DeleteCharAtCursor
+                        | Action::DeleteLine
+                        | Action::ChangeLine
+                        | Action::OpenLineBelow
+                        | Action::OpenLineAbove
+                        | Action::MoveToLineStart
+                        | Action::MoveToFirstNonBlank
+                        | Action::MoveToContentEnd
+                        | Action::MoveToFirstLine
+                        | Action::MoveToLastLine
+                        | Action::MoveCursorWordForwardEnd
+                        | Action::EnterInsertMode
+                        | Action::EnterInsertModeAppend
+                        | Action::EnterInsertModeLineStart
+                        | Action::EnterInsertModeLineEnd
+                        | Action::EnterNormalMode
+                        | Action::PasteClipboard => {}
                         Action::None => {}
                     }
                 }
