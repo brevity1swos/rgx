@@ -242,7 +242,7 @@ fn expand_replacement(template: &str, m: &Match) -> String {
 }
 
 /// Look up a capture by name or numeric string.
-fn lookup_capture<'a>(m: &'a Match, key: &str) -> Option<&'a str> {
+pub fn lookup_capture<'a>(m: &'a Match, key: &str) -> Option<&'a str> {
     // Try as number first
     if let Ok(idx) = key.parse::<usize>() {
         if idx == 0 {

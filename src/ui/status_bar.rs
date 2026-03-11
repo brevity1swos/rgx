@@ -11,7 +11,7 @@ use ratatui::{
 use crate::engine::{EngineFlags, EngineKind};
 use crate::ui::theme;
 
-fn format_duration(d: Duration) -> String {
+pub fn format_duration(d: Duration) -> String {
     let micros = d.as_micros();
     if micros < 1000 {
         format!("{micros}\u{03bc}s")

@@ -286,14 +286,18 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     ]
 }
 
-fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: usize) {
-    let help_width = 64.min(area.width.saturating_sub(4));
-    let help_height = 24.min(area.height.saturating_sub(4));
-    let x = (area.width.saturating_sub(help_width)) / 2;
-    let y = (area.height.saturating_sub(help_height)) / 2;
-    let help_area = Rect::new(x, y, help_width, help_height);
+fn centered_overlay(frame: &mut Frame, area: Rect, max_width: u16, content_height: u16) -> Rect {
+    let w = max_width.min(area.width.saturating_sub(4));
+    let h = content_height.min(area.height.saturating_sub(4));
+    let x = (area.width.saturating_sub(w)) / 2;
+    let y = (area.height.saturating_sub(h)) / 2;
+    let rect = Rect::new(x, y, w, h);
+    frame.render_widget(Clear, rect);
+    rect
+}
 
-    frame.render_widget(Clear, help_area);
+fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: usize) {
+    let help_area = centered_overlay(frame, area, 64, 24);
 
     let pages = build_help_pages(engine);
     let current = page.min(pages.len() - 1);
@@ -335,13 +339,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: 
 }
 
 fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
-    let overlay_width = 70.min(area.width.saturating_sub(4));
-    let overlay_height = (RECIPES.len() as u16 + 6).min(area.height.saturating_sub(4));
-    let x = (area.width.saturating_sub(overlay_width)) / 2;
-    let y = (area.height.saturating_sub(overlay_height)) / 2;
-    let overlay_area = Rect::new(x, y, overlay_width, overlay_height);
-
-    frame.render_widget(Clear, overlay_area);
+    let overlay_area = centered_overlay(frame, area, 70, RECIPES.len() as u16 + 6);
 
     let mut lines: Vec<Line<'static>> = vec![
         Line::from(Span::styled(
@@ -389,23 +387,8 @@ fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
     frame.render_widget(paragraph, overlay_area);
 }
 
-fn format_duration(d: std::time::Duration) -> String {
-    let micros = d.as_micros();
-    if micros < 1000 {
-        format!("{micros}us")
-    } else {
-        format!("{:.1}ms", d.as_secs_f64() * 1000.0)
-    }
-}
-
 fn render_benchmark_overlay(frame: &mut Frame, area: Rect, results: &[BenchmarkResult]) {
-    let overlay_width = 70.min(area.width.saturating_sub(4));
-    let overlay_height = (results.len() as u16 + 8).min(area.height.saturating_sub(4));
-    let x = (area.width.saturating_sub(overlay_width)) / 2;
-    let y = (area.height.saturating_sub(overlay_height)) / 2;
-    let overlay_area = Rect::new(x, y, overlay_width, overlay_height);
-
-    frame.render_widget(Clear, overlay_area);
+    let overlay_area = centered_overlay(frame, area, 70, results.len() as u16 + 8);
 
     let fastest_idx = results
         .iter()
@@ -436,7 +419,7 @@ fn render_benchmark_overlay(frame: &mut Frame, area: Rect, results: &[BenchmarkR
     for (i, result) in results.iter().enumerate() {
         let is_fastest = fastest_idx == Some(i);
         if let Some(ref err) = result.error {
-            let line_text = format!("{:<16} {}", result.engine.to_string(), err);
+            let line_text = format!("{:<16} {}", result.engine, err);
             lines.push(Line::from(Span::styled(
                 line_text,
                 Style::default().fg(theme::RED),
@@ -445,10 +428,10 @@ fn render_benchmark_overlay(frame: &mut Frame, area: Rect, results: &[BenchmarkR
             let total = result.compile_time + result.match_time;
             let line_text = format!(
                 "{:<16} {:>10} {:>10} {:>10} {:>8}",
-                result.engine.to_string(),
-                format_duration(result.compile_time),
-                format_duration(result.match_time),
-                format_duration(total),
+                result.engine,
+                status_bar::format_duration(result.compile_time),
+                status_bar::format_duration(result.match_time),
+                status_bar::format_duration(total),
                 result.match_count,
             );
             let style = if is_fastest {
