@@ -66,4 +66,8 @@ pub struct Cli {
     /// Accepts a group number (1, 2, ...) or a named group.
     #[arg(short = 'g', long, requires = "print")]
     pub group: Option<String>,
+
+    /// Print only the count of matches (use with --print).
+    #[arg(short = 'c', long, requires = "print")]
+    pub count: bool,
 }

@@ -100,7 +100,11 @@ async fn run() -> anyhow::Result<ExitCode> {
             eprintln!("rgx: {err}");
             return Ok(ExitCode::from(2));
         }
-        app.print_output(cli.group.as_deref());
+        if cli.count {
+            println!("{}", app.matches.len());
+        } else {
+            app.print_output(cli.group.as_deref());
+        }
         return Ok(if app.matches.is_empty() {
             ExitCode::from(1)
         } else {
