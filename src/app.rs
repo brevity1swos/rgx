@@ -56,6 +56,8 @@ pub struct App {
     clipboard_status_ticks: u32,
     pub show_whitespace: bool,
     pub rounded_borders: bool,
+    pub vim_mode: bool,
+    pub vim_state: crate::input::vim::VimState,
     pub compile_time: Option<Duration>,
     pub match_time: Option<Duration>,
     pub error_offset: Option<usize>,
@@ -75,6 +77,7 @@ impl App {
     pub const PANEL_REPLACE: u8 = 2;
     pub const PANEL_MATCHES: u8 = 3;
     pub const PANEL_EXPLAIN: u8 = 4;
+    pub const PANEL_COUNT: u8 = 5;
 }
 
 impl App {
@@ -106,6 +109,8 @@ impl App {
             clipboard_status_ticks: 0,
             show_whitespace: false,
             rounded_borders: false,
+            vim_mode: false,
+            vim_state: crate::input::vim::VimState::new(),
             compile_time: None,
             match_time: None,
             error_offset: None,

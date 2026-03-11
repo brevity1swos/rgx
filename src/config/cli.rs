@@ -74,4 +74,8 @@ pub struct Cli {
     /// Use rounded border characters for panels.
     #[arg(long)]
     pub rounded: bool,
+
+    /// Enable vim-style modal keybindings (Normal/Insert mode).
+    #[arg(long)]
+    pub vim: bool,
 }

@@ -22,6 +22,8 @@ pub struct Settings {
     #[serde(default)]
     pub rounded_borders: bool,
     #[serde(default)]
+    pub vim_mode: bool,
+    #[serde(default)]
     pub theme: ThemeSettings,
 }
 
@@ -50,6 +52,7 @@ impl Default for Settings {
             extended: false,
             show_whitespace: false,
             rounded_borders: false,
+            vim_mode: false,
             theme: ThemeSettings::default(),
         }
     }

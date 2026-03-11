@@ -60,6 +60,9 @@ async fn run() -> anyhow::Result<ExitCode> {
     if cli.rounded || settings.rounded_borders {
         app.rounded_borders = true;
     }
+    if cli.vim || settings.vim_mode {
+        app.vim_mode = true;
+    }
 
     // Load workspace if --load is set
     if let Some(ref load_path) = cli.load {
