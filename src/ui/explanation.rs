@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::Style,
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Widget, Wrap},
 };
 
 use crate::explain::ExplainNode;
@@ -14,6 +14,7 @@ pub struct ExplanationPanel<'a> {
     pub error: Option<&'a str>,
     pub scroll: u16,
     pub focused: bool,
+    pub border_type: BorderType,
 }
 
 impl<'a> Widget for ExplanationPanel<'a> {
@@ -25,6 +26,7 @@ impl<'a> Widget for ExplanationPanel<'a> {
         };
         let block = Block::default()
             .borders(Borders::ALL)
+            .border_type(self.border_type)
             .border_style(Style::default().fg(border_color))
             .title(Span::styled(
                 " Explanation ",

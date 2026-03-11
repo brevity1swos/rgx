@@ -57,6 +57,9 @@ async fn run() -> anyhow::Result<ExitCode> {
     if settings.show_whitespace {
         app.show_whitespace = true;
     }
+    if cli.rounded || settings.rounded_borders {
+        app.rounded_borders = true;
+    }
 
     // Load workspace if --load is set
     if let Some(ref load_path) = cli.load {
@@ -246,6 +249,12 @@ async fn run() -> anyhow::Result<ExitCode> {
                                 app.commit_pattern_to_history();
                             }
                             app.focused_panel = (app.focused_panel + 1) % 5;
+                        }
+                        Action::SwitchPanelBack => {
+                            if app.focused_panel == App::PANEL_REGEX {
+                                app.commit_pattern_to_history();
+                            }
+                            app.focused_panel = (app.focused_panel + 4) % 5;
                         }
                         Action::SwitchEngine => {
                             app.switch_engine();

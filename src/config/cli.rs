@@ -70,4 +70,8 @@ pub struct Cli {
     /// Print only the count of matches (use with --print).
     #[arg(short = 'c', long, requires = "print", conflicts_with = "group")]
     pub count: bool,
+
+    /// Use rounded border characters for panels.
+    #[arg(long)]
+    pub rounded: bool,
 }

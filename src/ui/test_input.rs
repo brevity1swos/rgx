@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 
 use crate::engine;
@@ -15,6 +15,7 @@ pub struct TestInput<'a> {
     pub focused: bool,
     pub matches: &'a [engine::Match],
     pub show_whitespace: bool,
+    pub border_type: BorderType,
 }
 
 impl<'a> Widget for TestInput<'a> {
@@ -27,6 +28,7 @@ impl<'a> Widget for TestInput<'a> {
 
         let block = Block::default()
             .borders(Borders::ALL)
+            .border_type(self.border_type)
             .border_style(border_style)
             .title(Span::styled(
                 " Test String ",

@@ -17,6 +17,7 @@ pub enum Action {
     ScrollUp,
     ScrollDown,
     SwitchPanel,
+    SwitchPanelBack,
     SwitchEngine,
     ToggleCaseInsensitive,
     ToggleMultiLine,
@@ -44,6 +45,7 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Quit,
         KeyCode::Esc => Action::Quit,
         KeyCode::Tab => Action::SwitchPanel,
+        KeyCode::BackTab => Action::SwitchPanelBack,
         KeyCode::Char('e') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::SwitchEngine,
         KeyCode::Char('z') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Undo,
         KeyCode::Char('Z')

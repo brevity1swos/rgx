@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget},
+    widgets::{Block, BorderType, Borders, Paragraph, Widget},
 };
 
 use crate::input::editor::Editor;
@@ -12,6 +12,7 @@ use crate::ui::theme;
 pub struct ReplaceInput<'a> {
     pub editor: &'a Editor,
     pub focused: bool,
+    pub border_type: BorderType,
 }
 
 impl<'a> Widget for ReplaceInput<'a> {
@@ -24,6 +25,7 @@ impl<'a> Widget for ReplaceInput<'a> {
 
         let block = Block::default()
             .borders(Borders::ALL)
+            .border_type(self.border_type)
             .border_style(border_style)
             .title(Span::styled(
                 " Replacement ($1, ${name}) ",

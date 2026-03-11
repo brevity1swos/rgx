@@ -3,7 +3,7 @@ use ratatui::{
     layout::Rect,
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Widget, Wrap},
+    widgets::{Block, BorderType, Borders, Paragraph, Widget, Wrap},
 };
 
 use crate::engine;
@@ -18,6 +18,7 @@ pub struct MatchDisplay<'a> {
     pub selected_match: usize,
     pub selected_capture: Option<usize>,
     pub clipboard_status: Option<&'a str>,
+    pub border_type: BorderType,
 }
 
 impl<'a> Widget for MatchDisplay<'a> {
@@ -34,6 +35,7 @@ impl<'a> Widget for MatchDisplay<'a> {
         };
         let block = Block::default()
             .borders(Borders::ALL)
+            .border_type(self.border_type)
             .border_style(Style::default().fg(border_color))
             .title(Span::styled(title, Style::default().fg(theme::TEXT)));
 

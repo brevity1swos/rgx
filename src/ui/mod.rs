@@ -11,7 +11,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
 
@@ -24,6 +24,15 @@ use regex_input::RegexInput;
 use replace_input::ReplaceInput;
 use status_bar::StatusBar;
 use test_input::TestInput;
+
+/// Returns the border type based on the rounded_borders flag.
+pub fn border_type(rounded: bool) -> BorderType {
+    if rounded {
+        BorderType::Rounded
+    } else {
+        BorderType::Plain
+    }
+}
 
 /// Panel layout rectangles for mouse hit-testing.
 pub struct PanelLayout {
@@ -73,17 +82,19 @@ pub fn render(frame: &mut Frame, app: &App) {
     let size = frame.area();
     let layout = compute_layout(size);
 
+    let bt = border_type(app.rounded_borders);
+
     // Overlays
     if app.show_help {
-        render_help_overlay(frame, size, app.engine_kind, app.help_page);
+        render_help_overlay(frame, size, app.engine_kind, app.help_page, bt);
         return;
     }
     if app.show_recipes {
-        render_recipe_overlay(frame, size, app.recipe_index);
+        render_recipe_overlay(frame, size, app.recipe_index, bt);
         return;
     }
     if app.show_benchmark {
-        render_benchmark_overlay(frame, size, &app.benchmark_results);
+        render_benchmark_overlay(frame, size, &app.benchmark_results, bt);
         return;
     }
 
@@ -96,6 +107,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             focused: app.focused_panel == 0,
             error: error_str,
             error_offset: app.error_offset,
+            border_type: bt,
         },
         layout.regex_input,
     );
@@ -107,6 +119,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             focused: app.focused_panel == 1,
             matches: &app.matches,
             show_whitespace: app.show_whitespace,
+            border_type: bt,
         },
         layout.test_input,
     );
@@ -116,6 +129,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         ReplaceInput {
             editor: &app.replace_editor,
             focused: app.focused_panel == 2,
+            border_type: bt,
         },
         layout.replace_input,
     );
@@ -130,6 +144,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             selected_match: app.selected_match,
             selected_capture: app.selected_capture,
             clipboard_status: app.clipboard_status.as_deref(),
+            border_type: bt,
         },
         layout.match_display,
     );
@@ -141,6 +156,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             error: error_str,
             scroll: app.explain_scroll,
             focused: app.focused_panel == 4,
+            border_type: bt,
         },
         layout.explanation,
     );
@@ -296,7 +312,13 @@ fn centered_overlay(frame: &mut Frame, area: Rect, max_width: u16, content_heigh
     rect
 }
 
-fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: usize) {
+fn render_help_overlay(
+    frame: &mut Frame,
+    area: Rect,
+    engine: EngineKind,
+    page: usize,
+    bt: BorderType,
+) {
     let help_area = centered_overlay(frame, area, 64, 24);
 
     let pages = build_help_pages(engine);
@@ -327,6 +349,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: 
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(bt)
         .border_style(Style::default().fg(theme::BLUE))
         .title(Span::styled(" Help ", Style::default().fg(theme::TEXT)))
         .style(Style::default().bg(theme::BASE));
@@ -338,7 +361,7 @@ fn render_help_overlay(frame: &mut Frame, area: Rect, engine: EngineKind, page: 
     frame.render_widget(paragraph, help_area);
 }
 
-fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
+fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize, bt: BorderType) {
     let overlay_area = centered_overlay(frame, area, 70, RECIPES.len() as u16 + 6);
 
     let mut lines: Vec<Line<'static>> = vec![
@@ -373,6 +396,7 @@ fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(bt)
         .border_style(Style::default().fg(theme::GREEN))
         .title(Span::styled(
             " Recipes (Ctrl+R) ",
@@ -387,7 +411,12 @@ fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize) {
     frame.render_widget(paragraph, overlay_area);
 }
 
-fn render_benchmark_overlay(frame: &mut Frame, area: Rect, results: &[BenchmarkResult]) {
+fn render_benchmark_overlay(
+    frame: &mut Frame,
+    area: Rect,
+    results: &[BenchmarkResult],
+    bt: BorderType,
+) {
     let overlay_area = centered_overlay(frame, area, 70, results.len() as u16 + 8);
 
     let fastest_idx = results
@@ -463,6 +492,7 @@ fn render_benchmark_overlay(frame: &mut Frame, area: Rect, results: &[BenchmarkR
 
     let block = Block::default()
         .borders(Borders::ALL)
+        .border_type(bt)
         .border_style(Style::default().fg(theme::PEACH))
         .title(Span::styled(
             " Benchmark (Ctrl+B) ",

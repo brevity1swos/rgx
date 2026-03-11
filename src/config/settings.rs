@@ -20,6 +20,8 @@ pub struct Settings {
     #[serde(default)]
     pub show_whitespace: bool,
     #[serde(default)]
+    pub rounded_borders: bool,
+    #[serde(default)]
     pub theme: ThemeSettings,
 }
 
@@ -47,6 +49,7 @@ impl Default for Settings {
             unicode: default_true(),
             extended: false,
             show_whitespace: false,
+            rounded_borders: false,
             theme: ThemeSettings::default(),
         }
     }
