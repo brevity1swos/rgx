@@ -1,4 +1,5 @@
 pub mod editor;
+pub mod vim;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
