@@ -17,6 +17,7 @@ use rgx::config::settings::Settings;
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
 use rgx::input::editor::Editor;
+use rgx::input::vim::vim_key_to_action;
 use rgx::input::{key_to_action, Action};
 use rgx::recipe::RECIPES;
 use rgx::ui;
@@ -210,7 +211,12 @@ async fn run() -> anyhow::Result<ExitCode> {
                         _ => {}
                     };
 
-                    match key_to_action(key) {
+                    let action = if app.vim_mode {
+                        vim_key_to_action(key, &mut app.vim_state)
+                    } else {
+                        key_to_action(key)
+                    };
+                    match action {
                         Action::Quit => {
                             app.should_quit = true;
                         }
@@ -380,24 +386,103 @@ async fn run() -> anyhow::Result<ExitCode> {
                         },
                         Action::MoveCursorHome => move_focused(&mut app, Editor::move_home),
                         Action::MoveCursorEnd => move_focused(&mut app, Editor::move_end),
-                        // Vim-specific actions (handled in Task 6)
-                        Action::DeleteCharAtCursor
-                        | Action::DeleteLine
-                        | Action::ChangeLine
-                        | Action::OpenLineBelow
-                        | Action::OpenLineAbove
-                        | Action::MoveToLineStart
-                        | Action::MoveToFirstNonBlank
-                        | Action::MoveToContentEnd
-                        | Action::MoveToFirstLine
-                        | Action::MoveToLastLine
-                        | Action::MoveCursorWordForwardEnd
-                        | Action::EnterInsertMode
-                        | Action::EnterInsertModeAppend
-                        | Action::EnterInsertModeLineStart
-                        | Action::EnterInsertModeLineEnd
-                        | Action::EnterNormalMode
-                        | Action::PasteClipboard => {}
+                        Action::DeleteCharAtCursor => match app.focused_panel {
+                            App::PANEL_REGEX => {
+                                app.regex_editor.delete_char_at_cursor();
+                                app.recompute();
+                            }
+                            App::PANEL_TEST => {
+                                app.test_editor.delete_char_at_cursor();
+                                app.rematch();
+                            }
+                            App::PANEL_REPLACE => {
+                                app.replace_editor.delete_char_at_cursor();
+                                app.rereplace();
+                            }
+                            _ => {}
+                        },
+                        Action::DeleteLine => match app.focused_panel {
+                            App::PANEL_REGEX => {
+                                app.regex_editor.delete_line();
+                                app.recompute();
+                            }
+                            App::PANEL_TEST => {
+                                app.test_editor.delete_line();
+                                app.rematch();
+                            }
+                            App::PANEL_REPLACE => {
+                                app.replace_editor.delete_line();
+                                app.rereplace();
+                            }
+                            _ => {}
+                        },
+                        Action::ChangeLine => match app.focused_panel {
+                            App::PANEL_REGEX => {
+                                app.regex_editor.clear_line();
+                                app.recompute();
+                            }
+                            App::PANEL_TEST => {
+                                app.test_editor.clear_line();
+                                app.rematch();
+                            }
+                            App::PANEL_REPLACE => {
+                                app.replace_editor.clear_line();
+                                app.rereplace();
+                            }
+                            _ => {}
+                        },
+                        Action::OpenLineBelow => {
+                            if app.focused_panel == App::PANEL_TEST {
+                                app.test_editor.open_line_below();
+                                app.rematch();
+                            }
+                        }
+                        Action::OpenLineAbove => {
+                            if app.focused_panel == App::PANEL_TEST {
+                                app.test_editor.open_line_above();
+                                app.rematch();
+                            }
+                        }
+                        Action::MoveToLineStart => move_focused(&mut app, Editor::move_home),
+                        Action::MoveToFirstNonBlank => {
+                            move_focused(&mut app, Editor::move_to_first_non_blank)
+                        }
+                        Action::MoveToContentEnd => move_focused(&mut app, Editor::move_end),
+                        Action::MoveToFirstLine => {
+                            move_focused(&mut app, Editor::move_to_first_line)
+                        }
+                        Action::MoveToLastLine => move_focused(&mut app, Editor::move_to_last_line),
+                        Action::MoveCursorWordForwardEnd => {
+                            move_focused(&mut app, Editor::move_word_forward_end)
+                        }
+                        Action::EnterInsertMode => {}
+                        Action::EnterInsertModeAppend => move_focused(&mut app, Editor::move_right),
+                        Action::EnterInsertModeLineStart => {
+                            move_focused(&mut app, Editor::move_to_first_non_blank)
+                        }
+                        Action::EnterInsertModeLineEnd => move_focused(&mut app, Editor::move_end),
+                        Action::EnterNormalMode => move_focused(&mut app, Editor::move_left),
+                        Action::PasteClipboard => {
+                            if let Ok(mut cb) = arboard::Clipboard::new() {
+                                if let Ok(text) = cb.get_text() {
+                                    match app.focused_panel {
+                                        App::PANEL_REGEX => {
+                                            app.regex_editor.insert_str(&text);
+                                            app.recompute();
+                                        }
+                                        App::PANEL_TEST => {
+                                            app.test_editor.insert_str(&text);
+                                            app.rematch();
+                                        }
+                                        App::PANEL_REPLACE => {
+                                            app.replace_editor.insert_str(&text);
+                                            app.rereplace();
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
                         Action::None => {}
                     }
                 }
