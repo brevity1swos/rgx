@@ -276,6 +276,141 @@ impl Editor {
         self.cursor = self.line_end(line);
     }
 
+    /// Delete character under cursor (vim `x`). Does nothing at end of content.
+    pub fn delete_char_at_cursor(&mut self) {
+        if self.cursor < self.content.len() {
+            self.push_undo_snapshot();
+            let next = self.next_char_boundary();
+            self.content.drain(self.cursor..next);
+            if self.cursor > self.content.len() {
+                self.cursor = self.content.len();
+            }
+        }
+    }
+
+    /// Delete the current line (vim `dd`).
+    pub fn delete_line(&mut self) {
+        self.push_undo_snapshot();
+        let (line, _) = self.cursor_line_col();
+        let start = self.line_start(line);
+        let end = self.line_end(line);
+        let line_count = self.line_count();
+
+        if line_count == 1 {
+            self.content.clear();
+            self.cursor = 0;
+        } else if line + 1 < line_count {
+            // Not the last line — delete line including trailing newline
+            self.content.drain(start..end + 1);
+            self.cursor = start;
+        } else {
+            // Last line — delete leading newline + line content
+            self.content.drain(start - 1..end);
+            let prev = line.saturating_sub(1);
+            self.cursor = self.line_start(prev);
+        }
+    }
+
+    /// Clear the current line's content but keep the line (vim `cc`).
+    pub fn clear_line(&mut self) {
+        self.push_undo_snapshot();
+        let (line, _) = self.cursor_line_col();
+        let start = self.line_start(line);
+        let end = self.line_end(line);
+        self.content.drain(start..end);
+        self.cursor = start;
+    }
+
+    /// Insert a string at cursor (single undo snapshot). Used for paste.
+    pub fn insert_str(&mut self, s: &str) {
+        if s.is_empty() {
+            return;
+        }
+        self.push_undo_snapshot();
+        self.content.insert_str(self.cursor, s);
+        self.cursor += s.len();
+    }
+
+    /// Insert a new line below current and move cursor there (vim `o`).
+    pub fn open_line_below(&mut self) {
+        self.push_undo_snapshot();
+        let (line, _) = self.cursor_line_col();
+        let end = self.line_end(line);
+        self.content.insert(end, '\n');
+        self.cursor = end + 1;
+    }
+
+    /// Insert a new line above current and move cursor there (vim `O`).
+    pub fn open_line_above(&mut self) {
+        self.push_undo_snapshot();
+        let (line, _) = self.cursor_line_col();
+        let start = self.line_start(line);
+        self.content.insert(start, '\n');
+        self.cursor = start;
+    }
+
+    /// Move cursor to first non-whitespace character on current line (vim `^`).
+    pub fn move_to_first_non_blank(&mut self) {
+        let (line, _) = self.cursor_line_col();
+        let start = self.line_start(line);
+        let line_text = self.line_content(line);
+        let offset = line_text
+            .char_indices()
+            .find(|(_, c)| !c.is_whitespace())
+            .map(|(i, _)| i)
+            .unwrap_or(0);
+        self.cursor = start + offset;
+    }
+
+    /// Move cursor to start of first line (vim `gg`).
+    pub fn move_to_first_line(&mut self) {
+        self.cursor = 0;
+    }
+
+    /// Move cursor to start of last line (vim `G`).
+    pub fn move_to_last_line(&mut self) {
+        let last = self.line_count().saturating_sub(1);
+        self.cursor = self.line_start(last);
+    }
+
+    /// Move cursor forward to end of current/next word (vim `e`).
+    pub fn move_word_forward_end(&mut self) {
+        if self.cursor >= self.content.len() {
+            return;
+        }
+        let is_word_char = |c: char| c.is_alphanumeric() || c == '_';
+        let after = &self.content[self.cursor..];
+        let mut chars = after.char_indices().peekable();
+
+        // Always advance at least one character
+        if chars.next().is_none() {
+            return;
+        }
+
+        // Skip whitespace
+        while let Some(&(_, c)) = chars.peek() {
+            if !c.is_whitespace() {
+                break;
+            }
+            chars.next();
+        }
+
+        // Find end of the word
+        if let Some(&(first_offset, first)) = chars.peek() {
+            let first_is_word = is_word_char(first);
+            let mut last_offset = first_offset;
+            chars.next();
+
+            for (i, c) in chars {
+                if is_word_char(c) != first_is_word || c.is_whitespace() {
+                    break;
+                }
+                last_offset = i;
+            }
+            self.cursor += last_offset;
+        }
+    }
+
     /// Update horizontal scroll for the current line.
     pub fn update_scroll(&mut self, visible_width: usize) {
         let (_, col) = self.cursor_line_col();
@@ -547,5 +682,137 @@ mod tests {
         editor.delete_back();
         assert_eq!(editor.content(), "abcdef");
         assert_eq!(editor.cursor(), 3);
+    }
+
+    #[test]
+    fn test_delete_char_at_cursor() {
+        let mut editor = Editor::with_content("hello".to_string());
+        editor.cursor = 0;
+        editor.delete_char_at_cursor();
+        assert_eq!(editor.content(), "ello");
+        assert_eq!(editor.cursor(), 0);
+    }
+
+    #[test]
+    fn test_delete_char_at_cursor_end() {
+        let mut editor = Editor::with_content("hello".to_string());
+        editor.delete_char_at_cursor();
+        assert_eq!(editor.content(), "hello");
+    }
+
+    #[test]
+    fn test_delete_line() {
+        let mut editor = Editor::with_content("abc\ndef\nghi".to_string());
+        editor.cursor = 5;
+        editor.delete_line();
+        assert_eq!(editor.content(), "abc\nghi");
+        assert_eq!(editor.cursor(), 4);
+    }
+
+    #[test]
+    fn test_delete_line_last() {
+        let mut editor = Editor::with_content("abc\ndef".to_string());
+        editor.cursor = 5;
+        editor.delete_line();
+        assert_eq!(editor.content(), "abc");
+        assert_eq!(editor.cursor(), 0);
+    }
+
+    #[test]
+    fn test_delete_line_single() {
+        let mut editor = Editor::with_content("hello".to_string());
+        editor.cursor = 2;
+        editor.delete_line();
+        assert_eq!(editor.content(), "");
+        assert_eq!(editor.cursor(), 0);
+    }
+
+    #[test]
+    fn test_clear_line() {
+        let mut editor = Editor::with_content("abc\ndef\nghi".to_string());
+        editor.cursor = 5;
+        editor.clear_line();
+        assert_eq!(editor.content(), "abc\n\nghi");
+        assert_eq!(editor.cursor(), 4);
+    }
+
+    #[test]
+    fn test_clear_line_single() {
+        let mut editor = Editor::with_content("hello".to_string());
+        editor.cursor = 2;
+        editor.clear_line();
+        assert_eq!(editor.content(), "");
+        assert_eq!(editor.cursor(), 0);
+    }
+
+    #[test]
+    fn test_insert_str() {
+        let mut editor = Editor::with_content("hd".to_string());
+        editor.cursor = 1;
+        editor.insert_str("ello worl");
+        assert_eq!(editor.content(), "hello world");
+        assert_eq!(editor.cursor(), 10);
+    }
+
+    #[test]
+    fn test_insert_str_undo() {
+        let mut editor = Editor::with_content("ad".to_string());
+        editor.cursor = 1;
+        editor.insert_str("bc");
+        assert_eq!(editor.content(), "abcd");
+        editor.undo();
+        assert_eq!(editor.content(), "ad");
+    }
+
+    #[test]
+    fn test_open_line_below() {
+        let mut editor = Editor::with_content("abc\ndef".to_string());
+        editor.cursor = 1;
+        editor.open_line_below();
+        assert_eq!(editor.content(), "abc\n\ndef");
+        assert_eq!(editor.cursor(), 4);
+    }
+
+    #[test]
+    fn test_open_line_above() {
+        let mut editor = Editor::with_content("abc\ndef".to_string());
+        editor.cursor = 5;
+        editor.open_line_above();
+        assert_eq!(editor.content(), "abc\n\ndef");
+        assert_eq!(editor.cursor(), 4);
+    }
+
+    #[test]
+    fn test_move_to_first_non_blank() {
+        let mut editor = Editor::with_content("   hello".to_string());
+        editor.cursor = 7;
+        editor.move_to_first_non_blank();
+        assert_eq!(editor.cursor(), 3);
+    }
+
+    #[test]
+    fn test_move_to_first_line() {
+        let mut editor = Editor::with_content("abc\ndef\nghi".to_string());
+        editor.move_to_first_line();
+        assert_eq!(editor.cursor(), 0);
+    }
+
+    #[test]
+    fn test_move_to_last_line() {
+        let mut editor = Editor::with_content("abc\ndef\nghi".to_string());
+        editor.cursor = 0;
+        editor.move_to_last_line();
+        let (line, _) = editor.cursor_line_col();
+        assert_eq!(line, 2);
+    }
+
+    #[test]
+    fn test_move_word_forward_end() {
+        let mut editor = Editor::with_content("hello world foo".to_string());
+        editor.cursor = 0;
+        editor.move_word_forward_end();
+        assert_eq!(editor.cursor(), 4);
+        editor.move_word_forward_end();
+        assert_eq!(editor.cursor(), 10);
     }
 }
