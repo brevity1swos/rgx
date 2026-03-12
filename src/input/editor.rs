@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use unicode_width::UnicodeWidthStr;
 
 #[derive(Debug, Clone)]
@@ -6,8 +8,8 @@ pub struct Editor {
     cursor: usize,
     scroll_offset: usize,
     vertical_scroll: usize,
-    undo_stack: Vec<(String, usize)>,
-    redo_stack: Vec<(String, usize)>,
+    undo_stack: VecDeque<(String, usize)>,
+    redo_stack: VecDeque<(String, usize)>,
 }
 
 impl Editor {
@@ -17,8 +19,8 @@ impl Editor {
             cursor: 0,
             scroll_offset: 0,
             vertical_scroll: 0,
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
+            undo_stack: VecDeque::new(),
+            redo_stack: VecDeque::new(),
         }
     }
 
@@ -29,8 +31,8 @@ impl Editor {
             cursor,
             scroll_offset: 0,
             vertical_scroll: 0,
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
+            undo_stack: VecDeque::new(),
+            redo_stack: VecDeque::new(),
         }
     }
 
@@ -101,16 +103,18 @@ impl Editor {
     }
 
     fn push_undo_snapshot(&mut self) {
-        self.undo_stack.push((self.content.clone(), self.cursor));
+        self.undo_stack
+            .push_back((self.content.clone(), self.cursor));
         if self.undo_stack.len() > 500 {
-            self.undo_stack.remove(0);
+            self.undo_stack.pop_front();
         }
         self.redo_stack.clear();
     }
 
     pub fn undo(&mut self) -> bool {
-        if let Some((content, cursor)) = self.undo_stack.pop() {
-            self.redo_stack.push((self.content.clone(), self.cursor));
+        if let Some((content, cursor)) = self.undo_stack.pop_back() {
+            self.redo_stack
+                .push_back((self.content.clone(), self.cursor));
             self.content = content;
             self.cursor = cursor;
             true
@@ -120,8 +124,9 @@ impl Editor {
     }
 
     pub fn redo(&mut self) -> bool {
-        if let Some((content, cursor)) = self.redo_stack.pop() {
-            self.undo_stack.push((self.content.clone(), self.cursor));
+        if let Some((content, cursor)) = self.redo_stack.pop_back() {
+            self.undo_stack
+                .push_back((self.content.clone(), self.cursor));
             self.content = content;
             self.cursor = cursor;
             true
@@ -161,6 +166,14 @@ impl Editor {
 
     pub fn move_left(&mut self) {
         if self.cursor > 0 {
+            self.cursor = self.prev_char_boundary();
+        }
+    }
+
+    /// Move cursor left by one char, but not past the start of the current line.
+    /// Used by vim Esc (EnterNormalMode) which should not cross line boundaries.
+    pub fn move_left_in_line(&mut self) {
+        if self.cursor > 0 && self.content.as_bytes()[self.cursor - 1] != b'\n' {
             self.cursor = self.prev_char_boundary();
         }
     }
@@ -278,14 +291,7 @@ impl Editor {
 
     /// Delete character under cursor (vim `x`). Does nothing at end of content.
     pub fn delete_char_at_cursor(&mut self) {
-        if self.cursor < self.content.len() {
-            self.push_undo_snapshot();
-            let next = self.next_char_boundary();
-            self.content.drain(self.cursor..next);
-            if self.cursor > self.content.len() {
-                self.cursor = self.content.len();
-            }
-        }
+        self.delete_forward();
     }
 
     /// Delete the current line (vim `dd`).
@@ -814,5 +820,31 @@ mod tests {
         assert_eq!(editor.cursor(), 4);
         editor.move_word_forward_end();
         assert_eq!(editor.cursor(), 10);
+    }
+
+    #[test]
+    fn test_move_left_in_line_normal() {
+        let mut editor = Editor::with_content("hello".to_string());
+        // cursor at end (byte 5)
+        editor.move_left_in_line();
+        assert_eq!(editor.cursor(), 4);
+    }
+
+    #[test]
+    fn test_move_left_in_line_at_line_start() {
+        let mut editor = Editor::with_content("abc\ndef".to_string());
+        // cursor at start of "def" (byte 4, right after '\n')
+        editor.cursor = 4;
+        editor.move_left_in_line();
+        // Should NOT cross the newline
+        assert_eq!(editor.cursor(), 4);
+    }
+
+    #[test]
+    fn test_move_left_in_line_at_content_start() {
+        let mut editor = Editor::with_content("hello".to_string());
+        editor.cursor = 0;
+        editor.move_left_in_line();
+        assert_eq!(editor.cursor(), 0);
     }
 }

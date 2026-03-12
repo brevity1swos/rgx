@@ -458,6 +458,36 @@ impl App {
         }
     }
 
+    /// Apply a mutating editor operation to the currently focused editor panel,
+    /// then trigger the appropriate recompute/rematch/rereplace.
+    pub fn edit_focused(&mut self, f: impl FnOnce(&mut Editor)) {
+        match self.focused_panel {
+            Self::PANEL_REGEX => {
+                f(&mut self.regex_editor);
+                self.recompute();
+            }
+            Self::PANEL_TEST => {
+                f(&mut self.test_editor);
+                self.rematch();
+            }
+            Self::PANEL_REPLACE => {
+                f(&mut self.replace_editor);
+                self.rereplace();
+            }
+            _ => {}
+        }
+    }
+
+    /// Apply a non-mutating cursor movement to the currently focused editor panel.
+    pub fn move_focused(&mut self, f: impl FnOnce(&mut Editor)) {
+        match self.focused_panel {
+            Self::PANEL_REGEX => f(&mut self.regex_editor),
+            Self::PANEL_TEST => f(&mut self.test_editor),
+            Self::PANEL_REPLACE => f(&mut self.replace_editor),
+            _ => {}
+        }
+    }
+
     pub fn run_benchmark(&mut self) {
         let pattern = self.regex_editor.content().to_string();
         let text = self.test_editor.content().to_string();

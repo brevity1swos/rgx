@@ -9,6 +9,7 @@ use ratatui::{
 };
 
 use crate::engine::{EngineFlags, EngineKind};
+use crate::input::vim::VimMode;
 use crate::ui::theme;
 
 pub fn format_duration(d: Duration) -> String {
@@ -27,18 +28,17 @@ pub struct StatusBar {
     pub show_whitespace: bool,
     pub compile_time: Option<Duration>,
     pub match_time: Option<Duration>,
-    pub vim_mode: bool,
-    pub vim_mode_name: &'static str,
+    pub vim_mode: Option<VimMode>,
 }
 
 impl Widget for StatusBar {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut spans = Vec::new();
 
-        if self.vim_mode {
-            let (mode_text, mode_bg) = match self.vim_mode_name {
-                "INSERT" => (" INSERT ", theme::GREEN),
-                _ => (" NORMAL ", theme::BLUE),
+        if let Some(mode) = self.vim_mode {
+            let (mode_text, mode_bg) = match mode {
+                VimMode::Insert => (" INSERT ", theme::GREEN),
+                VimMode::Normal => (" NORMAL ", theme::BLUE),
             };
             spans.push(Span::styled(
                 mode_text,

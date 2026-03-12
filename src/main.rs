@@ -188,29 +188,6 @@ async fn run() -> anyhow::Result<ExitCode> {
                         continue;
                     }
 
-                    let edit_focused = |app: &mut App, f: fn(&mut Editor)| match app.focused_panel {
-                        App::PANEL_REGEX => {
-                            f(&mut app.regex_editor);
-                            app.recompute();
-                        }
-                        App::PANEL_TEST => {
-                            f(&mut app.test_editor);
-                            app.rematch();
-                        }
-                        App::PANEL_REPLACE => {
-                            f(&mut app.replace_editor);
-                            app.rereplace();
-                        }
-                        _ => {}
-                    };
-
-                    let move_focused = |app: &mut App, f: fn(&mut Editor)| match app.focused_panel {
-                        App::PANEL_REGEX => f(&mut app.regex_editor),
-                        App::PANEL_TEST => f(&mut app.test_editor),
-                        App::PANEL_REPLACE => f(&mut app.replace_editor),
-                        _ => {}
-                    };
-
                     let action = if app.vim_mode {
                         vim_key_to_action(key, &mut app.vim_state)
                     } else {
@@ -341,37 +318,19 @@ async fn run() -> anyhow::Result<ExitCode> {
                         Action::Benchmark => {
                             app.run_benchmark();
                         }
-                        Action::InsertChar(c) => match app.focused_panel {
-                            App::PANEL_REGEX => {
-                                app.regex_editor.insert_char(c);
-                                app.recompute();
-                            }
-                            App::PANEL_TEST => {
-                                app.test_editor.insert_char(c);
-                                app.rematch();
-                            }
-                            App::PANEL_REPLACE => {
-                                app.replace_editor.insert_char(c);
-                                app.rereplace();
-                            }
-                            _ => {}
-                        },
+                        Action::InsertChar(c) => app.edit_focused(|ed| ed.insert_char(c)),
                         Action::InsertNewline => {
                             if app.focused_panel == App::PANEL_TEST {
                                 app.test_editor.insert_newline();
                                 app.rematch();
                             }
                         }
-                        Action::DeleteBack => edit_focused(&mut app, Editor::delete_back),
-                        Action::DeleteForward => edit_focused(&mut app, Editor::delete_forward),
-                        Action::MoveCursorLeft => move_focused(&mut app, Editor::move_left),
-                        Action::MoveCursorRight => move_focused(&mut app, Editor::move_right),
-                        Action::MoveCursorWordLeft => {
-                            move_focused(&mut app, Editor::move_word_left)
-                        }
-                        Action::MoveCursorWordRight => {
-                            move_focused(&mut app, Editor::move_word_right)
-                        }
+                        Action::DeleteBack => app.edit_focused(Editor::delete_back),
+                        Action::DeleteForward => app.edit_focused(Editor::delete_forward),
+                        Action::MoveCursorLeft => app.move_focused(Editor::move_left),
+                        Action::MoveCursorRight => app.move_focused(Editor::move_right),
+                        Action::MoveCursorWordLeft => app.move_focused(Editor::move_word_left),
+                        Action::MoveCursorWordRight => app.move_focused(Editor::move_word_right),
                         Action::ScrollUp => match app.focused_panel {
                             App::PANEL_TEST => app.test_editor.move_up(),
                             App::PANEL_MATCHES => app.select_match_prev(),
@@ -384,102 +343,48 @@ async fn run() -> anyhow::Result<ExitCode> {
                             App::PANEL_EXPLAIN => app.scroll_explain_down(),
                             _ => {}
                         },
-                        Action::MoveCursorHome => move_focused(&mut app, Editor::move_home),
-                        Action::MoveCursorEnd => move_focused(&mut app, Editor::move_end),
-                        Action::DeleteCharAtCursor => match app.focused_panel {
-                            App::PANEL_REGEX => {
-                                app.regex_editor.delete_char_at_cursor();
-                                app.recompute();
-                            }
-                            App::PANEL_TEST => {
-                                app.test_editor.delete_char_at_cursor();
-                                app.rematch();
-                            }
-                            App::PANEL_REPLACE => {
-                                app.replace_editor.delete_char_at_cursor();
-                                app.rereplace();
-                            }
-                            _ => {}
-                        },
-                        Action::DeleteLine => match app.focused_panel {
-                            App::PANEL_REGEX => {
-                                app.regex_editor.delete_line();
-                                app.recompute();
-                            }
-                            App::PANEL_TEST => {
-                                app.test_editor.delete_line();
-                                app.rematch();
-                            }
-                            App::PANEL_REPLACE => {
-                                app.replace_editor.delete_line();
-                                app.rereplace();
-                            }
-                            _ => {}
-                        },
-                        Action::ChangeLine => match app.focused_panel {
-                            App::PANEL_REGEX => {
-                                app.regex_editor.clear_line();
-                                app.recompute();
-                            }
-                            App::PANEL_TEST => {
-                                app.test_editor.clear_line();
-                                app.rematch();
-                            }
-                            App::PANEL_REPLACE => {
-                                app.replace_editor.clear_line();
-                                app.rereplace();
-                            }
-                            _ => {}
-                        },
+                        Action::MoveCursorHome => app.move_focused(Editor::move_home),
+                        Action::MoveCursorEnd => app.move_focused(Editor::move_end),
+                        Action::DeleteCharAtCursor => {
+                            app.edit_focused(Editor::delete_char_at_cursor)
+                        }
+                        Action::DeleteLine => app.edit_focused(Editor::delete_line),
+                        Action::ChangeLine => app.edit_focused(Editor::clear_line),
                         Action::OpenLineBelow => {
                             if app.focused_panel == App::PANEL_TEST {
                                 app.test_editor.open_line_below();
                                 app.rematch();
+                            } else {
+                                app.vim_state.cancel_insert();
                             }
                         }
                         Action::OpenLineAbove => {
                             if app.focused_panel == App::PANEL_TEST {
                                 app.test_editor.open_line_above();
                                 app.rematch();
+                            } else {
+                                app.vim_state.cancel_insert();
                             }
                         }
-                        Action::MoveToLineStart => move_focused(&mut app, Editor::move_home),
                         Action::MoveToFirstNonBlank => {
-                            move_focused(&mut app, Editor::move_to_first_non_blank)
+                            app.move_focused(Editor::move_to_first_non_blank)
                         }
-                        Action::MoveToContentEnd => move_focused(&mut app, Editor::move_end),
-                        Action::MoveToFirstLine => {
-                            move_focused(&mut app, Editor::move_to_first_line)
-                        }
-                        Action::MoveToLastLine => move_focused(&mut app, Editor::move_to_last_line),
+                        Action::MoveToFirstLine => app.move_focused(Editor::move_to_first_line),
+                        Action::MoveToLastLine => app.move_focused(Editor::move_to_last_line),
                         Action::MoveCursorWordForwardEnd => {
-                            move_focused(&mut app, Editor::move_word_forward_end)
+                            app.move_focused(Editor::move_word_forward_end)
                         }
                         Action::EnterInsertMode => {}
-                        Action::EnterInsertModeAppend => move_focused(&mut app, Editor::move_right),
+                        Action::EnterInsertModeAppend => app.move_focused(Editor::move_right),
                         Action::EnterInsertModeLineStart => {
-                            move_focused(&mut app, Editor::move_to_first_non_blank)
+                            app.move_focused(Editor::move_to_first_non_blank)
                         }
-                        Action::EnterInsertModeLineEnd => move_focused(&mut app, Editor::move_end),
-                        Action::EnterNormalMode => move_focused(&mut app, Editor::move_left),
+                        Action::EnterInsertModeLineEnd => app.move_focused(Editor::move_end),
+                        Action::EnterNormalMode => app.move_focused(Editor::move_left_in_line),
                         Action::PasteClipboard => {
                             if let Ok(mut cb) = arboard::Clipboard::new() {
                                 if let Ok(text) = cb.get_text() {
-                                    match app.focused_panel {
-                                        App::PANEL_REGEX => {
-                                            app.regex_editor.insert_str(&text);
-                                            app.recompute();
-                                        }
-                                        App::PANEL_TEST => {
-                                            app.test_editor.insert_str(&text);
-                                            app.rematch();
-                                        }
-                                        App::PANEL_REPLACE => {
-                                            app.replace_editor.insert_str(&text);
-                                            app.rereplace();
-                                        }
-                                        _ => {}
-                                    }
+                                    app.edit_focused(|ed| ed.insert_str(&text));
                                 }
                             }
                         }

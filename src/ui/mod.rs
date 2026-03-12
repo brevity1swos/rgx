@@ -170,14 +170,10 @@ pub fn render(frame: &mut Frame, app: &App) {
             show_whitespace: app.show_whitespace,
             compile_time: app.compile_time,
             match_time: app.match_time,
-            vim_mode: app.vim_mode,
-            vim_mode_name: if app.vim_mode {
-                match app.vim_state.mode {
-                    crate::input::vim::VimMode::Normal => "NORMAL",
-                    crate::input::vim::VimMode::Insert => "INSERT",
-                }
+            vim_mode: if app.vim_mode {
+                Some(app.vim_state.mode)
             } else {
-                ""
+                None
             },
         },
         layout.status_bar,

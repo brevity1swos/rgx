@@ -29,6 +29,12 @@ impl VimState {
             pending: PendingKey::None,
         }
     }
+
+    /// Revert to Normal mode. Used when an Insert-triggering action (e.g. o/O)
+    /// is not applicable to the current panel.
+    pub fn cancel_insert(&mut self) {
+        self.mode = VimMode::Normal;
+    }
 }
 
 impl Default for VimState {
@@ -161,7 +167,7 @@ fn vim_normal_action(key: KeyEvent, state: &mut VimState) -> Action {
         KeyCode::Char('w') => Action::MoveCursorWordRight,
         KeyCode::Char('b') => Action::MoveCursorWordLeft,
         KeyCode::Char('e') => Action::MoveCursorWordForwardEnd,
-        KeyCode::Char('0') => Action::MoveToLineStart,
+        KeyCode::Char('0') => Action::MoveCursorHome,
         KeyCode::Char('^') => Action::MoveToFirstNonBlank,
         KeyCode::Char('$') => Action::MoveCursorEnd,
         KeyCode::Char('G') => Action::MoveToLastLine,
