@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2026-03-12
+
+### Bug Fixes
+
+- Move --count into print_output, add conflicts_with, update docs
+- Move count logic into App::print_output() alongside other output modes
+  - Add conflicts_with between --count and --group flags
+  - Update README with --count and --group usage examples
+  - Update launch playbook with current status and r/commandline v2 draft
+
+### Documentation
+
+- Add vim mode to README and keyboard shortcuts
+- Add vim mode to features list and comparison table
+  - Add --vim usage example and vim keybinding reference table
+  - Add vim_mode to config example
+  - Update Esc description to note vim behavior
+
+### Features
+
+- Add Shift+Tab backwards panel cycling and rounded borders option
+- Add Shift+Tab (BackTab) to cycle focus backwards through panels
+  - Add --rounded CLI flag and rounded_borders config option for rounded
+    border characters on all panels and overlays
+  - Pass BorderType through all widget structs and overlay functions
+- *(vim)* Add Action variants for vim motions and mode transitions
+- *(vim)* Add Editor primitives (x, dd, cc, o, O, ^, gg, G, e, paste)
+- *(vim)* Create VimState state machine with pending-key dd/cc/gg support
+- *(vim)* Add --vim CLI flag, config setting, and App integration
+- *(vim)* Wire vim dispatch into event loop with all action handlers
+- *(vim)* Show NORMAL/INSERT mode indicator in status bar and update help
+
+### Refactoring
+
+- *(vim)* Simplify dispatch, fix bugs, improve code quality
+- Move edit_focused/move_focused to App methods with impl FnOnce,
+    eliminating local closures and enabling closure-based dispatch for
+    InsertChar and PasteClipboard (removes ~60 lines of boilerplate)
+  - Fix EnterNormalMode crossing newline boundaries (add move_left_in_line)
+  - Fix o/O reverting to Normal mode when on non-multiline panels
+  - Replace stringly-typed vim mode in StatusBar with Option<VimMode> enum
+  - Switch undo/redo stacks from Vec to VecDeque for O(1) cap eviction
+  - Remove dead MoveToContentEnd and duplicate MoveToLineStart actions
+  - Delegate delete_char_at_cursor to delete_forward (identical logic)
+  - Add VimState::cancel_insert() to encapsulate mode revert
+
+### Testing
+
+- *(vim)* Add integration tests for vim mode
+
+
 ## [0.6.1] - 2026-03-07
 
 ### Refactoring
