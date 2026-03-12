@@ -48,6 +48,7 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Stdin pipe support** — `echo "test string" | rgx '\d+'`
 - **Non-interactive batch mode** — `rgx -p -t "input" 'pattern'` prints matches to stdout and exits
 - **Pipeline composability** — pipe in, filter, pipe out: `cat log | rgx -p '\d+' | sort -n`
+- **Vim mode** — optional modal editing (`--vim` or `vim_mode = true`) with Normal/Insert modes, h/j/k/l navigation, w/b/e word motions, dd/cc/x editing, and all global shortcuts preserved
 - **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
 - **Cross-platform** — Linux, macOS, Windows
 
@@ -99,6 +100,9 @@ cargo install rgx-cli --no-default-features
 ```bash
 # Interactive mode
 rgx
+
+# Vim mode (modal editing)
+rgx --vim
 
 # Start with a pattern
 rgx '\d{3}-\d{3}-\d{4}'
@@ -159,7 +163,27 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `F1` | Show help (Left/Right to page through) |
 | `Mouse click` | Focus panel and position cursor |
 | `Mouse scroll` | Scroll panel under cursor |
-| `Esc` | Quit |
+| `Esc` | Quit (or Normal mode in vim) |
+
+### Vim Mode (`--vim`)
+
+| Key | Mode | Action |
+|-----|------|--------|
+| `i` / `a` / `I` / `A` | Normal | Enter Insert mode (at cursor / after / line start / line end) |
+| `o` / `O` | Normal | Open line below / above and enter Insert mode |
+| `Esc` | Insert | Return to Normal mode |
+| `h` / `j` / `k` / `l` | Normal | Left / down / up / right |
+| `w` / `b` / `e` | Normal | Word forward / backward / end |
+| `0` / `$` / `^` | Normal | Line start / end / first non-blank |
+| `gg` / `G` | Normal | First line / last line |
+| `x` | Normal | Delete character under cursor |
+| `dd` | Normal | Delete line |
+| `cc` | Normal | Clear line and enter Insert mode |
+| `u` | Normal | Undo |
+| `p` | Normal | Paste from clipboard |
+| `Esc` | Normal | Quit |
+
+All global shortcuts (`Ctrl+*`, `Alt+*`, `F1`, `Tab`) work in both modes.
 
 ## Engines
 
@@ -187,6 +211,7 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | Regex flags toggle | Yes | Yes | No |
 | Stdin pipe support | Yes | Yes | Yes |
 | Built-in recipe library | Yes | No | No |
+| Vim keybindings | Yes | No | No |
 | Non-interactive batch mode | Yes | No | No |
 
 ### vs. regex101.com
@@ -204,6 +229,7 @@ rgx looks for a config file at `~/.config/rgx/config.toml`:
 
 ```toml
 default_engine = "rust"  # "rust", "fancy", or "pcre2"
+vim_mode = false          # enable vim-style modal editing
 ```
 
 ## Contributing
