@@ -65,12 +65,20 @@ async fn run() -> anyhow::Result<ExitCode> {
         app.vim_mode = true;
     }
 
-    // Load workspace if --load is set
+    // Load workspace if --load or --workspace is set
     if let Some(ref load_path) = cli.load {
         use rgx::config::workspace::Workspace;
         let ws = Workspace::load(std::path::Path::new(load_path))?;
         ws.apply(&mut app);
         app.workspace_path = Some(load_path.clone());
+    } else if let Some(ref ws_path) = cli.workspace {
+        use rgx::config::workspace::Workspace;
+        let path = std::path::Path::new(ws_path);
+        if path.exists() {
+            let ws = Workspace::load(path)?;
+            ws.apply(&mut app);
+        }
+        app.workspace_path = Some(ws_path.clone());
     }
 
     // Load test string: --text and --file take priority over stdin

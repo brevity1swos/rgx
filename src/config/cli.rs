@@ -49,8 +49,12 @@ pub struct Cli {
     pub text: Option<String>,
 
     /// Load workspace from file
-    #[arg(short = 'l', long)]
+    #[arg(short = 'l', long, conflicts_with = "workspace")]
     pub load: Option<String>,
+
+    /// Use a workspace file for save/load (creates if missing)
+    #[arg(short = 'w', long, conflicts_with = "load")]
+    pub workspace: Option<String>,
 
     /// Print matches to stdout and exit (non-interactive batch mode).
     /// Requires a pattern and input (stdin, --file, or --text).
