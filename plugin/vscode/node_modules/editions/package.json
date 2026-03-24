@@ -1,0 +1,244 @@
+{
+  "name": "editions",
+  "version": "6.22.0",
+  "license": "Artistic-2.0",
+  "description": "Publish multiple editions for your JavaScript packages consistently and easily (e.g. source edition, esnext edition, es2015 edition)",
+  "homepage": "https://github.com/bevry/editions",
+  "funding": "https://bevry.me/fund",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bevry/editions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bevry/editions/issues"
+  },
+  "keywords": [
+    "allow-env",
+    "allow-read",
+    "edition",
+    "editions",
+    "es2017",
+    "es5",
+    "es6",
+    "es6+",
+    "javascript",
+    "jsnext",
+    "node",
+    "syntaxes",
+    "typed",
+    "types",
+    "typescript",
+    "versions"
+  ],
+  "badges": {
+    "list": [
+      "githubworkflow",
+      "npmversion",
+      "npmdownloads",
+      "---",
+      "githubsponsors",
+      "thanksdev",
+      "liberapay",
+      "buymeacoffee",
+      "opencollective",
+      "crypto",
+      "paypal",
+      "---",
+      "discord",
+      "twitch"
+    ],
+    "config": {
+      "githubWorkflow": "bevry",
+      "githubSponsorsUsername": "balupton",
+      "thanksdevGithubUsername": "bevry",
+      "liberapayUsername": "bevry",
+      "buymeacoffeeUsername": "balupton",
+      "opencollectiveUsername": "bevry",
+      "cryptoURL": "https://bevry.me/crypto",
+      "paypalURL": "https://bevry.me/paypal",
+      "discordServerID": "1147436445783560193",
+      "discordServerInvite": "nQuXddV7VP",
+      "twitchUsername": "balupton",
+      "githubUsername": "bevry",
+      "githubRepository": "editions",
+      "githubSlug": "bevry/editions",
+      "npmPackageName": "editions"
+    }
+  },
+  "author": "Benjamin Lupton <b@lupton.cc> (https://balupton.com) (https://github.com/balupton)",
+  "authors": [
+    "Benjamin Lupton <b@lupton.cc> (https://balupton.com) (https://github.com/balupton): Accelerating collaborative wisdom."
+  ],
+  "maintainers": [
+    "Benjamin Lupton <b@lupton.cc> (https://balupton.com) (https://github.com/balupton): Accelerating collaborative wisdom."
+  ],
+  "contributors": [
+    "Benjamin Lupton <b@lupton.cc> (https://balupton.com) (https://github.com/balupton)",
+    "Zlatan Vasović (https://github.com/zlatanvasovic)"
+  ],
+  "sponsors": [
+    "Andrew Nesbitt <andrewnez@gmail.com> (https://nesbitt.io) (https://github.com/andrew): Working on mapping the world of open source software @ecosyste-ms  and empowering developers with @octobox",
+    "Divinci ™ <hi@divinci.ai> (https://divinci.ai) (https://github.com/Divinci-AI): A more comfortable AI conversation experience, with friends! 🤖🖤",
+    "Mr. Henry <hello@mrhenry.be> (https://mrhenry.be) (https://github.com/mrhenry)",
+    "Poonacha Medappa (https://poonachamedappa.com) (https://github.com/km-Poonacha)",
+    "Roboflow <hello@roboflow.com> (https://roboflow.com) (https://github.com/roboflow)",
+    "Square (https://github.com/square) (https://thanks.dev/d/gh/square)"
+  ],
+  "donors": [
+    "Andrew Nesbitt <andrewnez@gmail.com> (https://nesbitt.io) (https://github.com/andrew)",
+    "Ángel González <aglezabad@gmail.com> (https://univunix.com) (https://github.com/Aglezabad) (https://twitter.com/Aglezabad)",
+    "Arjun Aditya <nermalcat69@skiff.com> (https://arjunaditya.xyz) (https://github.com/nermalcat69)",
+    "Armen Mkrtchian <armen.mkrtchian@gmail.com> (https://mogoni.dev) (https://github.com/Armenm) (https://twitter.com/armen_mkrtchian)",
+    "Balsa <hello@balsa.com> (https://balsa.com) (https://github.com/balsa)",
+    "Canonical (https://canonical.com) (https://github.com/canonical) (https://thanks.dev/d/gh/canonical)",
+    "Chad (https://opencollective.com/chad8)",
+    "Codecov <hello-codecov@sentry.io> (https://codecov.io) (https://github.com/codecov)",
+    "Divinci ™ <hi@divinci.ai> (https://divinci.ai) (https://github.com/Divinci-AI)",
+    "dr.dimitru (https://veliovgroup.com) (https://github.com/dr-dimitru)",
+    "Elliott Ditman <elliottditman@gmail.com> (https://elliottditman.com) (https://github.com/elliottditman) (https://patreon.com/user?u=15026448)",
+    "entroniq (https://gitlab.com/entroniq) (https://thanks.dev/d/gl/entroniq)",
+    "Frontend Masters <support@frontendmasters.com> (https://FrontendMasters.com) (https://github.com/FrontendMasters) (https://thanks.dev/d/gh/FrontendMasters)",
+    "GitHub (https://github.com/about) (https://github.com/github)",
+    "Hunter Beast (https://cryptoquick.com) (https://github.com/cryptoquick)",
+    "Jean-Luc Geering (https://github.com/jlgeering) (https://opencollective.com/jlgeering) (https://twitter.com/jlgeering)",
+    "Lee Driscoll <lsdriscoll@icloud.com> (https://leedriscoll.me) (https://github.com/leedriscoll) (https://patreon.com/user?u=5292556)",
+    "Michael Duane Mooring (https://divinci.app) (https://github.com/mikeumus) (https://opencollective.com/mikeumus) (https://twitter.com/mikeumus)",
+    "Michael Harry Scepaniak <mhs1.sys@gmail.com> (https://michaelscepaniak.com) (https://github.com/hispanic)",
+    "Mohammed Shah <shah@idk.uno> (https://github.com/smashah) (https://thanks.dev/d/gh/smashah) (https://twitter.com/smashah)",
+    "Mr. Henry <hello@mrhenry.be> (https://mrhenry.be) (https://github.com/mrhenry)",
+    "Pleo (https://pleo.io) (https://github.com/pleo-io)",
+    "Poonacha Medappa (https://poonachamedappa.com) (https://github.com/km-Poonacha)",
+    "Robert de Forest <guitar.robot@gmail.com> (https://github.com/rdeforest)",
+    "Rob Morris <rob@prismatik.com.au> (https://linktr.ee/recipromancer) (https://github.com/Rob-Morris)",
+    "Roboflow <hello@roboflow.com> (https://roboflow.com) (https://github.com/roboflow)",
+    "Scott Kempson <scottkempson@gmail.com> (https://github.com/scokem) (https://twitter.com/scokem)",
+    "Sentry <support@sentry.io> (https://sentry.io) (https://github.com/getsentry)",
+    "ServieJS (https://github.com/serviejs) (https://thanks.dev/d/gh/serviejs)",
+    "Skunk Team (https://skunk.team) (https://github.com/skunkteam)",
+    "Square (https://github.com/square) (https://thanks.dev/d/gh/square)",
+    "Syntax <scott@syntax.fm> (https://syntax.fm) (https://github.com/syntaxfm)",
+    "WriterJohnBuck (https://github.com/WriterJohnBuck)"
+  ],
+  "engines": {
+    "node": ">=4",
+    "ecmascript": ">= es5"
+  },
+  "editions": [
+    {
+      "description": "TypeScript source code with Import for modules",
+      "directory": "source",
+      "entry": "index.ts",
+      "tags": [
+        "source",
+        "typescript",
+        "es5",
+        "import"
+      ],
+      "engines": false
+    },
+    {
+      "description": "TypeScript compiled against es5 for Node.js 4 || 6 || 8 || 10 || 12 || 14 || 16 || 18 || 20 || 22 || 24 with Require for modules",
+      "directory": "edition-es5",
+      "entry": "index.js",
+      "tags": [
+        "compiled",
+        "javascript",
+        "es5",
+        "require"
+      ],
+      "engines": {
+        "node": "4 || 6 || 8 || 10 || 12 || 14 || 16 || 18 || 20 || 22 || 24",
+        "browsers": false
+      }
+    },
+    {
+      "description": "TypeScript compiled against es2017 for Node.js 12 || 14 || 16 || 18 || 20 || 22 || 24 with Import for modules",
+      "directory": "edition-es2017-esm",
+      "entry": "index.js",
+      "tags": [
+        "compiled",
+        "javascript",
+        "es2017",
+        "import"
+      ],
+      "engines": {
+        "node": "12 || 14 || 16 || 18 || 20 || 22 || 24",
+        "browsers": false
+      }
+    },
+    {
+      "description": "TypeScript compiled Types with Import for modules",
+      "directory": "edition-types",
+      "entry": "index.d.ts",
+      "tags": [
+        "compiled",
+        "types",
+        "import"
+      ],
+      "engines": false
+    }
+  ],
+  "types": "edition-types/index.d.ts",
+  "type": "module",
+  "main": "edition-es5/index.js",
+  "exports": {
+    "node": {
+      "types": "./edition-types/index.d.ts",
+      "import": "./edition-es2017-esm/index.js",
+      "require": "./edition-es5/index.js"
+    }
+  },
+  "dependencies": {
+    "version-range": "^4.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.2.1",
+    "assert-helpers": "^11.13.0",
+    "eslint": "^9.33.0",
+    "eslint-config-bevry": "^6.1.6",
+    "kava": "^7.9.0",
+    "make-deno-edition": "^2.3.0",
+    "prettier": "^3.6.2",
+    "projectz": "^4.2.0",
+    "typedoc": "^0.28.10",
+    "typescript": "5.9.2",
+    "valid-directory": "^4.9.0"
+  },
+  "scripts": {
+    "our:clean": "rm -rf ./docs ./edition* ./es2015 ./es5 ./out ./.next",
+    "our:compile": "npm run our:compile:deno && npm run our:compile:edition-es2017-esm && npm run our:compile:edition-es5 && npm run our:compile:edition-types",
+    "our:compile:deno": "make-deno-edition --attempt",
+    "our:compile:edition-es2017-esm": "tsc --module esnext --target es2017 --outDir ./edition-es2017-esm --project tsconfig.json && ( test ! -d edition-es2017-esm/source || ( mv edition-es2017-esm/source edition-temp && rm -rf edition-es2017-esm && mv edition-temp edition-es2017-esm ) ) && printf '%s' '{\"type\": \"module\"}' > edition-es2017-esm/package.json",
+    "our:compile:edition-es5": "tsc --module commonjs --target es5 --outDir ./edition-es5 --project tsconfig.json && ( test ! -d edition-es5/source || ( mv edition-es5/source edition-temp && rm -rf edition-es5 && mv edition-temp edition-es5 ) ) && printf '%s' '{\"type\": \"commonjs\"}' > edition-es5/package.json",
+    "our:compile:edition-types": "tsc --emitDeclarationOnly --declaration --declarationMap --declarationDir ./edition-types --project tsconfig.json && ( test ! -d edition-types/source || ( mv edition-types/source edition-temp && rm -rf edition-types && mv edition-temp edition-types ) )",
+    "our:deploy": "printf '%s\n' 'no need for this project'",
+    "our:meta": "npm run our:meta:docs && npm run our:meta:projectz",
+    "our:meta:docs": "npm run our:meta:docs:typedoc",
+    "our:meta:docs:typedoc": "rm -rf ./docs && typedoc --exclude '**/+(*test*|node_modules)' --excludeExternals --out ./docs ./source",
+    "our:meta:projectz": "projectz --offline",
+    "our:release": "npm run our:release:prepare && npm run our:release:check-changelog && npm run our:release:check-dirty && npm run our:release:tag && npm run our:release:push",
+    "our:release:check-changelog": "cat ./HISTORY.md | grep \"v$npm_package_version\" || (printf '%s\n' \"add a changelog entry for v$npm_package_version\" && exit -1)",
+    "our:release:check-dirty": "git diff --exit-code",
+    "our:release:prepare": "npm run our:clean && npm run our:compile && npm run our:test && npm run our:meta",
+    "our:release:push": "git push origin && git push origin --tags",
+    "our:release:tag": "export MESSAGE=$(cat ./HISTORY.md | sed -n \"/## v$npm_package_version/,/##/p\" | sed 's/## //' | awk 'NR>1{print buf}{buf = $0}') && test \"$MESSAGE\" || (printf '%s\n' 'proper changelog entry not found' && exit -1) && git tag \"v$npm_package_version\" -am \"$MESSAGE\"",
+    "our:setup": "npm run our:setup:install",
+    "our:setup:install": "npm install",
+    "our:test": "npm run our:verify && npm test",
+    "our:verify": "npm run our:verify:eslint && npm run our:verify:prettier",
+    "our:verify:eslint": "eslint --fix",
+    "our:verify:prettier": "prettier --write .",
+    "test": "node ./edition-es5/test.js"
+  },
+  "boundation": {
+    "comment": "editions isn't for browsers, and editions can't use editions",
+    "browser": false,
+    "editionsAutoloader": false
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "es5",
+    "endOfLine": "lf"
+  }
+}

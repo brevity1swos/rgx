@@ -1,0 +1,77 @@
+{
+  "name": "rc-config-loader",
+  "version": "4.1.4",
+  "description": "load config file from .{product}rc.{json,yml,js}",
+  "keywords": [
+    "config",
+    "configuration",
+    "json",
+    "loader",
+    "rc",
+    "yaml",
+    "yml"
+  ],
+  "homepage": "https://github.com/azu/rc-config-loader",
+  "bugs": {
+    "url": "https://github.com/azu/rc-config-loader/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azu/rc-config-loader.git"
+  },
+  "license": "MIT",
+  "author": "azu",
+  "files": [
+    "bin/",
+    "lib/",
+    "src/"
+  ],
+  "main": "lib/rc-config-loader.js",
+  "types": "lib/rc-config-loader.d.ts",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "prepublish": "npm run --if-present build",
+    "test": "mocha \"test/**/*.{js,ts}\"",
+    "watch": "tsc -p . --watch",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,css}\"",
+    "prepare": "git config --local core.hooksPath .githooks"
+  },
+  "husky": {
+    "hooks": {
+      "post-commit": "git reset",
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,css}": [
+      "prettier --write"
+    ]
+  },
+  "prettier": {
+    "singleQuote": false,
+    "printWidth": 120,
+    "tabWidth": 4,
+    "trailingComma": "none"
+  },
+  "dependencies": {
+    "debug": "^4.4.3",
+    "js-yaml": "^4.1.1",
+    "json5": "^2.2.3",
+    "require-from-string": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.3.2",
+    "@types/require-from-string": "^1.2.3",
+    "lint-staged": "^16.2.7",
+    "mocha": "^11.7.5",
+    "prettier": "^3.8.1",
+    "ts-node": "^10.9.2",
+    "ts-node-test-register": "^10.0.0",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
+}

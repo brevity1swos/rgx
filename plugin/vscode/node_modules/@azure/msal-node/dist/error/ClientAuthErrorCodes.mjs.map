@@ -1,0 +1,1 @@
+{"version":3,"file":"ClientAuthErrorCodes.mjs","sources":["../../src/error/ClientAuthErrorCodes.ts"],"sourcesContent":[null],"names":[],"mappings":";;AAAA;;;AAGG;AAEI,MAAM,oBAAoB,GAAG,0BAA0B;AACvD,MAAM,kBAAkB,GAAG,uBAAuB;AAClD,MAAM,gBAAgB,GAAG,oBAAoB;AAC7C,MAAM,uBAAuB,GAAG,4BAA4B;AAC5D,MAAM,0BAA0B,GAAG,gCAAgC;AACnE,MAAM,iBAAiB,GAAG,sBAAsB;AAChD,MAAM,sBAAsB,GAAG;;;;"}

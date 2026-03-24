@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "lib": ["ES5"],
+    "maxNodeModuleJsDepth": 5,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "target": "es5"
+  },
+  "include": ["source"]
+}

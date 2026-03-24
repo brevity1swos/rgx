@@ -1,0 +1,1 @@
+{"version":3,"file":"TextlintRuleSuggestion.d.ts","sourceRoot":"","sources":["../../../src/Rule/TextlintRuleSuggestion.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,6BAA6B,EAAE,MAAM,oCAAoC,CAAC;AAEnF,MAAM,WAAW,sBAAsB;IACnC,EAAE,EAAE,MAAM,CAAC;IACX,OAAO,EAAE,MAAM,CAAC;IAChB,GAAG,EAAE,6BAA6B,CAAC;CACtC"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"TextlintRuleContextFixCommand.d.ts","sourceRoot":"","sources":["../../../src/Rule/TextlintRuleContextFixCommand.ts"],"names":[],"mappings":"AAAA;;;GAGG;AACH,MAAM,WAAW,6BAA6B;IAC1C,IAAI,EAAE,MAAM,CAAC;IACb,KAAK,EAAE,SAAS,CAAC,UAAU,EAAE,MAAM,EAAE,QAAQ,EAAE,MAAM,CAAC,CAAC;IACvD,UAAU,EAAE,OAAO,CAAC;CACvB"}

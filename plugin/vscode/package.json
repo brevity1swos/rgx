@@ -1,0 +1,72 @@
+{
+  "name": "rgx",
+  "displayName": "rgx - Terminal Regex Tester",
+  "description": "Launch the rgx regex debugger in the integrated terminal",
+  "version": "0.1.0",
+  "publisher": "brevity1swos",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brevity1swos/rgx"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "regex",
+    "tui",
+    "terminal",
+    "debugger"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "rgx.open",
+        "title": "rgx: Open"
+      },
+      {
+        "command": "rgx.openWithSelection",
+        "title": "rgx: Open with Selection"
+      },
+      {
+        "command": "rgx.openWithPattern",
+        "title": "rgx: Open with Pattern"
+      }
+    ],
+    "configuration": {
+      "title": "rgx",
+      "properties": {
+        "rgx.path": {
+          "type": "string",
+          "default": "rgx",
+          "description": "Path to the rgx binary"
+        },
+        "rgx.defaultEngine": {
+          "type": "string",
+          "enum": [
+            "rust",
+            "fancy",
+            "pcre2"
+          ],
+          "description": "Default regex engine to use"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.3.0"
+  }
+}

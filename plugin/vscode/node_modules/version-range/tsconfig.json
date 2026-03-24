@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "maxNodeModuleJsDepth": 5,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "strict": true,
+    "target": "es2023"
+  },
+  "include": ["source"]
+}
