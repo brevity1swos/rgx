@@ -203,6 +203,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+S", "Save workspace"),
         shortcut("Ctrl+R", "Open regex recipe library"),
         shortcut("Ctrl+B", "Benchmark pattern across all engines"),
+        shortcut("Ctrl+U", "Copy regex101.com URL to clipboard"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),

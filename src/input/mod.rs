@@ -46,6 +46,7 @@ pub enum Action {
     SaveWorkspace,
     OpenRecipes,
     Benchmark,
+    ExportRegex101,
     EnterInsertMode,
     EnterInsertModeAppend,
     EnterInsertModeLineStart,
@@ -83,6 +84,9 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         }
         KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::OpenRecipes,
         KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Benchmark,
+        KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::ExportRegex101
+        }
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive
         }

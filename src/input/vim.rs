@@ -60,6 +60,7 @@ fn is_global_shortcut(key: &KeyEvent) -> bool {
                 | KeyCode::Char('s')
                 | KeyCode::Char('r')
                 | KeyCode::Char('b')
+                | KeyCode::Char('u')
                 | KeyCode::Char('c')
                 | KeyCode::Char('q')
                 | KeyCode::Left
