@@ -3,6 +3,7 @@ pub mod fancy;
 pub mod pcre2;
 pub mod rust_regex;
 
+use serde::Serialize;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,21 +104,26 @@ impl EngineFlags {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Match {
+    #[serde(rename = "match")]
+    pub text: String,
     pub start: usize,
     pub end: usize,
-    pub text: String,
+    #[serde(rename = "groups")]
     pub captures: Vec<CaptureGroup>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CaptureGroup {
+    #[serde(rename = "group")]
     pub index: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(rename = "value")]
+    pub text: String,
     pub start: usize,
     pub end: usize,
-    pub text: String,
 }
 
 #[derive(Debug)]

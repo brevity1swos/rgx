@@ -5,6 +5,11 @@ use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 
+// ANSI escape codes for batch output coloring
+const ANSI_RED_BOLD: &str = "\x1b[1;31m";
+const ANSI_GREEN_BOLD: &str = "\x1b[1;32m";
+const ANSI_RESET: &str = "\x1b[0m";
+
 #[derive(Debug, Clone)]
 pub struct BenchmarkResult {
     pub engine: EngineKind,
@@ -391,21 +396,17 @@ impl App {
     pub fn copy_selected_match(&mut self) {
         let text = self.selected_text();
         let Some(text) = text else { return };
+        let msg = format!("Copied: \"{}\"", truncate(&text, 40));
+        self.copy_to_clipboard(&text, &msg);
+    }
+
+    fn copy_to_clipboard(&mut self, text: &str, success_msg: &str) {
         match arboard::Clipboard::new() {
-            Ok(mut cb) => match cb.set_text(&text) {
-                Ok(()) => {
-                    self.clipboard_status = Some(format!("Copied: \"{}\"", truncate(&text, 40)));
-                    self.clipboard_status_ticks = 40; // ~2 sec at 50ms tick
-                }
-                Err(e) => {
-                    self.clipboard_status = Some(format!("Clipboard error: {e}"));
-                    self.clipboard_status_ticks = 40;
-                }
+            Ok(mut cb) => match cb.set_text(text) {
+                Ok(()) => self.set_status_message(success_msg.to_string()),
+                Err(e) => self.set_status_message(format!("Clipboard error: {e}")),
             },
-            Err(e) => {
-                self.clipboard_status = Some(format!("Clipboard error: {e}"));
-                self.clipboard_status_ticks = 40;
-            }
+            Err(e) => self.set_status_message(format!("Clipboard error: {e}")),
         }
     }
 
@@ -443,7 +444,7 @@ impl App {
             for m in &self.matches {
                 if let Some(text) = engine::lookup_capture(m, group_spec) {
                     if color {
-                        println!("\x1b[1;31m{text}\x1b[0m");
+                        println!("{ANSI_RED_BOLD}{text}{ANSI_RESET}");
                     } else {
                         println!("{text}");
                     }
@@ -463,37 +464,9 @@ impl App {
 
     /// Print matches as structured JSON.
     pub fn print_json_output(&self) {
-        let json_matches: Vec<serde_json::Value> = self
-            .matches
-            .iter()
-            .map(|m| {
-                let groups: Vec<serde_json::Value> = m
-                    .captures
-                    .iter()
-                    .map(|c| {
-                        let mut obj = serde_json::json!({
-                            "group": c.index,
-                            "value": c.text,
-                            "start": c.start,
-                            "end": c.end,
-                        });
-                        if let Some(ref name) = c.name {
-                            obj["name"] = serde_json::json!(name);
-                        }
-                        obj
-                    })
-                    .collect();
-                serde_json::json!({
-                    "match": m.text,
-                    "start": m.start,
-                    "end": m.end,
-                    "groups": groups,
-                })
-            })
-            .collect();
         println!(
             "{}",
-            serde_json::to_string_pretty(&json_matches).unwrap_or_else(|_| "[]".to_string())
+            serde_json::to_string_pretty(&self.matches).unwrap_or_else(|_| "[]".to_string())
         );
     }
 
@@ -632,19 +605,7 @@ impl App {
     /// Copy regex101 URL to clipboard.
     pub fn copy_regex101_url(&mut self) {
         let url = self.regex101_url();
-        match arboard::Clipboard::new() {
-            Ok(mut cb) => match cb.set_text(&url) {
-                Ok(()) => {
-                    self.set_status_message("regex101 URL copied to clipboard".to_string());
-                }
-                Err(e) => {
-                    self.set_status_message(format!("Clipboard error: {e}"));
-                }
-            },
-            Err(e) => {
-                self.set_status_message(format!("Clipboard error: {e}"));
-            }
-        }
+        self.copy_to_clipboard(&url, "regex101 URL copied to clipboard");
     }
 }
 
@@ -655,7 +616,7 @@ fn print_colored_matches(text: &str, matches: &[engine::Match]) {
         if m.start > pos {
             print!("{}", &text[pos..m.start]);
         }
-        print!("\x1b[1;31m{}\x1b[0m", &text[m.start..m.end]);
+        print!("{ANSI_RED_BOLD}{}{ANSI_RESET}", &text[m.start..m.end]);
         pos = m.end;
     }
     if pos < text.len() {
@@ -671,7 +632,7 @@ fn print_colored_replace(output: &str, segments: &[engine::ReplaceSegment]) {
     for seg in segments {
         let chunk = &output[seg.start..seg.end];
         if seg.is_replacement {
-            print!("\x1b[1;32m{chunk}\x1b[0m");
+            print!("{ANSI_GREEN_BOLD}{chunk}{ANSI_RESET}");
         } else {
             print!("{chunk}");
         }
