@@ -1,4 +1,5 @@
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::{generate, Shell};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -75,6 +76,14 @@ pub struct Cli {
     #[arg(short = 'c', long, requires = "print", conflicts_with = "group")]
     pub count: bool,
 
+    /// Output matches as JSON (use with --print).
+    #[arg(long, requires = "print")]
+    pub json: bool,
+
+    /// Colorize match output: auto (default), always, or never (use with --print).
+    #[arg(long, default_value = "auto", requires = "print")]
+    pub color: ColorMode,
+
     /// Use rounded border characters for panels.
     #[arg(long)]
     pub rounded: bool,
@@ -82,4 +91,22 @@ pub struct Cli {
     /// Enable vim-style modal keybindings (Normal/Insert mode).
     #[arg(long)]
     pub vim: bool,
+
+    /// Generate shell completions and exit.
+    #[arg(long, value_name = "SHELL")]
+    pub completions: Option<Shell>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum ColorMode {
+    Auto,
+    Always,
+    Never,
+}
+
+impl Cli {
+    pub fn print_completions(shell: Shell) {
+        let mut cmd = Self::command();
+        generate(shell, &mut cmd, "rgx", &mut std::io::stdout());
+    }
 }

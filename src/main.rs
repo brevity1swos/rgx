@@ -12,7 +12,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
 use rgx::app::App;
-use rgx::config::cli::Cli;
+use rgx::config::cli::{Cli, ColorMode};
 use rgx::config::settings::Settings;
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
@@ -35,6 +35,13 @@ async fn main() -> ExitCode {
 
 async fn run() -> anyhow::Result<ExitCode> {
     let cli = Cli::parse();
+
+    // Generate shell completions and exit
+    if let Some(shell) = cli.completions {
+        Cli::print_completions(shell);
+        return Ok(ExitCode::SUCCESS);
+    }
+
     let settings = Settings::load();
 
     let engine_kind = match cli.engine {
@@ -115,7 +122,16 @@ async fn run() -> anyhow::Result<ExitCode> {
             eprintln!("rgx: {err}");
             return Ok(ExitCode::from(2));
         }
-        app.print_output(cli.group.as_deref(), cli.count);
+        if cli.json {
+            app.print_json_output();
+        } else {
+            let use_color = match cli.color {
+                ColorMode::Always => true,
+                ColorMode::Never => false,
+                ColorMode::Auto => io::stdout().is_terminal(),
+            };
+            app.print_output(cli.group.as_deref(), cli.count, use_color);
+        }
         return Ok(if app.matches.is_empty() {
             ExitCode::from(1)
         } else {
@@ -326,6 +342,9 @@ async fn run() -> anyhow::Result<ExitCode> {
                         Action::Benchmark => {
                             app.run_benchmark();
                         }
+                        Action::ExportRegex101 => {
+                            app.copy_regex101_url();
+                        }
                         Action::InsertChar(c) => app.edit_focused(|ed| ed.insert_char(c)),
                         Action::InsertNewline => {
                             if app.focused_panel == App::PANEL_TEST {
@@ -488,7 +507,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             println!("{pattern}");
         }
     } else if app.output_on_quit {
-        app.print_output(None, false);
+        app.print_output(None, false, false);
     }
 
     Ok(ExitCode::SUCCESS)
