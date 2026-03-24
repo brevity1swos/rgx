@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-03-24
+
+### Documentation
+
+- Update README, demo, and r/commandline post for v0.8.0
+- README: add --json, --color, --completions, Ctrl+U, -w workspace,
+    Ctrl+B benchmark to features, usage, shortcuts, and comparison table.
+    Update PCRE2 install instructions (now opt-in).
+  - demo.tape: add batch mode section (--json, --color) and Ctrl+U
+    regex101 export to interactive section.
+  - r_commandline.md: v3 draft with v0.8.0 features for repost.
+- Regenerate demo GIF with v0.8.0 features
+Includes --json output, --color always, and Ctrl+U regex101 export.
+- Bust GIF cache (v=4)
+
+
 ## [0.8.0] - 2026-03-24
 
 ### Bug Fixes
