@@ -1,0 +1,20 @@
+[
+  {
+    "label": "rgx: Open",
+    "command": "rgx",
+    "args": [],
+    "tags": ["rgx"]
+  },
+  {
+    "label": "rgx: Open with Selection",
+    "command": "rgx",
+    "args": ["--text", "$ZED_SELECTED_TEXT"],
+    "tags": ["rgx"]
+  },
+  {
+    "label": "rgx: Open with Pattern",
+    "command": "rgx",
+    "args": ["$ZED_SELECTED_TEXT"],
+    "tags": ["rgx"]
+  }
+]
