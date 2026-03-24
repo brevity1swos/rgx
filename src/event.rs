@@ -1,4 +1,4 @@
-use crossterm::event::{Event, EventStream, KeyEvent, MouseEvent};
+use crossterm::event::{Event, EventStream, KeyEvent, KeyEventKind, MouseEvent};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
@@ -34,6 +34,11 @@ impl EventHandler {
                     event = reader.next() => {
                         match event {
                             Some(Ok(Event::Key(key))) => {
+                                // Only process Press events to avoid double input
+                                // on Windows/WSL where Release/Repeat are also emitted
+                                if key.kind != KeyEventKind::Press {
+                                    continue;
+                                }
                                 if tx.send(AppEvent::Key(key)).is_err() {
                                     break;
                                 }

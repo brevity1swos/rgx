@@ -428,26 +428,73 @@ impl App {
     }
 
     /// Print match results or replacement output to stdout.
-    pub fn print_output(&self, group: Option<&str>, count: bool) {
+    pub fn print_output(&self, group: Option<&str>, count: bool, color: bool) {
         if count {
             println!("{}", self.matches.len());
             return;
         }
         if let Some(ref result) = self.replace_result {
-            print!("{}", result.output);
+            if color {
+                print_colored_replace(&result.output, &result.segments);
+            } else {
+                print!("{}", result.output);
+            }
         } else if let Some(group_spec) = group {
             for m in &self.matches {
                 if let Some(text) = engine::lookup_capture(m, group_spec) {
-                    println!("{text}");
+                    if color {
+                        println!("\x1b[1;31m{text}\x1b[0m");
+                    } else {
+                        println!("{text}");
+                    }
                 } else {
                     eprintln!("rgx: group '{group_spec}' not found in match");
                 }
             }
+        } else if color {
+            let text = self.test_editor.content();
+            print_colored_matches(text, &self.matches);
         } else {
             for m in &self.matches {
                 println!("{}", m.text);
             }
         }
+    }
+
+    /// Print matches as structured JSON.
+    pub fn print_json_output(&self) {
+        let json_matches: Vec<serde_json::Value> = self
+            .matches
+            .iter()
+            .map(|m| {
+                let groups: Vec<serde_json::Value> = m
+                    .captures
+                    .iter()
+                    .map(|c| {
+                        let mut obj = serde_json::json!({
+                            "group": c.index,
+                            "value": c.text,
+                            "start": c.start,
+                            "end": c.end,
+                        });
+                        if let Some(ref name) = c.name {
+                            obj["name"] = serde_json::json!(name);
+                        }
+                        obj
+                    })
+                    .collect();
+                serde_json::json!({
+                    "match": m.text,
+                    "start": m.start,
+                    "end": m.end,
+                    "groups": groups,
+                })
+            })
+            .collect();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&json_matches).unwrap_or_else(|_| "[]".to_string())
+        );
     }
 
     fn selected_text(&self) -> Option<String> {
@@ -528,5 +575,108 @@ impl App {
         }
         self.benchmark_results = results;
         self.show_benchmark = true;
+    }
+
+    /// Generate a regex101.com URL from the current state.
+    pub fn regex101_url(&self) -> String {
+        let pattern = self.regex_editor.content();
+        let test_string = self.test_editor.content();
+
+        let flavor = match self.engine_kind {
+            #[cfg(feature = "pcre2-engine")]
+            EngineKind::Pcre2 => "pcre2",
+            _ => "ecmascript",
+        };
+
+        let mut flags = String::from("g");
+        if self.flags.case_insensitive {
+            flags.push('i');
+        }
+        if self.flags.multi_line {
+            flags.push('m');
+        }
+        if self.flags.dot_matches_newline {
+            flags.push('s');
+        }
+        if self.flags.unicode {
+            flags.push('u');
+        }
+        if self.flags.extended {
+            flags.push('x');
+        }
+
+        fn url_encode(s: &str) -> String {
+            let mut out = String::with_capacity(s.len() * 3);
+            for b in s.bytes() {
+                match b {
+                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                        out.push(b as char);
+                    }
+                    _ => {
+                        out.push_str(&format!("%{b:02X}"));
+                    }
+                }
+            }
+            out
+        }
+
+        format!(
+            "https://regex101.com/?regex={}&testString={}&flags={}&flavor={}",
+            url_encode(pattern),
+            url_encode(test_string),
+            url_encode(&flags),
+            flavor,
+        )
+    }
+
+    /// Copy regex101 URL to clipboard.
+    pub fn copy_regex101_url(&mut self) {
+        let url = self.regex101_url();
+        match arboard::Clipboard::new() {
+            Ok(mut cb) => match cb.set_text(&url) {
+                Ok(()) => {
+                    self.set_status_message("regex101 URL copied to clipboard".to_string());
+                }
+                Err(e) => {
+                    self.set_status_message(format!("Clipboard error: {e}"));
+                }
+            },
+            Err(e) => {
+                self.set_status_message(format!("Clipboard error: {e}"));
+            }
+        }
+    }
+}
+
+/// Print the test string with matches highlighted using ANSI colors.
+fn print_colored_matches(text: &str, matches: &[engine::Match]) {
+    let mut pos = 0;
+    for m in matches {
+        if m.start > pos {
+            print!("{}", &text[pos..m.start]);
+        }
+        print!("\x1b[1;31m{}\x1b[0m", &text[m.start..m.end]);
+        pos = m.end;
+    }
+    if pos < text.len() {
+        print!("{}", &text[pos..]);
+    }
+    if !text.ends_with('\n') {
+        println!();
+    }
+}
+
+/// Print replacement output with replaced segments highlighted.
+fn print_colored_replace(output: &str, segments: &[engine::ReplaceSegment]) {
+    for seg in segments {
+        let chunk = &output[seg.start..seg.end];
+        if seg.is_replacement {
+            print!("\x1b[1;32m{chunk}\x1b[0m");
+        } else {
+            print!("{chunk}");
+        }
+    }
+    if !output.ends_with('\n') {
+        println!();
     }
 }
