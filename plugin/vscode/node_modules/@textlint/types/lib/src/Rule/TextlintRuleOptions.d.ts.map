@@ -1,1 +1,0 @@
-{"version":3,"file":"TextlintRuleOptions.d.ts","sourceRoot":"","sources":["../../../src/Rule/TextlintRuleOptions.ts"],"names":[],"mappings":"AAAA;;;GAGG;AACH,OAAO,EAAE,4BAA4B,EAAE,MAAM,mCAAmC,CAAC;AAEjF,MAAM,MAAM,mBAAmB,CAAC,CAAC,SAAS,MAAM,GAAG,MAAM,IAAI;IAEzD,CAAC,KAAK,EAAE,MAAM,GAAG,GAAG,CAAC;IACrB,QAAQ,CAAC,EAAE,4BAA4B,CAAC;CAC3C,GAAG,CAAC,CAAC"}
