@@ -14,6 +14,20 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 40ms
 Set Shell "bash"
 
+# === Part 1: Batch mode (new in v0.8.0) ===
+
+# JSON output
+Type "echo 'error at line 42, col 7' | rgx -p '(\d+)' --json"
+Enter
+Sleep 3s
+
+# Colored output
+Type "echo 'hello 42 world 99 foo' | rgx -p '\d+' --color always"
+Enter
+Sleep 3s
+
+# === Part 2: Interactive TUI ===
+
 # Launch rgx
 Type "rgx"
 Enter
@@ -98,6 +112,10 @@ Up
 Sleep 250ms
 
 Sleep 500ms
+
+# --- Export regex101 URL (new in v0.8.0) ---
+Ctrl+u
+Sleep 2.5s
 
 # --- Engine switching ---
 Ctrl+e

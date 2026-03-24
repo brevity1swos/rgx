@@ -47,7 +47,12 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Regex flags** — toggle case-insensitive, multiline, dotall, unicode, extended
 - **Stdin pipe support** — `echo "test string" | rgx '\d+'`
 - **Non-interactive batch mode** — `rgx -p -t "input" 'pattern'` prints matches to stdout and exits
+- **JSON output** — `--json` outputs structured match data with positions and capture groups
+- **Colored output** — `--color auto|always|never` highlights matches like `grep --color`
 - **Pipeline composability** — pipe in, filter, pipe out: `cat log | rgx -p '\d+' | sort -n`
+- **regex101 URL export** — Ctrl+U generates a regex101.com URL and copies to clipboard
+- **Project workspaces** — `-w project.toml` saves/loads regex state to a file — track in git
+- **Shell completions** — `--completions bash|zsh|fish` for tab completion
 - **Vim mode** — optional modal editing (`--vim` or `vim_mode = true`) with Normal/Insert modes, h/j/k/l navigation, w/b/e word motions, dd/cc/x editing, and all global shortcuts preserved
 - **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
 - **Cross-platform** — Linux, macOS, Windows
@@ -87,10 +92,10 @@ cd rgx
 cargo install --path .
 ```
 
-### Without PCRE2 (zero C dependencies)
+### With PCRE2 engine (requires libpcre2-dev)
 
 ```bash
-cargo install rgx-cli --no-default-features
+cargo install rgx-cli --features pcre2-engine
 ```
 
 </details>
@@ -132,11 +137,23 @@ echo "user@host" | rgx -p -g 1 '(\w+)@(\w+)'  # prints: user
 # Batch replacement
 rgx -p -t "user@host" -r '$2=$1' '(\w+)@(\w+)'   # prints: host=user
 
+# JSON output with match positions and capture groups
+echo "error at line 42" | rgx -p '(\d+)' --json
+
+# Colored output (like grep --color)
+cat server.log | rgx -p 'ERROR: (.*)' --color always
+
 # Pipeline composability
 cat server.log | rgx -p 'ERROR: (.*)' | sort | uniq -c
 
+# Project workspace — save/load regex state to a file
+rgx -w ~/project/regex/parse_urls.toml
+
 # Capture final pattern after interactive editing
 PATTERN=$(rgx -P)
+
+# Generate shell completions
+rgx --completions bash > ~/.local/share/bash-completion/completions/rgx
 
 # Exit codes: 0 = match found, 1 = no match, 2 = error
 rgx -p -t "test" '\d+' || echo "no digits found"
@@ -157,6 +174,8 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `Ctrl+W` | Toggle whitespace visualization |
 | `Ctrl+O` | Output results to stdout and quit |
 | `Ctrl+S` | Save workspace |
+| `Ctrl+U` | Copy regex101.com URL to clipboard |
+| `Ctrl+B` | Benchmark pattern across all engines |
 | `Ctrl+Left/Right` | Move cursor by word |
 | `Alt+Up/Down` | Browse pattern history |
 | `Alt+i/m/s/u/x` | Toggle flags (case, multiline, dotall, unicode, extended) |
@@ -213,6 +232,10 @@ All global shortcuts (`Ctrl+*`, `Alt+*`, `F1`, `Tab`) work in both modes.
 | Built-in recipe library | Yes | No | No |
 | Vim keybindings | Yes | No | No |
 | Non-interactive batch mode | Yes | No | No |
+| JSON output | Yes | No | No |
+| Colored batch output | Yes | No | No |
+| regex101 URL export | Yes | No | No |
+| Shell completions | Yes | No | No |
 
 ### vs. regex101.com
 
@@ -221,7 +244,8 @@ regex101.com is the more capable tool overall — it has 8 engines, step-through
 - **Offline/remote work** — no browser or internet needed
 - **Pipeline integration** — `echo data | rgx -p 'pattern' | next-command` — non-interactive batch mode with proper exit codes
 - **Engine-specific testing** — test against Rust's `regex` crate directly (regex101 doesn't have this engine)
-- **Workspace save/restore** — save your session and pick up later
+- **Workspace save/restore** — save your session and pick up later (`-w project.toml`)
+- **Bridge to regex101** — Ctrl+U exports your current state as a regex101.com URL for sharing
 
 ## Configuration
 
