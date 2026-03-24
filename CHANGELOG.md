@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-03-24
+
+### Bug Fixes
+
+- Filter key events to Press-only to prevent WSL double input
+On Windows/WSL, crossterm emits Press, Release, and Repeat key events.
+  Without filtering, each keystroke produced duplicate characters.
+- Remove pcre2-engine from default features
+Pre-built binaries dynamically linked to libpcre2, requiring Homebrew on
+  macOS. PCRE2 is now opt-in via --all-features or --features pcre2-engine.
+  Also adds clap_complete and serde_json dependencies for new features.
+
+### Features
+
+- Add --workspace flag for project-local workspace files
+- Add --completions, --json, and --color flags
+- --completions <SHELL>: generate shell completions for bash/zsh/fish
+    using clap_complete (closes #36)
+  - --json: output matches as structured JSON in batch mode (closes #37)
+  - --color auto|always|never: ANSI-highlighted match output in batch
+    mode, similar to grep --color (closes #38)
+- Add regex101 URL export (Ctrl+U) and colored/JSON output support
+- Ctrl+U generates a regex101.com URL from current state and copies to
+    clipboard, with engine-appropriate flavor mapping (closes #40)
+  - print_output() gains color support for highlighted match context
+  - print_json_output() produces structured JSON with match positions
+    and capture groups
+
+
 ## [0.7.0] - 2026-03-12
 
 ### Bug Fixes
