@@ -4,3 +4,4 @@
 .DS_Store
 launch/.monitor_state.json
 launch/__pycache__/
+.env.local
