@@ -66,4 +66,53 @@ pub const RECIPES: &[Recipe] = &[
         description: "Match key=value pairs (quoted or unquoted)",
         test_string: "host=localhost port=8080 name=\"my app\" debug=true",
     },
+    // --- Text processing patterns ---
+    Recipe {
+        name: "VTT/SRT timestamp",
+        pattern: r"\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}",
+        description: "Match WebVTT or SRT subtitle timestamp ranges",
+        test_string: "00:01:23.456 --> 00:01:27.890\nHello world\n00:01:28.000 --> 00:01:32.500",
+    },
+    Recipe {
+        name: "HTML/XML tags",
+        pattern: r"<[^>]+>",
+        description: "Match HTML or XML tags (opening, closing, self-closing)",
+        test_string: "<b>bold</b> and <i class=\"x\">italic</i> and <br/>",
+    },
+    Recipe {
+        name: "Sentence boundaries",
+        pattern: r"(?<=[.?!])\s+",
+        description: "Match whitespace after sentence-ending punctuation",
+        test_string: "Hello world. This is a test! Is it working? Yes.",
+    },
+    Recipe {
+        name: "YouTube video ID",
+        pattern: r"(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})",
+        description: "Extract YouTube video IDs from URLs",
+        test_string: "https://www.youtube.com/watch?v=dQw4w9WgXcQ and https://youtu.be/jNQXAC9IVRw",
+    },
+    Recipe {
+        name: "IATA airport code",
+        pattern: r"\b[A-Z]{3}\b",
+        description: "Match 3-letter IATA airport codes (uppercase)",
+        test_string: "Fly from JFK to LAX via ORD, not via lowercase abc",
+    },
+    Recipe {
+        name: "Unicode combining marks",
+        pattern: r"[\u0300-\u036f]+",
+        description: "Match Unicode combining diacritical marks (accents, zalgo text)",
+        test_string: "caf\u{0065}\u{0301} na\u{0069}\u{0308}ve r\u{0065}\u{0301}sum\u{0065}\u{0301}",
+    },
+    Recipe {
+        name: "Common emoji",
+        pattern: r"[\x{1F300}-\x{1F9FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]",
+        description: "Match common emoji characters (symbols, pictographs)",
+        test_string: "Hello \u{1F680} world \u{1F389} test \u{1F916} done \u{2705}",
+    },
+    Recipe {
+        name: "Markdown heading",
+        pattern: r"^#{1,6}\s+.+$",
+        description: "Match Markdown headings (h1 through h6)",
+        test_string: "# Title\n## Section\n### Subsection\nNot a heading",
+    },
 ];
