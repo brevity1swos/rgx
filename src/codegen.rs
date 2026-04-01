@@ -64,6 +64,15 @@ fn escape_double_quoted(pattern: &str) -> String {
     pattern.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+/// Collect active flag names from a language-specific mapping.
+fn collect_flags<'a>(mapping: &[(&'a str, bool)]) -> Vec<&'a str> {
+    mapping
+        .iter()
+        .filter(|(_, active)| *active)
+        .map(|(name, _)| *name)
+        .collect()
+}
+
 fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
     let escaped = escape_double_quoted(pattern);
     let has_flags = flags.case_insensitive
@@ -107,22 +116,13 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
 
 fn generate_python(pattern: &str, flags: &EngineFlags) -> String {
     let escaped = escape_double_quoted(pattern);
-    let mut flag_parts = Vec::new();
-    if flags.case_insensitive {
-        flag_parts.push("re.IGNORECASE");
-    }
-    if flags.multi_line {
-        flag_parts.push("re.MULTILINE");
-    }
-    if flags.dot_matches_newline {
-        flag_parts.push("re.DOTALL");
-    }
-    if flags.unicode {
-        flag_parts.push("re.UNICODE");
-    }
-    if flags.extended {
-        flag_parts.push("re.VERBOSE");
-    }
+    let flag_parts = collect_flags(&[
+        ("re.IGNORECASE", flags.case_insensitive),
+        ("re.MULTILINE", flags.multi_line),
+        ("re.DOTALL", flags.dot_matches_newline),
+        ("re.UNICODE", flags.unicode),
+        ("re.VERBOSE", flags.extended),
+    ]);
 
     if flag_parts.is_empty() {
         format!(
@@ -197,22 +197,13 @@ fn generate_go(pattern: &str, flags: &EngineFlags) -> String {
 
 fn generate_java(pattern: &str, flags: &EngineFlags) -> String {
     let escaped = escape_double_quoted(pattern);
-    let mut flag_parts = Vec::new();
-    if flags.case_insensitive {
-        flag_parts.push("Pattern.CASE_INSENSITIVE");
-    }
-    if flags.multi_line {
-        flag_parts.push("Pattern.MULTILINE");
-    }
-    if flags.dot_matches_newline {
-        flag_parts.push("Pattern.DOTALL");
-    }
-    if flags.unicode {
-        flag_parts.push("Pattern.UNICODE_CHARACTER_CLASS");
-    }
-    if flags.extended {
-        flag_parts.push("Pattern.COMMENTS");
-    }
+    let flag_parts = collect_flags(&[
+        ("Pattern.CASE_INSENSITIVE", flags.case_insensitive),
+        ("Pattern.MULTILINE", flags.multi_line),
+        ("Pattern.DOTALL", flags.dot_matches_newline),
+        ("Pattern.UNICODE_CHARACTER_CLASS", flags.unicode),
+        ("Pattern.COMMENTS", flags.extended),
+    ]);
 
     if flag_parts.is_empty() {
         format!(
@@ -240,19 +231,12 @@ fn generate_java(pattern: &str, flags: &EngineFlags) -> String {
 
 fn generate_csharp(pattern: &str, flags: &EngineFlags) -> String {
     let escaped = pattern.replace('"', "\"\"");
-    let mut flag_parts = Vec::new();
-    if flags.case_insensitive {
-        flag_parts.push("RegexOptions.IgnoreCase");
-    }
-    if flags.multi_line {
-        flag_parts.push("RegexOptions.Multiline");
-    }
-    if flags.dot_matches_newline {
-        flag_parts.push("RegexOptions.Singleline");
-    }
-    if flags.extended {
-        flag_parts.push("RegexOptions.IgnorePatternWhitespace");
-    }
+    let flag_parts = collect_flags(&[
+        ("RegexOptions.IgnoreCase", flags.case_insensitive),
+        ("RegexOptions.Multiline", flags.multi_line),
+        ("RegexOptions.Singleline", flags.dot_matches_newline),
+        ("RegexOptions.IgnorePatternWhitespace", flags.extended),
+    ]);
 
     if flag_parts.is_empty() {
         format!(

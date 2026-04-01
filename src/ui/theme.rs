@@ -25,6 +25,7 @@ pub fn match_bg(index: usize) -> Color {
         MATCH_BG_ALT
     }
 }
+
 pub const SURFACE0: Color = Color::Rgb(49, 50, 68);
 pub const SURFACE1: Color = Color::Rgb(69, 71, 90);
 pub const TEXT: Color = Color::Rgb(205, 214, 244);
