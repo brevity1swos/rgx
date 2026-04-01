@@ -59,8 +59,13 @@ pub fn generate_code(lang: &Language, pattern: &str, flags: &EngineFlags) -> Str
     }
 }
 
+/// Escape a pattern for use inside a double-quoted string literal.
+fn escape_double_quoted(pattern: &str) -> String {
+    pattern.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
 fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = pattern.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped = escape_double_quoted(pattern);
     let has_flags = flags.case_insensitive
         || flags.multi_line
         || flags.dot_matches_newline
@@ -101,7 +106,7 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
 }
 
 fn generate_python(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = pattern.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped = escape_double_quoted(pattern);
     let mut flag_parts = Vec::new();
     if flags.case_insensitive {
         flag_parts.push("re.IGNORECASE");
@@ -191,7 +196,7 @@ fn generate_go(pattern: &str, flags: &EngineFlags) -> String {
 }
 
 fn generate_java(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = pattern.replace('\\', "\\\\").replace('"', "\\\"");
+    let escaped = escape_double_quoted(pattern);
     let mut flag_parts = Vec::new();
     if flags.case_insensitive {
         flag_parts.push("Pattern.CASE_INSENSITIVE");
@@ -269,22 +274,7 @@ fn generate_csharp(pattern: &str, flags: &EngineFlags) -> String {
 
 fn generate_php(pattern: &str, flags: &EngineFlags) -> String {
     let escaped = pattern.replace('\'', "\\'").replace('/', "\\/");
-    let mut php_flags = String::new();
-    if flags.case_insensitive {
-        php_flags.push('i');
-    }
-    if flags.multi_line {
-        php_flags.push('m');
-    }
-    if flags.dot_matches_newline {
-        php_flags.push('s');
-    }
-    if flags.unicode {
-        php_flags.push('u');
-    }
-    if flags.extended {
-        php_flags.push('x');
-    }
+    let php_flags = flags.to_inline_prefix();
 
     format!(
         "$pattern = '/{}/{}';\n\
