@@ -14,18 +14,20 @@ pub enum Language {
     Ruby,
 }
 
+pub const ALL_LANGUAGES: &[Language] = &[
+    Language::Rust,
+    Language::Python,
+    Language::JavaScript,
+    Language::Go,
+    Language::Java,
+    Language::CSharp,
+    Language::Php,
+    Language::Ruby,
+];
+
 impl Language {
-    pub fn all() -> Vec<Language> {
-        vec![
-            Language::Rust,
-            Language::Python,
-            Language::JavaScript,
-            Language::Go,
-            Language::Java,
-            Language::CSharp,
-            Language::Php,
-            Language::Ruby,
-        ]
+    pub fn all() -> &'static [Language] {
+        ALL_LANGUAGES
     }
 }
 

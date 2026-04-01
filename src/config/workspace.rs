@@ -32,10 +32,34 @@ pub struct TestResult {
     pub input: String,
     pub should_match: bool,
     pub did_match: bool,
-    pub passed: bool,
+}
+
+impl TestResult {
+    pub fn passed(&self) -> bool {
+        self.did_match == self.should_match
+    }
 }
 
 impl Workspace {
+    fn engine_kind(&self) -> EngineKind {
+        match self.engine.as_str() {
+            "fancy" => EngineKind::FancyRegex,
+            #[cfg(feature = "pcre2-engine")]
+            "pcre2" => EngineKind::Pcre2,
+            _ => EngineKind::RustRegex,
+        }
+    }
+
+    fn flags(&self) -> EngineFlags {
+        EngineFlags {
+            case_insensitive: self.case_insensitive,
+            multi_line: self.multiline,
+            dot_matches_newline: self.dotall,
+            unicode: self.unicode,
+            extended: self.extended,
+        }
+    }
+
     pub fn from_app(app: &App) -> Self {
         let engine = match app.engine_kind {
             EngineKind::RustRegex => "rust",
@@ -59,21 +83,12 @@ impl Workspace {
     }
 
     pub fn apply(&self, app: &mut App) {
-        let engine_kind = match self.engine.as_str() {
-            "fancy" => EngineKind::FancyRegex,
-            #[cfg(feature = "pcre2-engine")]
-            "pcre2" => EngineKind::Pcre2,
-            _ => EngineKind::RustRegex,
-        };
+        let engine_kind = self.engine_kind();
         if app.engine_kind != engine_kind {
             app.engine_kind = engine_kind;
             app.switch_engine_to(engine_kind);
         }
-        app.flags.case_insensitive = self.case_insensitive;
-        app.flags.multi_line = self.multiline;
-        app.flags.dot_matches_newline = self.dotall;
-        app.flags.unicode = self.unicode;
-        app.flags.extended = self.extended;
+        app.flags = self.flags();
         app.show_whitespace = self.show_whitespace;
         app.set_test_string(&self.test_string);
         if !self.replacement.is_empty() {
@@ -96,22 +111,9 @@ impl Workspace {
 
     /// Run test assertions and return results.
     pub fn run_tests(&self) -> anyhow::Result<Vec<TestResult>> {
-        let engine_kind = match self.engine.as_str() {
-            "fancy" => EngineKind::FancyRegex,
-            #[cfg(feature = "pcre2-engine")]
-            "pcre2" => EngineKind::Pcre2,
-            _ => EngineKind::RustRegex,
-        };
-        let flags = EngineFlags {
-            case_insensitive: self.case_insensitive,
-            multi_line: self.multiline,
-            dot_matches_newline: self.dotall,
-            unicode: self.unicode,
-            extended: self.extended,
-        };
-        let eng = engine::create_engine(engine_kind);
+        let eng = engine::create_engine(self.engine_kind());
         let compiled = eng
-            .compile(&self.pattern, &flags)
+            .compile(&self.pattern, &self.flags())
             .map_err(|e| anyhow::anyhow!("{e}"))?;
 
         let mut results = Vec::with_capacity(self.tests.len());
@@ -124,7 +126,6 @@ impl Workspace {
                 input: tc.input.clone(),
                 should_match: tc.should_match,
                 did_match,
-                passed: did_match == tc.should_match,
             });
         }
         Ok(results)
@@ -139,7 +140,7 @@ const ANSI_RESET: &str = "\x1b[0m";
 /// Print test results to stdout. Returns true if all passed.
 pub fn print_test_results(path: &str, pattern: &str, results: &[TestResult], color: bool) -> bool {
     let total = results.len();
-    let passed = results.iter().filter(|r| r.passed).count();
+    let passed = results.iter().filter(|r| r.passed()).count();
     let failed = total - passed;
 
     if color {
@@ -152,7 +153,7 @@ pub fn print_test_results(path: &str, pattern: &str, results: &[TestResult], col
     println!();
 
     for (i, r) in results.iter().enumerate() {
-        let status = if r.passed {
+        let status = if r.passed() {
             if color {
                 format!("{ANSI_GREEN}PASS{ANSI_RESET}")
             } else {
