@@ -3,6 +3,23 @@ use super::{
     RegexEngine,
 };
 
+/// Returns `true` when the linked PCRE2 is affected by CVE-2025-58050.
+/// Affects PCRE2 10.45; upgrade to >= 10.46 to resolve.
+pub fn is_pcre2_10_45() -> bool {
+    pcre2::version() == (10, 45)
+}
+
+/// Returns `true` if `pattern` invokes the scan-substring verb (`(*scs:…)` or
+/// `(*scan_substring:…)`) that is the documented trigger for CVE-2025-58050.
+///
+/// PCRE2 verb syntax is `(*NAME:…)` where NAME is immediately after `(*` with
+/// no whitespace, so the match is precise enough for a local developer tool.
+/// Verb names are case-insensitive in PCRE2.
+fn uses_scs_verb(pattern: &str) -> bool {
+    let lower = pattern.to_lowercase();
+    lower.contains("(*scs:") || lower.contains("(*scan_substring:")
+}
+
 pub struct Pcre2Engine;
 
 impl RegexEngine for Pcre2Engine {
@@ -11,6 +28,19 @@ impl RegexEngine for Pcre2Engine {
     }
 
     fn compile(&self, pattern: &str, flags: &EngineFlags) -> EngineResult<Box<dyn CompiledRegex>> {
+        // CVE-2025-58050: block only patterns that invoke the scan-substring verb on
+        // PCRE2 10.45. Disabling the entire engine would prevent all PCRE2 use for a
+        // vulnerability that is specific to one verb's implementation. The status bar
+        // already shows a persistent warning prompting the user to upgrade.
+        if is_pcre2_10_45() && uses_scs_verb(pattern) {
+            return Err(EngineError::CompileError(
+                "Pattern blocked (CVE-2025-58050): (*scs:) / (*SCAN_SUBSTRING:) triggers \
+                 a heap-buffer-overflow on the linked PCRE2 10.45. \
+                 Upgrade to PCRE2 >= 10.46 to use this verb."
+                    .to_string(),
+            ));
+        }
+
         let mut builder = pcre2::bytes::RegexBuilder::new();
         builder.utf(true);
         builder.ucp(flags.unicode);
@@ -137,5 +167,32 @@ mod tests {
         let matches = compiled.find_matches("user@example.com").unwrap();
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].text, "user");
+    }
+
+    #[test]
+    fn test_uses_scs_verb_detection() {
+        // CVE-2025-58050 trigger verb variants
+        assert!(uses_scs_verb(r"(a)(b+)(*scs:(1)a(*ACCEPT))(\2)"));
+        assert!(uses_scs_verb(r"(a)(*SCS:b)"));
+        assert!(uses_scs_verb(r"(a)(*SCAN_SUBSTRING:b)"));
+        assert!(uses_scs_verb(r"(a)(*scan_substring:b)"));
+        // Unrelated patterns must not be blocked
+        assert!(!uses_scs_verb(r"(\w+) \1"));
+        assert!(!uses_scs_verb(r"(?<=@)\w+"));
+        assert!(!uses_scs_verb(r"(*ACCEPT)"));
+        assert!(!uses_scs_verb(r"(*FAIL)"));
+    }
+
+    // On PCRE2 != 10.45 the scs-verb check is the only guard; normal patterns
+    // must still compile. On 10.45, scs patterns are blocked but all others work.
+    #[test]
+    fn test_non_scs_patterns_unaffected_by_cve_guard() {
+        if !is_pcre2_10_45() {
+            // All existing tests already verify this; just confirm the guard is off.
+            let engine = Pcre2Engine;
+            let flags = EngineFlags::default();
+            assert!(engine.compile(r"\d+", &flags).is_ok());
+            assert!(engine.compile(r"(?<=@)\w+", &flags).is_ok());
+        }
     }
 }

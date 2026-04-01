@@ -29,6 +29,8 @@ pub struct StatusBar {
     pub compile_time: Option<Duration>,
     pub match_time: Option<Duration>,
     pub vim_mode: Option<VimMode>,
+    /// Non-None when the active engine has a known security advisory.
+    pub engine_warning: Option<&'static str>,
 }
 
 impl Widget for StatusBar {
@@ -57,6 +59,16 @@ impl Widget for StatusBar {
                 .bg(theme::BLUE)
                 .add_modifier(Modifier::BOLD),
         ));
+        if let Some(warning) = self.engine_warning {
+            spans.push(Span::styled(" ", Style::default().bg(theme::SURFACE0)));
+            spans.push(Span::styled(
+                format!(" \u{26a0} {} ", warning),
+                Style::default()
+                    .fg(theme::BASE)
+                    .bg(theme::RED)
+                    .add_modifier(Modifier::BOLD),
+            ));
+        }
         spans.push(Span::styled(" ", Style::default().bg(theme::SURFACE0)));
         spans.push(Span::styled(
             format!(

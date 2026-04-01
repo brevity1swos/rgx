@@ -98,6 +98,8 @@ cargo install --path .
 cargo install rgx-cli --features pcre2-engine
 ```
 
+> **Security note:** PCRE2 **10.45** is affected by [CVE-2025-58050](https://nvd.nist.gov/vuln/detail/CVE-2025-58050) — a heap-buffer-overflow reachable via patterns that use scan-substring `(*scs:)` verbs combined with backreferences. If you build rgx with `pcre2-engine` and link it against PCRE2 10.45, rgx will display a warning in the status bar. Upgrade your system's PCRE2 package to **>= 10.46** to resolve.
+
 </details>
 
 ## Usage

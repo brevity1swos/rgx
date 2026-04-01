@@ -162,6 +162,16 @@ pub fn render(frame: &mut Frame, app: &App) {
     );
 
     // Status bar
+    #[cfg(feature = "pcre2-engine")]
+    let engine_warning: Option<&'static str> =
+        if app.engine_kind == EngineKind::Pcre2 && crate::engine::pcre2::is_pcre2_10_45() {
+            Some("CVE-2025-58050: PCRE2 10.45 linked — upgrade to >= 10.46.")
+        } else {
+            None
+        };
+    #[cfg(not(feature = "pcre2-engine"))]
+    let engine_warning: Option<&'static str> = None;
+
     frame.render_widget(
         StatusBar {
             engine: app.engine_kind,
@@ -175,6 +185,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             } else {
                 None
             },
+            engine_warning,
         },
         layout.status_bar,
     );
