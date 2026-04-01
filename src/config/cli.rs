@@ -84,6 +84,11 @@ pub struct Cli {
     #[arg(long, default_value = "auto", requires = "print")]
     pub color: ColorMode,
 
+    /// Run test assertions from workspace file(s) and exit.
+    /// Expects TOML files with [[tests]] sections.
+    #[arg(long, num_args = 1.., value_name = "FILE")]
+    pub test: Option<Vec<String>>,
+
     /// Use rounded border characters for panels.
     #[arg(long)]
     pub rounded: bool,

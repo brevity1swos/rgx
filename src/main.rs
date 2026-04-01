@@ -108,6 +108,42 @@ async fn run() -> anyhow::Result<ExitCode> {
         app.set_replacement(r);
     }
 
+    // Test suite mode: --test
+    if let Some(test_files) = &cli.test {
+        let use_color = io::stdout().is_terminal();
+        let mut all_passed = true;
+        for path in test_files {
+            use rgx::config::workspace::{print_test_results, Workspace};
+            let ws = match Workspace::load(std::path::Path::new(path)) {
+                Ok(ws) => ws,
+                Err(e) => {
+                    eprintln!("rgx: {path}: {e}");
+                    return Ok(ExitCode::from(2));
+                }
+            };
+            if ws.tests.is_empty() {
+                eprintln!("rgx: {path}: no [[tests]] found");
+                return Ok(ExitCode::from(2));
+            }
+            match ws.run_tests() {
+                Ok(results) => {
+                    if !print_test_results(path, &ws.pattern, &results, use_color) {
+                        all_passed = false;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("rgx: {path}: {e}");
+                    return Ok(ExitCode::from(2));
+                }
+            }
+        }
+        return Ok(if all_passed {
+            ExitCode::SUCCESS
+        } else {
+            ExitCode::from(1)
+        });
+    }
+
     // Non-interactive batch mode: --print
     if cli.print {
         if app.regex_editor.content().is_empty() {
