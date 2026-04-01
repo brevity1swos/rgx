@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2026-04-01
+
+### Features
+
+- *(vscode)* Improve marketplace discoverability
+Add extension icon, richer description, better categories (Debuggers,
+  Testing), expanded keywords, gallery banner, and LICENSE file. Bump to
+  v0.2.0.
+- Alternate highlight colors between adjacent matches
+Even/odd matches now use distinct background colors for visual
+  distinction, especially when matches are adjacent or dense.
+  Applies to both the test string panel and the match list panel.
+- Add code generation (Ctrl+G) for 8 languages
+Generate ready-to-use code from the current pattern and flags.
+  Select a language from the overlay, copies to clipboard.
+- Auto-select engine based on pattern features
+Detect lookahead, lookbehind, backreferences, recursion, and
+  backtracking verbs in the pattern and auto-upgrade to the
+  simplest engine that supports them. Never auto-downgrades.
+
+  Shows a status message when auto-switching occurs.
+  Includes 14 unit tests for pattern detection.
+- Add test suite mode (--test) for CI-integrated regex validation
+Run `rgx --test file.toml` to validate regex patterns against
+  should-match/should-not-match assertions. Supports multiple files.
+  Exit code 0 = all pass, 1 = failures, 2 = error.
+
+  Extends workspace TOML format with optional [[tests]] sections.
+  Colored pass/fail output in terminals.
+
+### Ci
+
+- Update VS Code extension workflow to Node.js 22
+Node.js 20 is deprecated on GitHub Actions runners starting
+  June 2, 2026. Upgrade proactively to avoid forced migration.
+
+
 ## [0.9.0] - 2026-04-01
 
 ### Bug Fixes
