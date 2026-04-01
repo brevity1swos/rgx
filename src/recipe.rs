@@ -101,7 +101,8 @@ pub const RECIPES: &[Recipe] = &[
         name: "Unicode combining marks",
         pattern: r"[\u0300-\u036f]+",
         description: "Match Unicode combining diacritical marks (accents, zalgo text)",
-        test_string: "caf\u{0065}\u{0301} na\u{0069}\u{0308}ve r\u{0065}\u{0301}sum\u{0065}\u{0301}",
+        test_string:
+            "caf\u{0065}\u{0301} na\u{0069}\u{0308}ve r\u{0065}\u{0301}sum\u{0065}\u{0301}",
     },
     Recipe {
         name: "Common emoji",
