@@ -85,7 +85,7 @@ pub struct Cli {
     pub color: ColorMode,
 
     /// Run test assertions from workspace file(s) and exit.
-    /// Expects TOML files with [[tests]] sections.
+    /// Expects TOML files with \[\[tests\]\] sections.
     #[arg(long, num_args = 1.., value_name = "FILE")]
     pub test: Option<Vec<String>>,
 
