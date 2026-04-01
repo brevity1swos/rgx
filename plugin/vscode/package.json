@@ -1,10 +1,15 @@
 {
   "name": "rgx",
-  "displayName": "rgx - Terminal Regex Tester",
-  "description": "Launch the rgx regex debugger in the integrated terminal",
-  "version": "0.1.0",
+  "displayName": "rgx - Terminal Regex Debugger",
+  "description": "Test, debug, and visualize regex patterns with real-time matching, capture group highlighting, plain-English explanations, and multi-engine support (Rust, PCRE2, fancy-regex) — all inside the integrated terminal.",
+  "version": "0.2.0",
   "publisher": "brevity1swos",
   "license": "MIT",
+  "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/brevity1swos/rgx"
@@ -13,13 +18,21 @@
     "vscode": "^1.85.0"
   },
   "categories": [
+    "Debuggers",
+    "Testing",
     "Other"
   ],
   "keywords": [
     "regex",
-    "tui",
+    "regexp",
+    "pattern",
+    "match",
+    "test",
+    "debugger",
+    "pcre2",
     "terminal",
-    "debugger"
+    "tui",
+    "replace"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
