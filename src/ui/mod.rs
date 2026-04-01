@@ -16,6 +16,7 @@ use ratatui::{
 };
 
 use crate::app::{App, BenchmarkResult};
+use crate::codegen;
 use crate::engine::EngineKind;
 use crate::recipe::RECIPES;
 use explanation::ExplanationPanel;
@@ -95,6 +96,17 @@ pub fn render(frame: &mut Frame, app: &App) {
     }
     if app.show_benchmark {
         render_benchmark_overlay(frame, size, &app.benchmark_results, bt);
+        return;
+    }
+    if app.show_codegen {
+        render_codegen_overlay(
+            frame,
+            size,
+            app.codegen_language_index,
+            app.regex_editor.content(),
+            &app.flags,
+            bt,
+        );
         return;
     }
 
@@ -215,6 +227,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+R", "Open regex recipe library"),
         shortcut("Ctrl+B", "Benchmark pattern across all engines"),
         shortcut("Ctrl+U", "Copy regex101.com URL to clipboard"),
+        shortcut("Ctrl+G", "Generate code for pattern"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),
@@ -517,6 +530,86 @@ fn render_benchmark_overlay(
         .border_style(Style::default().fg(theme::PEACH))
         .title(Span::styled(
             " Benchmark (Ctrl+B) ",
+            Style::default().fg(theme::TEXT),
+        ))
+        .style(Style::default().bg(theme::BASE));
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    frame.render_widget(paragraph, overlay_area);
+}
+
+fn render_codegen_overlay(
+    frame: &mut Frame,
+    area: Rect,
+    selected: usize,
+    pattern: &str,
+    flags: &crate::engine::EngineFlags,
+    bt: BorderType,
+) {
+    let langs = codegen::Language::all();
+    let preview = if pattern.is_empty() {
+        String::from("(no pattern)")
+    } else {
+        let lang = &langs[selected.min(langs.len() - 1)];
+        codegen::generate_code(lang, pattern, flags)
+    };
+
+    let preview_lines: Vec<&str> = preview.lines().collect();
+    let preview_height = preview_lines.len() as u16;
+    // Languages list + title + spacing + preview + footer
+    let content_height = langs.len() as u16 + preview_height + 7;
+    let overlay_area = centered_overlay(frame, area, 74, content_height);
+
+    let mut lines: Vec<Line<'static>> = vec![
+        Line::from(Span::styled(
+            "Select a language to generate code",
+            Style::default()
+                .fg(theme::MAUVE)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::from(""),
+    ];
+
+    for (i, lang) in langs.iter().enumerate() {
+        let is_selected = i == selected;
+        let marker = if is_selected { ">" } else { " " };
+        let style = if is_selected {
+            Style::default().fg(theme::BASE).bg(theme::MAUVE)
+        } else {
+            Style::default().fg(theme::TEXT)
+        };
+        lines.push(Line::from(Span::styled(format!("{marker} {lang}"), style)));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "Preview:",
+        Style::default()
+            .fg(theme::SUBTEXT)
+            .add_modifier(Modifier::BOLD),
+    )));
+    for pl in preview_lines {
+        lines.push(Line::from(Span::styled(
+            pl.to_string(),
+            Style::default().fg(theme::GREEN),
+        )));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        " Up/Down: select | Enter: copy to clipboard | Esc: cancel ",
+        Style::default().fg(theme::SUBTEXT),
+    )));
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(bt)
+        .border_style(Style::default().fg(theme::MAUVE))
+        .title(Span::styled(
+            " Code Generation (Ctrl+G) ",
             Style::default().fg(theme::TEXT),
         ))
         .style(Style::default().bg(theme::BASE));

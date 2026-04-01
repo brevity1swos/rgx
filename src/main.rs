@@ -212,6 +212,31 @@ async fn run() -> anyhow::Result<ExitCode> {
                         continue;
                     }
 
+                    if app.show_codegen {
+                        use crossterm::event::KeyCode;
+                        match key.code {
+                            KeyCode::Up => {
+                                app.codegen_language_index =
+                                    app.codegen_language_index.saturating_sub(1);
+                            }
+                            KeyCode::Down => {
+                                let langs = rgx::codegen::Language::all();
+                                if app.codegen_language_index + 1 < langs.len() {
+                                    app.codegen_language_index += 1;
+                                }
+                            }
+                            KeyCode::Enter => {
+                                let langs = rgx::codegen::Language::all();
+                                let lang = &langs[app.codegen_language_index];
+                                app.generate_code(lang);
+                            }
+                            _ => {
+                                app.show_codegen = false;
+                            }
+                        }
+                        continue;
+                    }
+
                     let action = if app.vim_mode {
                         vim_key_to_action(key, &mut app.vim_state)
                     } else {
@@ -344,6 +369,10 @@ async fn run() -> anyhow::Result<ExitCode> {
                         }
                         Action::ExportRegex101 => {
                             app.copy_regex101_url();
+                        }
+                        Action::GenerateCode => {
+                            app.show_codegen = true;
+                            app.codegen_language_index = 0;
                         }
                         Action::InsertChar(c) => app.edit_focused(|ed| ed.insert_char(c)),
                         Action::InsertNewline => {

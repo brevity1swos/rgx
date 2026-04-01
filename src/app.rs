@@ -72,6 +72,8 @@ pub struct App {
     pub recipe_index: usize,
     pub show_benchmark: bool,
     pub benchmark_results: Vec<BenchmarkResult>,
+    pub show_codegen: bool,
+    pub codegen_language_index: usize,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -125,6 +127,8 @@ impl App {
             recipe_index: 0,
             show_benchmark: false,
             benchmark_results: Vec::new(),
+            show_codegen: false,
+            codegen_language_index: 0,
             engine,
             compiled: None,
         }
@@ -204,6 +208,19 @@ impl App {
             self.compile_time = None;
             self.match_time = None;
             return;
+        }
+
+        // Auto-select engine: upgrade (never downgrade) if the pattern
+        // requires a more powerful engine than the currently active one.
+        let suggested = engine::detect_minimum_engine(&pattern);
+        if engine::is_engine_upgrade(self.engine_kind, suggested) {
+            let prev = self.engine_kind;
+            self.engine_kind = suggested;
+            self.engine = engine::create_engine(suggested);
+            self.set_status_message(format!(
+                "Auto-switched {} \u{2192} {} for this pattern",
+                prev, suggested,
+            ));
         }
 
         // Compile
@@ -606,6 +623,18 @@ impl App {
     pub fn copy_regex101_url(&mut self) {
         let url = self.regex101_url();
         self.copy_to_clipboard(&url, "regex101 URL copied to clipboard");
+    }
+
+    /// Generate code for the current pattern in the given language and copy to clipboard.
+    pub fn generate_code(&mut self, lang: &crate::codegen::Language) {
+        let pattern = self.regex_editor.content().to_string();
+        if pattern.is_empty() {
+            self.set_status_message("No pattern to generate code for".to_string());
+            return;
+        }
+        let code = crate::codegen::generate_code(lang, &pattern, &self.flags);
+        self.copy_to_clipboard(&code, &format!("{} code copied to clipboard", lang));
+        self.show_codegen = false;
     }
 }
 
