@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2026-04-01
+
+### Bug Fixes
+
+- Block CVE-2025-58050 (*scs:) verb on PCRE2 10.45, add status bar warning
+On PCRE2 10.45, patterns invoking the scan-substring verb (*scs:) /
+  (*SCAN_SUBSTRING:) are rejected before reaching the vulnerable pcre2_match
+  code path. All other PCRE2 patterns are unaffected.
+
+  A persistent red warning badge is shown in the status bar whenever the PCRE2
+  engine is active on an affected version, prompting users to upgrade to >= 10.46.
+
+  Documents CVE-2025-58050 in the README PCRE2 install section.
+
+### Documentation
+
+- Add roadmap with next planned features
+
+### Features
+
+- Add 8 text-processing regex recipes
+Add real-world patterns inspired by mise CLI tools: VTT/SRT timestamps,
+  HTML tags, sentence boundaries, YouTube IDs, IATA codes, Unicode
+  combining marks, emoji, and Markdown headings.
+
+
 ## [0.8.1] - 2026-03-25
 
 ### Documentation
