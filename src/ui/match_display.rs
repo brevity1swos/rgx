@@ -59,7 +59,7 @@ impl<'a> Widget for MatchDisplay<'a> {
             let bg = if match_selected {
                 theme::SURFACE1
             } else {
-                theme::BASE
+                theme::match_bg(i)
             };
             lines.push(Line::from(vec![
                 Span::styled(prefix, Style::default().fg(theme::BLUE).bg(bg)),

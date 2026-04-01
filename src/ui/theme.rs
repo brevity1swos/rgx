@@ -16,6 +16,15 @@ pub const CAPTURE_COLORS: &[Color] = &[
 ];
 
 pub const MATCH_BG: Color = Color::Rgb(69, 71, 90);
+pub const MATCH_BG_ALT: Color = Color::Rgb(88, 91, 112);
+
+pub fn match_bg(index: usize) -> Color {
+    if index % 2 == 0 {
+        MATCH_BG
+    } else {
+        MATCH_BG_ALT
+    }
+}
 pub const SURFACE0: Color = Color::Rgb(49, 50, 68);
 pub const SURFACE1: Color = Color::Rgb(69, 71, 90);
 pub const TEXT: Color = Color::Rgb(205, 214, 244);

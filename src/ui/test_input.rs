@@ -157,7 +157,9 @@ fn build_highlighted_spans<'a>(text: &'a str, matches: &[engine::Match]) -> Vec<
     let mut spans = Vec::new();
     let mut pos = 0;
 
-    for m in matches {
+    for (match_index, m) in matches.iter().enumerate() {
+        let bg = theme::match_bg(match_index);
+
         if m.start > pos {
             spans.push(Span::styled(
                 &text[pos..m.start],
@@ -170,7 +172,7 @@ fn build_highlighted_spans<'a>(text: &'a str, matches: &[engine::Match]) -> Vec<
                 &text[m.start..m.end],
                 Style::default()
                     .fg(theme::TEXT)
-                    .bg(theme::MATCH_BG)
+                    .bg(bg)
                     .add_modifier(Modifier::BOLD),
             ));
         } else {
@@ -182,7 +184,7 @@ fn build_highlighted_spans<'a>(text: &'a str, matches: &[engine::Match]) -> Vec<
                         &text[inner_pos..cap.start],
                         Style::default()
                             .fg(theme::TEXT)
-                            .bg(theme::MATCH_BG)
+                            .bg(bg)
                             .add_modifier(Modifier::BOLD),
                     ));
                 }
@@ -201,7 +203,7 @@ fn build_highlighted_spans<'a>(text: &'a str, matches: &[engine::Match]) -> Vec<
                     &text[inner_pos..m.end],
                     Style::default()
                         .fg(theme::TEXT)
-                        .bg(theme::MATCH_BG)
+                        .bg(bg)
                         .add_modifier(Modifier::BOLD),
                 ));
             }
