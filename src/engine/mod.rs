@@ -163,6 +163,96 @@ pub fn create_engine(kind: EngineKind) -> Box<dyn RegexEngine> {
     }
 }
 
+/// Return the "power level" of an engine (higher = more capable).
+fn engine_level(kind: EngineKind) -> u8 {
+    match kind {
+        EngineKind::RustRegex => 0,
+        EngineKind::FancyRegex => 1,
+        #[cfg(feature = "pcre2-engine")]
+        EngineKind::Pcre2 => 2,
+    }
+}
+
+/// Detect the minimum engine needed for the given pattern.
+pub fn detect_minimum_engine(pattern: &str) -> EngineKind {
+    #[cfg(feature = "pcre2-engine")]
+    {
+        if needs_pcre2(pattern) {
+            return EngineKind::Pcre2;
+        }
+    }
+
+    if needs_fancy(pattern) {
+        return EngineKind::FancyRegex;
+    }
+
+    EngineKind::RustRegex
+}
+
+/// Return `true` if `suggested` is a strict upgrade over `current`.
+pub fn is_engine_upgrade(current: EngineKind, suggested: EngineKind) -> bool {
+    engine_level(suggested) > engine_level(current)
+}
+
+fn needs_fancy(pattern: &str) -> bool {
+    if pattern.contains("(?=")
+        || pattern.contains("(?!")
+        || pattern.contains("(?<=")
+        || pattern.contains("(?<!")
+    {
+        return true;
+    }
+    has_backreference(pattern)
+}
+
+fn has_backreference(pattern: &str) -> bool {
+    let bytes = pattern.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+    while i < len.saturating_sub(1) {
+        if bytes[i] == b'\\' {
+            let next = bytes[i + 1];
+            if next.is_ascii_digit() && next != b'0' {
+                return true;
+            }
+            // Skip the escaped character so we don't re-inspect it
+            i += 2;
+            continue;
+        }
+        i += 1;
+    }
+    false
+}
+
+#[cfg(feature = "pcre2-engine")]
+fn needs_pcre2(pattern: &str) -> bool {
+    if pattern.contains("(?R)")
+        || pattern.contains("(*SKIP)")
+        || pattern.contains("(*FAIL)")
+        || pattern.contains("(*PRUNE)")
+        || pattern.contains("(*COMMIT)")
+        || pattern.contains("\\K")
+        || pattern.contains("(?(")
+    {
+        return true;
+    }
+    has_subroutine_call(pattern)
+}
+
+#[cfg(feature = "pcre2-engine")]
+fn has_subroutine_call(pattern: &str) -> bool {
+    let bytes = pattern.as_bytes();
+    for i in 0..bytes.len().saturating_sub(2) {
+        if bytes[i] == b'('
+            && bytes[i + 1] == b'?'
+            && bytes.get(i + 2).is_some_and(|b| b.is_ascii_digit())
+        {
+            return true;
+        }
+    }
+    false
+}
+
 // --- Replace/Substitution support ---
 
 #[derive(Debug, Clone)]
@@ -438,5 +528,128 @@ mod tests {
             &result.output[result.segments[2].start..result.segments[2].end],
             " world"
         );
+    }
+
+    // --- Auto engine detection tests ---
+
+    #[test]
+    fn test_detect_simple_pattern_uses_rust_regex() {
+        assert_eq!(detect_minimum_engine(r"\d+"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"[a-z]+"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"foo|bar"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"^\w+$"), EngineKind::RustRegex);
+    }
+
+    #[test]
+    fn test_detect_lookahead_needs_fancy() {
+        assert_eq!(detect_minimum_engine(r"foo(?=bar)"), EngineKind::FancyRegex);
+        assert_eq!(detect_minimum_engine(r"foo(?!bar)"), EngineKind::FancyRegex);
+    }
+
+    #[test]
+    fn test_detect_lookbehind_needs_fancy() {
+        assert_eq!(
+            detect_minimum_engine(r"(?<=foo)bar"),
+            EngineKind::FancyRegex,
+        );
+        assert_eq!(
+            detect_minimum_engine(r"(?<!foo)bar"),
+            EngineKind::FancyRegex,
+        );
+    }
+
+    #[test]
+    fn test_detect_backreference_needs_fancy() {
+        assert_eq!(detect_minimum_engine(r"(\w+)\s+\1"), EngineKind::FancyRegex,);
+        assert_eq!(detect_minimum_engine(r"(a)(b)\2"), EngineKind::FancyRegex);
+    }
+
+    #[test]
+    fn test_detect_non_backreference_escapes_stay_rust() {
+        // These look like \digit but are actually common escapes
+        assert_eq!(detect_minimum_engine(r"\d"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\w\s\b"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\0"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\n\r\t"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\x41"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\u0041"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\p{L}"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\P{L}"), EngineKind::RustRegex);
+        assert_eq!(detect_minimum_engine(r"\B"), EngineKind::RustRegex);
+    }
+
+    #[test]
+    fn test_has_backreference() {
+        assert!(has_backreference(r"(\w+)\1"));
+        assert!(has_backreference(r"\1"));
+        assert!(has_backreference(r"(a)(b)(c)\3"));
+        assert!(!has_backreference(r"\d+"));
+        assert!(!has_backreference(r"\0"));
+        assert!(!has_backreference(r"plain text"));
+        assert!(!has_backreference(r"\w\s\b\B\n\r\t"));
+    }
+
+    #[test]
+    fn test_detect_empty_pattern() {
+        assert_eq!(detect_minimum_engine(""), EngineKind::RustRegex);
+    }
+
+    #[test]
+    fn test_is_engine_upgrade() {
+        assert!(is_engine_upgrade(
+            EngineKind::RustRegex,
+            EngineKind::FancyRegex
+        ));
+        assert!(!is_engine_upgrade(
+            EngineKind::FancyRegex,
+            EngineKind::RustRegex
+        ));
+        assert!(!is_engine_upgrade(
+            EngineKind::FancyRegex,
+            EngineKind::FancyRegex,
+        ));
+    }
+
+    #[cfg(feature = "pcre2-engine")]
+    mod pcre2_detection_tests {
+        use super::*;
+
+        #[test]
+        fn test_detect_recursion_needs_pcre2() {
+            assert_eq!(detect_minimum_engine(r"(?R)"), EngineKind::Pcre2);
+        }
+
+        #[test]
+        fn test_detect_backtracking_verbs_need_pcre2() {
+            assert_eq!(detect_minimum_engine(r"(*SKIP)(*FAIL)"), EngineKind::Pcre2);
+            assert_eq!(detect_minimum_engine(r"(*PRUNE)"), EngineKind::Pcre2);
+            assert_eq!(detect_minimum_engine(r"(*COMMIT)"), EngineKind::Pcre2);
+        }
+
+        #[test]
+        fn test_detect_reset_match_start_needs_pcre2() {
+            assert_eq!(detect_minimum_engine(r"foo\Kbar"), EngineKind::Pcre2);
+        }
+
+        #[test]
+        fn test_detect_conditional_needs_pcre2() {
+            assert_eq!(detect_minimum_engine(r"(?(1)yes|no)"), EngineKind::Pcre2,);
+        }
+
+        #[test]
+        fn test_detect_subroutine_call_needs_pcre2() {
+            assert_eq!(detect_minimum_engine(r"(\d+)(?1)"), EngineKind::Pcre2);
+        }
+
+        #[test]
+        fn test_is_engine_upgrade_pcre2() {
+            assert!(is_engine_upgrade(EngineKind::RustRegex, EngineKind::Pcre2));
+            assert!(is_engine_upgrade(EngineKind::FancyRegex, EngineKind::Pcre2));
+            assert!(!is_engine_upgrade(
+                EngineKind::Pcre2,
+                EngineKind::FancyRegex
+            ));
+            assert!(!is_engine_upgrade(EngineKind::Pcre2, EngineKind::RustRegex));
+        }
     }
 }
