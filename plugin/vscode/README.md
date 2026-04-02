@@ -5,12 +5,17 @@ Test, debug, and visualize regex patterns without leaving VS Code. [rgx](https:/
 ## Features
 
 - **Real-time matching** — see matches update as you type
-- **Capture group highlighting** — colored groups with numbered labels
+- **Capture group highlighting** — colored groups with numbered labels, alternating match colors
 - **Plain-English explanations** — understand any pattern at a glance
 - **Multi-engine support** — switch between Rust regex, fancy-regex (lookaround/backrefs), and PCRE2
+- **Auto engine selection** — automatically upgrades the engine when your pattern needs lookahead, backreferences, or recursion
+- **Code generation** — Ctrl+G generates ready-to-use code in Rust, Python, JavaScript, Go, Java, C#, PHP, or Ruby
 - **Replace mode** — test substitutions with live preview
+- **Test suite mode** — validate regex against assertions with `rgx --test file.toml`
 - **Pattern history** — browse and recall previous patterns
+- **Recipe library** — built-in patterns for common tasks (email, URL, IP, etc.)
 - **Vim mode** — optional vim keybindings
+- **regex101 export** — Ctrl+U generates a shareable regex101.com URL
 
 ## Requirements
 
@@ -26,6 +31,11 @@ cargo install rgx-cli
 brew install brevity1swos/tap/rgx
 ```
 
+**Install via AUR (Arch Linux):**
+```
+yay -S rgx-cli
+```
+
 ## Commands
 
 | Command | Description |
@@ -35,6 +45,18 @@ brew install brevity1swos/tap/rgx
 | `rgx: Open with Pattern` | Launch rgx with the current selection as the regex pattern |
 
 Access commands via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) and search for `rgx`.
+
+## Key Shortcuts (inside rgx)
+
+| Key | Action |
+|-----|--------|
+| `Ctrl+G` | Generate code for the current pattern (8 languages) |
+| `Ctrl+R` | Open regex recipe library |
+| `Ctrl+U` | Copy regex101.com URL to clipboard |
+| `Ctrl+E` | Cycle regex engine |
+| `Ctrl+Y` | Copy selected match to clipboard |
+| `Ctrl+W` | Toggle whitespace visualization |
+| `F1` | Show help |
 
 ## Settings
 
