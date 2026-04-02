@@ -14,7 +14,7 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 40ms
 Set Shell "bash"
 
-# === Part 1: Batch mode (new in v0.8.0) ===
+# === Part 1: Batch mode ===
 
 # JSON output
 Type "echo 'error at line 42, col 7' | rgx -p '(\d+)' --json"
@@ -28,61 +28,51 @@ Sleep 3s
 
 # === Part 2: Interactive TUI ===
 
-# Launch rgx
-Type "rgx"
+# Launch rgx with test text to show alternating match colors
+Type "rgx -t 'user@example.com admin@test.org hello world'"
 Enter
 Sleep 1s
 
-# --- Pattern matching with captures ---
+# --- Pattern matching with captures + alternating colors ---
 Type "(\w+)@(\w+)\.(\w+)"
-Sleep 2s
-
-# Switch to test string input
-Tab
-Sleep 300ms
-
-# Type multi-line test string
-Type "user@example.com"
-Enter
-Type "admin@test.org"
-Enter
-Type "hello world"
 Sleep 2s
 
 # --- Whitespace visualization ---
 Ctrl+w
 Sleep 2s
-
-# Toggle off
 Ctrl+w
 Sleep 1s
 
 # --- Replace mode ---
 Tab
 Sleep 300ms
+Tab
+Sleep 300ms
 
 Type "$1 AT $2"
 Sleep 2s
 
-# --- Undo/Redo ---
-Ctrl+z
+# --- Code generation (Ctrl+G) ---
+Ctrl+g
+Sleep 1.5s
+
+# Browse languages
+Down
 Sleep 400ms
-Ctrl+z
+Down
 Sleep 400ms
-Ctrl+z
-Sleep 400ms
-Ctrl+z
+Down
 Sleep 400ms
 
-# Redo it back
-Ctrl+Shift+z
+# Back to Python
+Up
 Sleep 400ms
-Ctrl+Shift+z
+Up
 Sleep 400ms
-Ctrl+Shift+z
-Sleep 400ms
-Ctrl+Shift+z
-Sleep 1.5s
+
+# Copy Python code
+Enter
+Sleep 2s
 
 # --- Match selection + clipboard ---
 Tab
@@ -94,16 +84,11 @@ Down
 Sleep 300ms
 Down
 Sleep 300ms
-Down
-Sleep 300ms
 
 # Copy selected match
 Ctrl+y
 Sleep 2s
 
-# Navigate back up
-Up
-Sleep 250ms
 Up
 Sleep 250ms
 Up
@@ -113,14 +98,13 @@ Sleep 250ms
 
 Sleep 500ms
 
-# --- Export regex101 URL (new in v0.8.0) ---
+# --- Export regex101 URL ---
 Ctrl+u
 Sleep 2.5s
 
 # --- Engine switching ---
 Ctrl+e
 Sleep 1.5s
-
 Ctrl+e
 Sleep 1s
 
@@ -129,6 +113,19 @@ Alt+i
 Sleep 1s
 Alt+i
 Sleep 1s
+
+# Quit
+Escape
+Sleep 500ms
+
+# === Part 3: Auto engine selection ===
+
+# Launch with a lookahead pattern — auto-switches to fancy-regex
+Type "rgx -t 'user@example.com admin@test.org' '\w+(?=@)'"
+Enter
+Sleep 3s
+
+# Status bar shows "Auto-switched Rust regex → fancy-regex"
 
 # Quit
 Escape
