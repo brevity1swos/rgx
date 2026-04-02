@@ -55,6 +55,10 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Shell completions** — `--completions bash|zsh|fish` for tab completion
 - **Vim mode** — optional modal editing (`--vim` or `vim_mode = true`) with Normal/Insert modes, h/j/k/l navigation, w/b/e word motions, dd/cc/x editing, and all global shortcuts preserved
 - **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
+- **Code generation** — Ctrl+G generates ready-to-use code in Rust, Python, JavaScript, Go, Java, C#, PHP, or Ruby — copies to clipboard
+- **Auto engine selection** — automatically upgrades to fancy-regex or PCRE2 when your pattern uses lookahead, backreferences, or recursion
+- **Test suite mode** — `rgx --test file.toml` validates regex against should-match/should-not-match assertions — CI-friendly exit codes
+- **Alternating match colors** — adjacent matches use distinct background colors for visual clarity
 - **Cross-platform** — Linux, macOS, Windows
 
 ## Installation
@@ -79,6 +83,12 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/brevity1swos/rgx/releas
 
 ```bash
 brew install brevity1swos/tap/rgx
+```
+
+### Arch Linux (AUR)
+
+```bash
+yay -S rgx-cli        # or rgx-cli-bin for prebuilt
 ```
 
 <details>
@@ -154,6 +164,9 @@ rgx -w ~/project/regex/parse_urls.toml
 # Capture final pattern after interactive editing
 PATTERN=$(rgx -P)
 
+# Test suite mode — validate regex assertions in CI
+rgx --test tests/url_patterns.toml tests/email_patterns.toml
+
 # Generate shell completions
 rgx --completions bash > ~/.local/share/bash-completion/completions/rgx
 
@@ -176,6 +189,7 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `Ctrl+W` | Toggle whitespace visualization |
 | `Ctrl+O` | Output results to stdout and quit |
 | `Ctrl+S` | Save workspace |
+| `Ctrl+G` | Generate code in 8 languages (copies to clipboard) |
 | `Ctrl+U` | Copy regex101.com URL to clipboard |
 | `Ctrl+B` | Benchmark pattern across all engines |
 | `Ctrl+Left/Right` | Move cursor by word |
@@ -237,17 +251,45 @@ All global shortcuts (`Ctrl+*`, `Alt+*`, `F1`, `Tab`) work in both modes.
 | JSON output | Yes | No | No |
 | Colored batch output | Yes | No | No |
 | regex101 URL export | Yes | No | No |
+| Code generation | Yes (8 langs) | No | No |
+| Auto engine selection | Yes | No | No |
+| Test suite mode | Yes | No | No |
 | Shell completions | Yes | No | No |
 
 ### vs. regex101.com
 
-regex101.com is the more capable tool overall — it has 8 engines, step-through debugging, code generation, shareable permalinks, and a community pattern library. rgx doesn't try to replace it. Where rgx is useful instead:
+regex101.com has 8 engines, step-through debugging, shareable permalinks, and a community pattern library. rgx doesn't try to replace it. Where rgx is useful instead:
 
 - **Offline/remote work** — no browser or internet needed
 - **Pipeline integration** — `echo data | rgx -p 'pattern' | next-command` — non-interactive batch mode with proper exit codes
+- **Code generation** — Ctrl+G generates code for Rust, Python, JavaScript, Go, Java, C#, PHP, Ruby
 - **Engine-specific testing** — test against Rust's `regex` crate directly (regex101 doesn't have this engine)
+- **Test suite mode** — `rgx --test file.toml` for CI-integrated regex validation
 - **Workspace save/restore** — save your session and pick up later (`-w project.toml`)
 - **Bridge to regex101** — Ctrl+U exports your current state as a regex101.com URL for sharing
+
+## Test Suite Mode
+
+Validate regex patterns against assertions in CI pipelines:
+
+```toml
+# tests/urls.toml
+pattern = "https?://[^\\s]+"
+engine = "rust"
+
+[[tests]]
+input = "visit https://example.com today"
+should_match = true
+
+[[tests]]
+input = "no url here"
+should_match = false
+```
+
+```bash
+rgx --test tests/urls.toml tests/emails.toml
+# Exit code: 0 = all pass, 1 = failures, 2 = error
+```
 
 ## Configuration
 
