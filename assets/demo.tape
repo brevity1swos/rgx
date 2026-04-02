@@ -54,25 +54,25 @@ Sleep 2s
 
 # --- Code generation (Ctrl+G) ---
 Ctrl+g
-Sleep 1.5s
+Sleep 3s
 
 # Browse languages
 Down
-Sleep 400ms
+Sleep 1s
 Down
-Sleep 400ms
+Sleep 1s
 Down
-Sleep 400ms
+Sleep 1s
 
 # Back to Python
 Up
-Sleep 400ms
+Sleep 1s
 Up
-Sleep 400ms
+Sleep 1s
 
 # Copy Python code
 Enter
-Sleep 2s
+Sleep 3s
 
 # --- Match selection + clipboard ---
 Tab
