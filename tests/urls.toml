@@ -1,0 +1,22 @@
+pattern = "https?://[^\\s]+"
+test_string = ""
+replacement = ""
+engine = "rust"
+case_insensitive = false
+multiline = false
+dotall = false
+unicode = false
+extended = false
+show_whitespace = false
+
+[[tests]]
+input = "visit https://example.com today"
+should_match = true
+
+[[tests]]
+input = "no url here"
+should_match = false
+
+[[tests]]
+input = "ftp://files.example.com"
+should_match = false
