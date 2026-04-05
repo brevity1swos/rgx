@@ -273,6 +273,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                         continue;
                     }
 
+                    #[cfg(feature = "pcre2-engine")]
                     if app.debug_session.is_some() {
                         use crossterm::event::KeyCode;
                         match key.code {
@@ -285,7 +286,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                             KeyCode::Char('f') => app.debug_next_backtrack(),
                             KeyCode::Char('H') => app.debug_toggle_heatmap(),
                             KeyCode::Esc | KeyCode::Char('q') => {
-                                app.debug_session = None;
+                                app.close_debug();
                             }
                             _ => {}
                         }
@@ -500,11 +501,14 @@ async fn run() -> anyhow::Result<ExitCode> {
                             }
                         }
                         Action::ToggleDebugger => {
+                            #[cfg(feature = "pcre2-engine")]
                             if app.debug_session.is_some() {
-                                app.debug_session = None;
+                                app.close_debug();
                             } else {
                                 app.start_debug(settings.debug_max_steps);
                             }
+                            #[cfg(not(feature = "pcre2-engine"))]
+                            app.start_debug(settings.debug_max_steps);
                         }
                         Action::None => {}
                     }

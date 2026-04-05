@@ -115,14 +115,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     #[cfg(feature = "pcre2-engine")]
     if let Some(ref session) = app.debug_session {
-        debugger::render_debugger(
-            frame,
-            size,
-            session,
-            app.regex_editor.content(),
-            app.test_editor.content(),
-            bt,
-        );
+        debugger::render_debugger(frame, size, session, bt);
         return;
     }
 

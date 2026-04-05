@@ -76,10 +76,8 @@ pub struct App {
     pub codegen_language_index: usize,
     #[cfg(feature = "pcre2-engine")]
     pub debug_session: Option<crate::engine::pcre2_debug::DebugSession>,
-    #[cfg(not(feature = "pcre2-engine"))]
-    pub debug_session: Option<()>,
     #[cfg(feature = "pcre2-engine")]
-    debug_cache: Option<(String, String, crate::engine::pcre2_debug::DebugTrace)>,
+    debug_cache: Option<crate::engine::pcre2_debug::DebugSession>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -135,6 +133,7 @@ impl App {
             benchmark_results: Vec::new(),
             show_codegen: false,
             codegen_language_index: 0,
+            #[cfg(feature = "pcre2-engine")]
             debug_session: None,
             #[cfg(feature = "pcre2-engine")]
             debug_cache: None,
@@ -662,17 +661,11 @@ impl App {
             self.recompute();
         }
 
-        // Check cache — reuse existing trace if pattern and subject
-        // haven't changed since the last debug session.
-        if let Some((ref cp, ref cs, ref ct)) = self.debug_cache {
-            if *cp == pattern && *cs == subject {
-                self.debug_session = Some(DebugSession {
-                    trace: ct.clone(),
-                    step: 0,
-                    show_heatmap: false,
-                    pattern,
-                    subject,
-                });
+        // Restore cached session if pattern and subject haven't changed,
+        // preserving the user's step position and heatmap toggle.
+        if let Some(cached) = self.debug_cache.take() {
+            if cached.pattern == pattern && cached.subject == subject {
+                self.debug_session = Some(cached);
                 return;
             }
         }
@@ -681,7 +674,6 @@ impl App {
 
         match pcre2_debug::debug_match(&pattern, &subject, &self.flags, max_steps, start_offset) {
             Ok(trace) => {
-                self.debug_cache = Some((pattern.clone(), subject.clone(), trace.clone()));
                 self.debug_session = Some(DebugSession {
                     trace,
                     step: 0,
@@ -710,6 +702,11 @@ impl App {
         } else {
             0
         }
+    }
+
+    #[cfg(feature = "pcre2-engine")]
+    pub fn close_debug(&mut self) {
+        self.debug_cache = self.debug_session.take();
     }
 
     pub fn debug_step_forward(&mut self) {

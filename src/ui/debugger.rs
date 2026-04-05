@@ -12,20 +12,15 @@ use super::centered_overlay;
 use super::theme;
 
 #[cfg(feature = "pcre2-engine")]
-use crate::engine::pcre2_debug::{find_token_at_offset, DebugSession, DebugStep, DebugTrace};
+use crate::engine::pcre2_debug::{DebugSession, DebugStep, DebugTrace};
 
 #[cfg(feature = "pcre2-engine")]
-pub fn render_debugger(
-    frame: &mut Frame,
-    area: Rect,
-    session: &DebugSession,
-    pattern: &str,
-    subject: &str,
-    bt: BorderType,
-) {
+pub fn render_debugger(frame: &mut Frame, area: Rect, session: &DebugSession, bt: BorderType) {
     let trace = &session.trace;
     let current_step = session.step;
     let show_heatmap = session.show_heatmap;
+    let pattern = session.pattern.as_str();
+    let subject = session.subject.as_str();
 
     let overlay = centered_overlay(frame, area, 90, 30);
 
@@ -269,8 +264,11 @@ fn render_captures(
 ) {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
-    let token_desc = find_token_at_offset(&trace.offset_map, step.pattern_offset)
-        .and_then(|idx| trace.offset_map.get(idx))
+    let token_desc = trace
+        .byte_to_token
+        .get(step.pattern_offset)
+        .filter(|&&ti| ti != usize::MAX)
+        .and_then(|&ti| trace.offset_map.get(ti))
         .map(|t| t.description.clone())
         .unwrap_or_else(|| "—".to_string());
 
