@@ -114,20 +114,16 @@ pub fn render(frame: &mut Frame, app: &App) {
     }
 
     #[cfg(feature = "pcre2-engine")]
-    if app.show_debugger {
-        if let Some(ref trace) = app.debug_trace {
-            debugger::render_debugger(
-                frame,
-                size,
-                trace,
-                app.debug_step,
-                app.debug_show_heatmap,
-                app.regex_editor.content(),
-                app.test_editor.content(),
-                bt,
-            );
-            return;
-        }
+    if let Some(ref session) = app.debug_session {
+        debugger::render_debugger(
+            frame,
+            size,
+            session,
+            app.regex_editor.content(),
+            app.test_editor.content(),
+            bt,
+        );
+        return;
     }
 
     let error_str = app.error.as_deref();

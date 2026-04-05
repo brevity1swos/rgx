@@ -12,20 +12,21 @@ use super::centered_overlay;
 use super::theme;
 
 #[cfg(feature = "pcre2-engine")]
-use crate::engine::pcre2_debug::{find_token_at_offset, DebugStep, DebugTrace};
+use crate::engine::pcre2_debug::{find_token_at_offset, DebugSession, DebugStep, DebugTrace};
 
 #[cfg(feature = "pcre2-engine")]
-#[allow(clippy::too_many_arguments)]
 pub fn render_debugger(
     frame: &mut Frame,
     area: Rect,
-    trace: &DebugTrace,
-    current_step: usize,
-    show_heatmap: bool,
+    session: &DebugSession,
     pattern: &str,
     subject: &str,
     bt: BorderType,
 ) {
+    let trace = &session.trace;
+    let current_step = session.step;
+    let show_heatmap = session.show_heatmap;
+
     let overlay = centered_overlay(frame, area, 90, 30);
 
     let heatmap_height: u16 = if show_heatmap { 3 } else { 0 };
@@ -90,6 +91,16 @@ fn panel_block(title: &'static str, bt: BorderType) -> Block<'static> {
         .style(Style::default().bg(theme::BASE))
 }
 
+fn build_char_spans(
+    text: &str,
+    style_for: impl Fn(usize, char) -> Style,
+    display_for: impl Fn(char) -> String,
+) -> Vec<Span<'static>> {
+    text.char_indices()
+        .map(|(i, ch)| Span::styled(display_for(ch), style_for(i, ch)))
+        .collect()
+}
+
 #[cfg(feature = "pcre2-engine")]
 fn render_pattern_panel(
     frame: &mut Frame,
@@ -101,16 +112,17 @@ fn render_pattern_panel(
     let token_start = step.pattern_offset;
     let token_end = token_start + step.pattern_item_length.max(1);
 
-    let mut spans: Vec<Span<'static>> = Vec::new();
-    for (i, ch) in pattern.char_indices() {
-        let in_token = i >= token_start && i < token_end;
-        let style = if in_token {
-            Style::default().fg(theme::BASE).bg(theme::YELLOW)
-        } else {
-            Style::default().fg(theme::TEXT)
-        };
-        spans.push(Span::styled(ch.to_string(), style));
-    }
+    let spans = build_char_spans(
+        pattern,
+        |i, _| {
+            if i >= token_start && i < token_end {
+                Style::default().fg(theme::BASE).bg(theme::YELLOW)
+            } else {
+                Style::default().fg(theme::TEXT)
+            }
+        },
+        |ch| ch.to_string(),
+    );
 
     let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Pattern ", bt));
     frame.render_widget(paragraph, area);
@@ -126,21 +138,22 @@ fn render_input_panel(
 ) {
     let pos = step.subject_offset;
 
-    let mut spans: Vec<Span<'static>> = Vec::new();
-    for (i, ch) in subject.char_indices() {
-        let style = if i == pos {
-            Style::default().fg(theme::BASE).bg(theme::TEAL)
-        } else {
-            Style::default().fg(theme::TEXT)
-        };
-        let display = match ch {
+    let mut spans = build_char_spans(
+        subject,
+        |i, _| {
+            if i == pos {
+                Style::default().fg(theme::BASE).bg(theme::TEAL)
+            } else {
+                Style::default().fg(theme::TEXT)
+            }
+        },
+        |ch| match ch {
             '\n' => "↵".to_string(),
             '\t' => "→".to_string(),
             ' ' => "·".to_string(),
             c => c.to_string(),
-        };
-        spans.push(Span::styled(display, style));
-    }
+        },
+    );
 
     // PCRE2 reports position == subject.len() on a trailing match;
     // show a synthetic cursor marker instead of going out-of-bounds.
@@ -219,8 +232,11 @@ fn render_heatmap(
 
     let mut spans: Vec<Span<'static>> = Vec::new();
     for (i, ch) in pattern.char_indices() {
-        let heat = find_token_at_offset(&trace.offset_map, i)
-            .and_then(|ti| trace.heatmap.get(ti).copied())
+        let heat = trace
+            .byte_to_token
+            .get(i)
+            .filter(|&&ti| ti != usize::MAX)
+            .and_then(|&ti| trace.heatmap.get(ti).copied())
             .unwrap_or(0);
 
         let pct = heat as f32 / max_heat as f32;

@@ -10,6 +10,13 @@ pub struct ExplainNode {
     pub description: String,
 }
 
+/// Parse a pattern into an AST, discarding errors.
+/// Shared by `pcre2_debug::build_offset_map` and
+/// `syntax_highlight::highlight`.
+pub fn parse_ast(pattern: &str) -> Option<regex_syntax::ast::Ast> {
+    Parser::new().parse(pattern).ok()
+}
+
 pub fn explain(pattern: &str) -> Result<Vec<ExplainNode>, (String, Option<usize>)> {
     if pattern.is_empty() {
         return Ok(vec![]);

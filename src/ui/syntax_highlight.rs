@@ -2,7 +2,7 @@ use ratatui::{
     style::{Color, Style},
     text::Span,
 };
-use regex_syntax::ast::{parse::Parser, Ast, LiteralKind};
+use regex_syntax::ast::{Ast, LiteralKind};
 
 use super::theme;
 
@@ -29,9 +29,9 @@ pub fn highlight(pattern: &str) -> Vec<SyntaxToken> {
         return vec![];
     }
 
-    let ast = match Parser::new().parse(pattern) {
-        Ok(ast) => ast,
-        Err(_) => return vec![],
+    let ast = match crate::explain::parse_ast(pattern) {
+        Some(ast) => ast,
+        None => return vec![],
     };
 
     let mut tokens = Vec::new();

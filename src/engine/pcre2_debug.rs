@@ -7,9 +7,6 @@ use std::ptr;
 
 use pcre2_sys::*;
 
-use regex_syntax::ast::parse::Parser;
-use regex_syntax::ast::Ast;
-
 use super::{EngineError, EngineFlags, EngineResult};
 
 #[derive(Debug, Clone)]
@@ -36,6 +33,18 @@ pub struct DebugTrace {
     pub offset_map: Vec<PatternToken>,
     pub heatmap: Vec<u32>,
     pub match_attempts: usize,
+    /// Maps each byte offset in the pattern to its token index
+    /// (or `usize::MAX` if none).
+    pub byte_to_token: Vec<usize>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DebugSession {
+    pub trace: DebugTrace,
+    pub step: usize,
+    pub show_heatmap: bool,
+    pub pattern: String,
+    pub subject: String,
 }
 
 // pcre2-sys blocklists callout types/functions from its generated bindings,
@@ -131,10 +140,22 @@ pub fn debug_match(
             offset_map: Vec::new(),
             heatmap: Vec::new(),
             match_attempts: 0,
+            byte_to_token: Vec::new(),
         });
     }
 
     let offset_map = build_offset_map(pattern);
+
+    let mut byte_to_token = vec![usize::MAX; pattern.len()];
+    for (ti, token) in offset_map.iter().enumerate() {
+        for slot in byte_to_token
+            .iter_mut()
+            .take(token.end.min(pattern.len()))
+            .skip(token.start)
+        {
+            *slot = ti;
+        }
+    }
 
     let (steps, truncated, match_attempts) =
         unsafe { debug_match_ffi(pattern, subject, flags, max_steps, start_offset)? };
@@ -152,6 +173,7 @@ pub fn debug_match(
         offset_map,
         heatmap,
         match_attempts,
+        byte_to_token,
     })
 }
 
@@ -254,9 +276,9 @@ unsafe fn debug_match_ffi(
 }
 
 pub fn build_offset_map(pattern: &str) -> Vec<PatternToken> {
-    let ast = match Parser::new().parse(pattern) {
-        Ok(ast) => ast,
-        Err(_) => return Vec::new(),
+    let ast = match crate::explain::parse_ast(pattern) {
+        Some(ast) => ast,
+        None => return Vec::new(),
     };
     let mut tokens = Vec::new();
     collect_tokens(&ast, &mut tokens);
@@ -265,8 +287,9 @@ pub fn build_offset_map(pattern: &str) -> Vec<PatternToken> {
     tokens
 }
 
-fn collect_tokens(ast: &Ast, tokens: &mut Vec<PatternToken>) {
+fn collect_tokens(ast: &regex_syntax::ast::Ast, tokens: &mut Vec<PatternToken>) {
     use crate::explain::formatter;
+    use regex_syntax::ast::Ast;
 
     match ast {
         Ast::Empty(_) => {}

@@ -273,7 +273,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                         continue;
                     }
 
-                    if app.show_debugger {
+                    if app.debug_session.is_some() {
                         use crossterm::event::KeyCode;
                         match key.code {
                             KeyCode::Right | KeyCode::Char('l') => app.debug_step_forward(),
@@ -285,7 +285,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                             KeyCode::Char('f') => app.debug_next_backtrack(),
                             KeyCode::Char('H') => app.debug_toggle_heatmap(),
                             KeyCode::Esc | KeyCode::Char('q') => {
-                                app.show_debugger = false;
+                                app.debug_session = None;
                             }
                             _ => {}
                         }
@@ -500,8 +500,8 @@ async fn run() -> anyhow::Result<ExitCode> {
                             }
                         }
                         Action::ToggleDebugger => {
-                            if app.show_debugger {
-                                app.show_debugger = false;
+                            if app.debug_session.is_some() {
+                                app.debug_session = None;
                             } else {
                                 app.start_debug(settings.debug_max_steps);
                             }
