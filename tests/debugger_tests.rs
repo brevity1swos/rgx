@@ -29,8 +29,10 @@ fn test_catastrophic_backtracking_detection() {
 
 #[test]
 fn test_debug_with_flags() {
-    let mut flags = EngineFlags::default();
-    flags.case_insensitive = true;
+    let flags = EngineFlags {
+        case_insensitive: true,
+        ..Default::default()
+    };
     let trace = debug_match("abc", "ABC", &flags, 10000, 0).unwrap();
     assert!(!trace.steps.is_empty(), "case-insensitive should match");
 }

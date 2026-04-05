@@ -118,7 +118,47 @@ Sleep 1s
 Escape
 Sleep 500ms
 
-# === Part 3: Auto engine selection ===
+# === Part 3: Step-through debugger ===
+
+# Launch with a pattern that causes backtracking
+# Requires rgx built with: cargo install rgx-cli --features pcre2-engine
+Type "rgx -t 'aaab' 'a+ab'"
+Enter
+Sleep 2s
+
+# Open debugger with Ctrl+D
+Ctrl+d
+Sleep 2s
+
+# Step through execution
+Right
+Sleep 500ms
+Right
+Sleep 500ms
+Right
+Sleep 500ms
+Right
+Sleep 500ms
+Right
+Sleep 500ms
+
+# Jump to next backtrack
+Type "f"
+Sleep 1.5s
+
+# Toggle heatmap
+Shift+h
+Sleep 2s
+
+# Close debugger
+Escape
+Sleep 500ms
+
+# Quit
+Escape
+Sleep 500ms
+
+# === Part 4: Auto engine selection ===
 
 # Launch with a lookahead pattern — auto-switches to fancy-regex
 Type "rgx -t 'user@example.com admin@test.org' '\w+(?=@)'"

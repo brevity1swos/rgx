@@ -59,6 +59,7 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Auto engine selection** — automatically upgrades to fancy-regex or PCRE2 when your pattern uses lookahead, backreferences, or recursion
 - **Test suite mode** — `rgx --test file.toml` validates regex against should-match/should-not-match assertions — CI-friendly exit codes
 - **Alternating match colors** — adjacent matches use distinct background colors for visual clarity
+- **Step-through debugger** — Ctrl+D opens a full-screen debugger that traces PCRE2 execution step by step, highlights the current pattern token and input position, shows backtracking, and includes a heatmap mode to reveal catastrophic backtracking at a glance
 - **Cross-platform** — Linux, macOS, Windows
 
 ## Installation
@@ -191,6 +192,7 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `Ctrl+S` | Save workspace |
 | `Ctrl+G` | Generate code in 8 languages (copies to clipboard) |
 | `Ctrl+U` | Copy regex101.com URL to clipboard |
+| `Ctrl+D` | Step-through regex debugger (PCRE2) |
 | `Ctrl+B` | Benchmark pattern across all engines |
 | `Ctrl+Left/Right` | Move cursor by word |
 | `Alt+Up/Down` | Browse pattern history |
@@ -254,11 +256,12 @@ All global shortcuts (`Ctrl+*`, `Alt+*`, `F1`, `Tab`) work in both modes.
 | Code generation | Yes (8 langs) | No | No |
 | Auto engine selection | Yes | No | No |
 | Test suite mode | Yes | No | No |
+| Step-through debugger | Yes (PCRE2) | No | No |
 | Shell completions | Yes | No | No |
 
 ### vs. regex101.com
 
-regex101.com has 8 engines, step-through debugging, shareable permalinks, and a community pattern library. rgx doesn't try to replace it. Where rgx is useful instead:
+regex101.com has 8 engines, shareable permalinks, and a community pattern library. rgx doesn't try to replace it — but it now has its own step-through debugger with backtracking visualization and heatmap mode. Where rgx is useful instead:
 
 - **Offline/remote work** — no browser or internet needed
 - **Pipeline integration** — `echo data | rgx -p 'pattern' | next-command` — non-interactive batch mode with proper exit codes
@@ -266,6 +269,7 @@ regex101.com has 8 engines, step-through debugging, shareable permalinks, and a 
 - **Engine-specific testing** — test against Rust's `regex` crate directly (regex101 doesn't have this engine)
 - **Test suite mode** — `rgx --test file.toml` for CI-integrated regex validation
 - **Workspace save/restore** — save your session and pick up later (`-w project.toml`)
+- **Step-through debugger** — Ctrl+D traces PCRE2 execution with backtracking visualization and heatmap — no browser needed
 - **Bridge to regex101** — Ctrl+U exports your current state as a regex101.com URL for sharing
 
 ## Test Suite Mode
