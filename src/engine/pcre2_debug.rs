@@ -12,10 +12,8 @@ use regex_syntax::ast::Ast;
 
 use super::{EngineError, EngineFlags, EngineResult};
 
-/// A single step in the regex engine's execution trace.
 #[derive(Debug, Clone)]
 pub struct DebugStep {
-    pub index: usize,
     pub pattern_offset: usize,
     pub pattern_item_length: usize,
     pub subject_offset: usize,
@@ -40,9 +38,8 @@ pub struct DebugTrace {
     pub match_attempts: usize,
 }
 
-// --- FFI types blocklisted by pcre2-sys ---
-
-/// PCRE2 callout block passed to the callout function at each step.
+// pcre2-sys blocklists callout types/functions from its generated bindings,
+// so we declare the struct and extern fn manually to match the PCRE2 C ABI.
 #[repr(C)]
 struct Pcre2CalloutBlock {
     version: u32,
@@ -71,7 +68,8 @@ unsafe extern "C" {
     ) -> i32;
 }
 
-// --- Callout collector ---
+const CALLOUT_CONTINUE: i32 = 0;
+const CALLOUT_ABORT: i32 = 1;
 
 struct CollectorState {
     steps: Vec<DebugStep>,
@@ -85,7 +83,7 @@ unsafe extern "C" fn callout_fn(block: *mut Pcre2CalloutBlock, data: *mut c_void
     let block = unsafe { &*block };
 
     if state.steps.len() >= state.max_steps {
-        return 1; // abort
+        return CALLOUT_ABORT;
     }
 
     if block.start_match != state.last_start_match {
@@ -108,7 +106,6 @@ unsafe extern "C" fn callout_fn(block: *mut Pcre2CalloutBlock, data: *mut c_void
     let is_backtrack = (block.callout_flags & PCRE2_CALLOUT_BACKTRACK) != 0;
 
     state.steps.push(DebugStep {
-        index: state.steps.len(),
         pattern_offset: block.pattern_position,
         pattern_item_length: block.next_item_length,
         subject_offset: block.current_position,
@@ -117,10 +114,8 @@ unsafe extern "C" fn callout_fn(block: *mut Pcre2CalloutBlock, data: *mut c_void
         match_attempt: state.match_attempt,
     });
 
-    0 // continue
+    CALLOUT_CONTINUE
 }
-
-// --- Public API ---
 
 pub fn debug_match(
     pattern: &str,
@@ -271,20 +266,22 @@ pub fn build_offset_map(pattern: &str) -> Vec<PatternToken> {
 }
 
 fn collect_tokens(ast: &Ast, tokens: &mut Vec<PatternToken>) {
+    use crate::explain::formatter;
+
     match ast {
         Ast::Empty(_) => {}
         Ast::Flags(f) => {
             tokens.push(PatternToken {
                 start: f.span.start.offset,
                 end: f.span.end.offset,
-                description: "Flags".to_string(),
+                description: formatter::format_flags_item(&f.flags),
             });
         }
         Ast::Literal(lit) => {
             tokens.push(PatternToken {
                 start: lit.span.start.offset,
                 end: lit.span.end.offset,
-                description: format!("Literal '{}'", lit.c),
+                description: formatter::format_literal(lit),
             });
         }
         Ast::Dot(span) => {
@@ -298,33 +295,28 @@ fn collect_tokens(ast: &Ast, tokens: &mut Vec<PatternToken>) {
             tokens.push(PatternToken {
                 start: a.span.start.offset,
                 end: a.span.end.offset,
-                description: format!("{:?}", a.kind),
+                description: formatter::format_assertion(a),
             });
         }
         Ast::ClassUnicode(c) => {
             tokens.push(PatternToken {
                 start: c.span.start.offset,
                 end: c.span.end.offset,
-                description: "Unicode class".to_string(),
+                description: formatter::format_unicode_class(c),
             });
         }
         Ast::ClassPerl(c) => {
-            let name = match c.kind {
-                regex_syntax::ast::ClassPerlKind::Digit => "Digit (\\d)",
-                regex_syntax::ast::ClassPerlKind::Space => "Whitespace (\\s)",
-                regex_syntax::ast::ClassPerlKind::Word => "Word char (\\w)",
-            };
             tokens.push(PatternToken {
                 start: c.span.start.offset,
                 end: c.span.end.offset,
-                description: name.to_string(),
+                description: formatter::format_perl_class(c),
             });
         }
         Ast::ClassBracketed(c) => {
             tokens.push(PatternToken {
                 start: c.span.start.offset,
                 end: c.span.end.offset,
-                description: "Character class".to_string(),
+                description: formatter::format_bracketed_class(c),
             });
         }
         Ast::Repetition(rep) => {
@@ -347,28 +339,21 @@ fn collect_tokens(ast: &Ast, tokens: &mut Vec<PatternToken>) {
 }
 
 pub fn find_token_at_offset(offset_map: &[PatternToken], offset: usize) -> Option<usize> {
+    let mut best: Option<(usize, usize)> = None;
     for (i, token) in offset_map.iter().enumerate() {
         if offset >= token.start && offset < token.end {
             return Some(i);
         }
-    }
-    if offset_map.is_empty() {
-        return None;
-    }
-    let mut best = 0;
-    let mut best_dist = usize::MAX;
-    for (i, token) in offset_map.iter().enumerate() {
         let dist = if offset < token.start {
             token.start - offset
         } else {
             offset - token.end
         };
-        if dist < best_dist {
-            best_dist = dist;
-            best = i;
+        if best.map_or(true, |(_, d)| dist < d) {
+            best = Some((i, dist));
         }
     }
-    Some(best)
+    best.map(|(i, _)| i)
 }
 
 #[cfg(test)]

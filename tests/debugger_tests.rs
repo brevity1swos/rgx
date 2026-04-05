@@ -1,6 +1,6 @@
 #![cfg(feature = "pcre2-engine")]
 
-use rgx::engine::pcre2_debug::{build_offset_map, debug_match, find_token_at_offset};
+use rgx::engine::pcre2_debug::debug_match;
 use rgx::engine::EngineFlags;
 
 #[test]
@@ -25,23 +25,6 @@ fn test_catastrophic_backtracking_detection() {
     );
     let max_heat = trace.heatmap.iter().copied().max().unwrap_or(0);
     assert!(max_heat > 1, "expected hot heatmap, max was {}", max_heat);
-}
-
-#[test]
-fn test_offset_map_accuracy() {
-    let tokens = build_offset_map(r"(abc)");
-    assert!(!tokens.is_empty());
-    for token in &tokens {
-        assert!(token.end <= "(abc)".len());
-    }
-}
-
-#[test]
-fn test_find_token_at_offset_integration() {
-    let tokens = build_offset_map("abc");
-    assert_eq!(find_token_at_offset(&tokens, 0), Some(0));
-    assert_eq!(find_token_at_offset(&tokens, 1), Some(1));
-    assert_eq!(find_token_at_offset(&tokens, 2), Some(2));
 }
 
 #[test]

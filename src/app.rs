@@ -647,8 +647,6 @@ impl App {
         self.show_codegen = false;
     }
 
-    // --- Debugger ---
-
     #[cfg(feature = "pcre2-engine")]
     pub fn start_debug(&mut self, max_steps: usize) {
         use crate::engine::pcre2_debug;

@@ -8,12 +8,12 @@ use ratatui::{
     Frame,
 };
 
+use super::centered_overlay;
 use super::theme;
 
 #[cfg(feature = "pcre2-engine")]
 use crate::engine::pcre2_debug::{find_token_at_offset, DebugStep, DebugTrace};
 
-/// Render the full-screen debugger overlay.
 #[cfg(feature = "pcre2-engine")]
 #[allow(clippy::too_many_arguments)]
 pub fn render_debugger(
@@ -34,16 +34,15 @@ pub fn render_debugger(
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3),              // pattern panel
-            Constraint::Length(3),              // input panel
-            Constraint::Length(2),              // step info
-            Constraint::Length(heatmap_height), // heatmap (conditional)
-            Constraint::Min(3),                 // captures / description
-            Constraint::Length(2),              // controls footer
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Length(2),
+            Constraint::Length(heatmap_height),
+            Constraint::Min(3),
+            Constraint::Length(2),
         ])
         .split(overlay);
 
-    // Outer border
     let border_block = Block::default()
         .borders(Borders::ALL)
         .border_type(bt)
@@ -70,30 +69,27 @@ pub fn render_debugger(
 
     let step = &trace.steps[current_step.min(trace.steps.len() - 1)];
 
-    // --- Pattern panel ---
     render_pattern_panel(frame, inner_chunks[0], pattern, step, bt);
-
-    // --- Input panel ---
     render_input_panel(frame, inner_chunks[1], subject, step, bt);
-
-    // --- Step info ---
     render_step_info(frame, inner_chunks[2], step, current_step, trace);
 
-    // --- Heatmap ---
     if show_heatmap {
         render_heatmap(frame, inner_chunks[3], pattern, trace, bt);
     }
 
-    // --- Capture / description ---
     render_captures(frame, inner_chunks[4], step, subject, trace, bt);
-
-    // --- Controls ---
     render_controls(frame, inner_chunks[5], show_heatmap);
 }
 
-use super::centered_overlay;
+fn panel_block(title: &'static str, bt: BorderType) -> Block<'static> {
+    Block::default()
+        .borders(Borders::ALL)
+        .border_type(bt)
+        .border_style(Style::default().fg(theme::OVERLAY))
+        .title(Span::styled(title, Style::default().fg(theme::SUBTEXT)))
+        .style(Style::default().bg(theme::BASE))
+}
 
-/// Render the pattern with the current token range highlighted in YELLOW.
 #[cfg(feature = "pcre2-engine")]
 fn render_pattern_panel(
     frame: &mut Frame,
@@ -116,21 +112,10 @@ fn render_pattern_panel(
         spans.push(Span::styled(ch.to_string(), style));
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(bt)
-        .border_style(Style::default().fg(theme::OVERLAY))
-        .title(Span::styled(
-            " Pattern ",
-            Style::default().fg(theme::SUBTEXT),
-        ))
-        .style(Style::default().bg(theme::BASE));
-
-    let paragraph = Paragraph::new(Line::from(spans)).block(block);
+    let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Pattern ", bt));
     frame.render_widget(paragraph, area);
 }
 
-/// Render the subject with the current position highlighted in TEAL.
 #[cfg(feature = "pcre2-engine")]
 fn render_input_panel(
     frame: &mut Frame,
@@ -143,13 +128,11 @@ fn render_input_panel(
 
     let mut spans: Vec<Span<'static>> = Vec::new();
     for (i, ch) in subject.char_indices() {
-        let at_pos = i == pos;
-        let style = if at_pos {
+        let style = if i == pos {
             Style::default().fg(theme::BASE).bg(theme::TEAL)
         } else {
             Style::default().fg(theme::TEXT)
         };
-        // Replace control chars with visible representations for display
         let display = match ch {
             '\n' => "↵".to_string(),
             '\t' => "→".to_string(),
@@ -159,7 +142,8 @@ fn render_input_panel(
         spans.push(Span::styled(display, style));
     }
 
-    // If subject_offset is at the end, highlight a synthetic marker
+    // PCRE2 reports position == subject.len() on a trailing match;
+    // show a synthetic cursor marker instead of going out-of-bounds.
     if pos >= subject.len() {
         spans.push(Span::styled(
             "⌶",
@@ -167,21 +151,10 @@ fn render_input_panel(
         ));
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(bt)
-        .border_style(Style::default().fg(theme::OVERLAY))
-        .title(Span::styled(
-            " Subject ",
-            Style::default().fg(theme::SUBTEXT),
-        ))
-        .style(Style::default().bg(theme::BASE));
-
-    let paragraph = Paragraph::new(Line::from(spans)).block(block);
+    let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Subject ", bt));
     frame.render_widget(paragraph, area);
 }
 
-/// Render step count, backtrack flag, and attempt count.
 #[cfg(feature = "pcre2-engine")]
 fn render_step_info(
     frame: &mut Frame,
@@ -191,7 +164,6 @@ fn render_step_info(
     trace: &DebugTrace,
 ) {
     let total = trace.steps.len();
-    let attempt_total = trace.match_attempts;
 
     let mut spans: Vec<Span<'static>> = vec![
         Span::styled(
@@ -215,7 +187,11 @@ fn render_step_info(
     }
 
     spans.push(Span::styled(
-        format!("Attempt {}/{}", step.match_attempt + 1, attempt_total),
+        format!(
+            "Attempt {}/{}",
+            step.match_attempt + 1,
+            trace.match_attempts
+        ),
         Style::default().fg(theme::SUBTEXT),
     ));
 
@@ -231,7 +207,6 @@ fn render_step_info(
     frame.render_widget(paragraph, area);
 }
 
-/// Render the heatmap — same pattern text but per-character bg color based on hit count.
 #[cfg(feature = "pcre2-engine")]
 fn render_heatmap(
     frame: &mut Frame,
@@ -244,12 +219,9 @@ fn render_heatmap(
 
     let mut spans: Vec<Span<'static>> = Vec::new();
     for (i, ch) in pattern.char_indices() {
-        // Find the token index for this character offset
-        let heat = if let Some(tok_idx) = find_token_at_offset(&trace.offset_map, i) {
-            trace.heatmap.get(tok_idx).copied().unwrap_or(0)
-        } else {
-            0
-        };
+        let heat = find_token_at_offset(&trace.offset_map, i)
+            .and_then(|ti| trace.heatmap.get(ti).copied())
+            .unwrap_or(0);
 
         let pct = heat as f32 / max_heat as f32;
         let bg = if pct < 0.33 {
@@ -266,21 +238,10 @@ fn render_heatmap(
         ));
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(bt)
-        .border_style(Style::default().fg(theme::OVERLAY))
-        .title(Span::styled(
-            " Heatmap (H) ",
-            Style::default().fg(theme::SUBTEXT),
-        ))
-        .style(Style::default().bg(theme::BASE));
-
-    let paragraph = Paragraph::new(Line::from(spans)).block(block);
+    let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Heatmap (H) ", bt));
     frame.render_widget(paragraph, area);
 }
 
-/// Render the capture groups and token description for the current step.
 #[cfg(feature = "pcre2-engine")]
 fn render_captures(
     frame: &mut Frame,
@@ -292,7 +253,6 @@ fn render_captures(
 ) {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
-    // Token description
     let token_desc = find_token_at_offset(&trace.offset_map, step.pattern_offset)
         .and_then(|idx| trace.offset_map.get(idx))
         .map(|t| t.description.clone())
@@ -303,7 +263,6 @@ fn render_captures(
         Span::styled(token_desc, Style::default().fg(theme::YELLOW)),
     ]));
 
-    // Capture groups
     let captures: Vec<_> = step
         .captures
         .iter()
@@ -335,21 +294,10 @@ fn render_captures(
         }
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_type(bt)
-        .border_style(Style::default().fg(theme::OVERLAY))
-        .title(Span::styled(
-            " Token / Captures ",
-            Style::default().fg(theme::SUBTEXT),
-        ))
-        .style(Style::default().bg(theme::BASE));
-
-    let paragraph = Paragraph::new(lines).block(block);
+    let paragraph = Paragraph::new(lines).block(panel_block(" Token / Captures ", bt));
     frame.render_widget(paragraph, area);
 }
 
-/// Render the controls footer.
 fn render_controls(frame: &mut Frame, area: Rect, show_heatmap: bool) {
     let heatmap_label = if show_heatmap {
         "H: hide heatmap"
