@@ -14,6 +14,9 @@ use super::theme;
 #[cfg(feature = "pcre2-engine")]
 use crate::engine::pcre2_debug::{DebugSession, DebugStep, DebugTrace};
 
+const OVERLAY_WIDTH: u16 = 90;
+const OVERLAY_HEIGHT: u16 = 30;
+
 #[cfg(feature = "pcre2-engine")]
 pub fn render_debugger(frame: &mut Frame, area: Rect, session: &DebugSession, bt: BorderType) {
     let trace = &session.trace;
@@ -22,7 +25,7 @@ pub fn render_debugger(frame: &mut Frame, area: Rect, session: &DebugSession, bt
     let pattern = session.pattern.as_str();
     let subject = session.subject.as_str();
 
-    let overlay = centered_overlay(frame, area, 90, 30);
+    let overlay = centered_overlay(frame, area, OVERLAY_WIDTH, OVERLAY_HEIGHT);
 
     let heatmap_height: u16 = if show_heatmap { 3 } else { 0 };
 

@@ -663,9 +663,9 @@ impl App {
 
         // Restore cached session if pattern and subject haven't changed,
         // preserving the user's step position and heatmap toggle.
-        if let Some(cached) = self.debug_cache.take() {
+        if let Some(ref cached) = self.debug_cache {
             if cached.pattern == pattern && cached.subject == subject {
-                self.debug_session = Some(cached);
+                self.debug_session = self.debug_cache.take();
                 return;
             }
         }
