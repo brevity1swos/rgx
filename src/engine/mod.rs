@@ -1,6 +1,8 @@
 pub mod fancy;
 #[cfg(feature = "pcre2-engine")]
 pub mod pcre2;
+#[cfg(feature = "pcre2-engine")]
+pub mod pcre2_debug;
 pub mod rust_regex;
 
 use serde::Serialize;
