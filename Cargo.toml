@@ -23,7 +23,7 @@ path = "src/lib.rs"
 
 [features]
 default = []
-pcre2-engine = ["dep:pcre2"]
+pcre2-engine = ["dep:pcre2", "dep:pcre2-sys"]
 
 [dependencies]
 arboard = "3"
@@ -34,6 +34,7 @@ regex = "1"
 regex-syntax = "0.8"
 fancy-regex = "0.17"
 pcre2 = { version = "0.2", optional = true }
+pcre2-sys = { version = "0.2", optional = true }
 clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
 serde_json = "1"

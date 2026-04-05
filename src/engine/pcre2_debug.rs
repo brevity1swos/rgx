@@ -2,6 +2,11 @@
 //!
 //! All unsafe FFI code for the debugger is contained in this module.
 
+use std::ffi::c_void;
+use std::ptr;
+
+use pcre2_sys::*;
+
 use super::{EngineError, EngineFlags, EngineResult};
 
 /// A single step in the regex engine's execution trace.
@@ -30,6 +35,224 @@ pub struct DebugTrace {
     pub offset_map: Vec<PatternToken>,
     pub heatmap: Vec<u32>,
     pub match_attempts: usize,
+}
+
+// --- FFI types blocklisted by pcre2-sys ---
+
+/// PCRE2 callout block passed to the callout function at each step.
+#[repr(C)]
+struct Pcre2CalloutBlock {
+    version: u32,
+    callout_number: u32,
+    capture_top: u32,
+    capture_last: u32,
+    offset_vector: *const usize,
+    mark: *const u8,
+    subject: *const u8,
+    subject_length: usize,
+    start_match: usize,
+    current_position: usize,
+    pattern_position: usize,
+    next_item_length: usize,
+    callout_string_offset: usize,
+    callout_string_length: usize,
+    callout_string: *const u8,
+    callout_flags: u32,
+}
+
+unsafe extern "C" {
+    fn pcre2_set_callout_8(
+        mcontext: *mut pcre2_match_context_8,
+        callout: Option<unsafe extern "C" fn(*mut Pcre2CalloutBlock, *mut c_void) -> i32>,
+        callout_data: *mut c_void,
+    ) -> i32;
+}
+
+// --- Callout collector ---
+
+struct CollectorState {
+    steps: Vec<DebugStep>,
+    max_steps: usize,
+    last_start_match: usize,
+    match_attempt: usize,
+}
+
+unsafe extern "C" fn callout_fn(block: *mut Pcre2CalloutBlock, data: *mut c_void) -> i32 {
+    let state = unsafe { &mut *(data as *mut CollectorState) };
+    let block = unsafe { &*block };
+
+    if state.steps.len() >= state.max_steps {
+        return 1; // abort
+    }
+
+    if block.start_match != state.last_start_match {
+        state.match_attempt += 1;
+        state.last_start_match = block.start_match;
+    }
+
+    let cap_count = block.capture_top as usize;
+    let mut captures = Vec::with_capacity(cap_count);
+    for i in 0..cap_count {
+        let start = unsafe { *block.offset_vector.add(i * 2) };
+        let end = unsafe { *block.offset_vector.add(i * 2 + 1) };
+        if start == usize::MAX {
+            captures.push(None);
+        } else {
+            captures.push(Some((start, end)));
+        }
+    }
+
+    let is_backtrack = (block.callout_flags & PCRE2_CALLOUT_BACKTRACK) != 0;
+
+    state.steps.push(DebugStep {
+        index: state.steps.len(),
+        pattern_offset: block.pattern_position,
+        pattern_item_length: block.next_item_length,
+        subject_offset: block.current_position,
+        is_backtrack,
+        captures,
+        match_attempt: state.match_attempt,
+    });
+
+    0 // continue
+}
+
+// --- Public API ---
+
+pub fn debug_match(
+    pattern: &str,
+    subject: &str,
+    flags: &EngineFlags,
+    max_steps: usize,
+    start_offset: usize,
+) -> EngineResult<DebugTrace> {
+    if pattern.is_empty() {
+        return Ok(DebugTrace {
+            steps: Vec::new(),
+            truncated: false,
+            offset_map: Vec::new(),
+            heatmap: Vec::new(),
+            match_attempts: 0,
+        });
+    }
+
+    let offset_map = build_offset_map(pattern);
+
+    let (steps, truncated, match_attempts) =
+        unsafe { debug_match_ffi(pattern, subject, flags, max_steps, start_offset)? };
+
+    let mut heatmap = vec![0u32; offset_map.len()];
+    for step in &steps {
+        if let Some(idx) = find_token_at_offset(&offset_map, step.pattern_offset) {
+            heatmap[idx] += 1;
+        }
+    }
+
+    Ok(DebugTrace {
+        steps,
+        truncated,
+        offset_map,
+        heatmap,
+        match_attempts,
+    })
+}
+
+unsafe fn debug_match_ffi(
+    pattern: &str,
+    subject: &str,
+    flags: &EngineFlags,
+    max_steps: usize,
+    start_offset: usize,
+) -> EngineResult<(Vec<DebugStep>, bool, usize)> {
+    let mut options: u32 = PCRE2_UTF | PCRE2_AUTO_CALLOUT;
+    if flags.case_insensitive {
+        options |= PCRE2_CASELESS;
+    }
+    if flags.multi_line {
+        options |= PCRE2_MULTILINE;
+    }
+    if flags.dot_matches_newline {
+        options |= PCRE2_DOTALL;
+    }
+    if flags.unicode {
+        options |= PCRE2_UCP;
+    }
+    if flags.extended {
+        options |= PCRE2_EXTENDED;
+    }
+
+    let mut error_code: i32 = 0;
+    let mut error_offset: usize = 0;
+    let code = unsafe {
+        pcre2_compile_8(
+            pattern.as_ptr(),
+            pattern.len(),
+            options,
+            &mut error_code,
+            &mut error_offset,
+            ptr::null_mut(),
+        )
+    };
+    if code.is_null() {
+        return Err(EngineError::CompileError(format!(
+            "PCRE2 compile error {} at offset {}",
+            error_code, error_offset
+        )));
+    }
+
+    let match_data = unsafe { pcre2_match_data_create_from_pattern_8(code, ptr::null_mut()) };
+    if match_data.is_null() {
+        unsafe { pcre2_code_free_8(code) };
+        return Err(EngineError::MatchError(
+            "Failed to create match data".to_string(),
+        ));
+    }
+
+    let match_context = unsafe { pcre2_match_context_create_8(ptr::null_mut()) };
+    if match_context.is_null() {
+        unsafe { pcre2_match_data_free_8(match_data) };
+        unsafe { pcre2_code_free_8(code) };
+        return Err(EngineError::MatchError(
+            "Failed to create match context".to_string(),
+        ));
+    }
+
+    let mut collector = CollectorState {
+        steps: Vec::new(),
+        max_steps,
+        last_start_match: usize::MAX,
+        match_attempt: 0,
+    };
+
+    unsafe {
+        pcre2_set_callout_8(
+            match_context,
+            Some(callout_fn),
+            &mut collector as *mut CollectorState as *mut c_void,
+        )
+    };
+
+    let subject_bytes = subject.as_bytes();
+    let _rc = unsafe {
+        pcre2_match_8(
+            code,
+            subject_bytes.as_ptr(),
+            subject_bytes.len(),
+            start_offset,
+            PCRE2_NO_JIT,
+            match_data,
+            match_context,
+        )
+    };
+
+    let truncated = collector.steps.len() >= max_steps;
+    let match_attempts = collector.match_attempt + 1;
+
+    unsafe { pcre2_match_context_free_8(match_context) };
+    unsafe { pcre2_match_data_free_8(match_data) };
+    unsafe { pcre2_code_free_8(code) };
+
+    Ok((collector.steps, truncated, match_attempts))
 }
 
 use regex_syntax::ast::parse::Parser;
@@ -148,13 +371,6 @@ pub fn find_token_at_offset(offset_map: &[PatternToken], offset: usize) -> Optio
     Some(best)
 }
 
-// Suppress unused import warnings for items that will be used in future tasks.
-const _: fn() = || {
-    let _: EngineError;
-    let _: EngineFlags;
-    let _: EngineResult<()>;
-};
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,5 +420,69 @@ mod tests {
     fn test_find_token_at_offset_empty() {
         let tokens: Vec<PatternToken> = Vec::new();
         assert_eq!(find_token_at_offset(&tokens, 0), None);
+    }
+
+    #[test]
+    fn test_debug_match_simple() {
+        let flags = EngineFlags::default();
+        let trace = debug_match("abc", "xabcy", &flags, 10000, 0).unwrap();
+        assert!(!trace.steps.is_empty(), "should have steps");
+        assert!(!trace.truncated);
+        assert!(trace.match_attempts >= 1);
+    }
+
+    #[test]
+    fn test_debug_match_backtrack() {
+        let flags = EngineFlags::default();
+        // a+ab against "aaab": greedy a+ takes all a's, then must backtrack
+        // to give one back for the literal 'a' before 'b'
+        let trace = debug_match("a+ab", "aaab", &flags, 10000, 0).unwrap();
+        let has_backtrack = trace.steps.iter().any(|s| s.is_backtrack);
+        assert!(has_backtrack, "should detect backtracking");
+    }
+
+    #[test]
+    fn test_debug_match_step_limit() {
+        let flags = EngineFlags::default();
+        // Use a pattern/subject that generates many steps
+        let trace = debug_match("a+ab", "aaaaaaaaaaaaaaaaaaaaab", &flags, 5, 0).unwrap();
+        assert!(trace.truncated, "should truncate at step limit");
+        assert_eq!(trace.steps.len(), 5);
+    }
+
+    #[test]
+    fn test_debug_match_captures() {
+        let flags = EngineFlags::default();
+        let trace = debug_match("(a)(b)", "ab", &flags, 10000, 0).unwrap();
+        let has_capture = trace
+            .steps
+            .iter()
+            .any(|s| s.captures.iter().any(|c| c.is_some()));
+        assert!(has_capture, "should capture groups during matching");
+    }
+
+    #[test]
+    fn test_debug_match_start_offset() {
+        let flags = EngineFlags::default();
+        let trace = debug_match(r"\d+", "foo 123 bar 456", &flags, 10000, 8).unwrap();
+        assert!(
+            trace.steps[0].subject_offset >= 8,
+            "first step should be at or after start_offset"
+        );
+    }
+
+    #[test]
+    fn test_debug_match_empty_pattern() {
+        let flags = EngineFlags::default();
+        let trace = debug_match("", "test", &flags, 10000, 0).unwrap();
+        assert!(trace.steps.is_empty());
+    }
+
+    #[test]
+    fn test_debug_match_heatmap() {
+        let flags = EngineFlags::default();
+        let trace = debug_match("abc", "xabcy", &flags, 10000, 0).unwrap();
+        assert_eq!(trace.heatmap.len(), trace.offset_map.len());
+        assert!(trace.heatmap.iter().any(|&c| c > 0));
     }
 }

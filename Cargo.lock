@@ -1786,6 +1786,7 @@ dependencies = [
  "fancy-regex 0.17.0",
  "insta",
  "pcre2",
+ "pcre2-sys",
  "ratatui",
  "regex",
  "regex-syntax",
