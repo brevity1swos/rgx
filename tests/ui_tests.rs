@@ -229,7 +229,7 @@ fn pattern_history_navigation() {
     app.set_pattern(r"\w+");
     app.commit_pattern_to_history();
 
-    assert_eq!(app.pattern_history.len(), 2);
+    assert_eq!(app.history.entries.len(), 2);
 
     // Navigate back
     app.set_pattern("current");
@@ -254,7 +254,7 @@ fn pattern_history_dedup() {
     app.set_pattern(r"\d+");
     app.commit_pattern_to_history();
     app.commit_pattern_to_history(); // same pattern, should dedup
-    assert_eq!(app.pattern_history.len(), 1);
+    assert_eq!(app.history.entries.len(), 1);
 }
 
 #[test]
@@ -265,30 +265,30 @@ fn match_selection_navigation() {
     assert_eq!(app.matches.len(), 3);
 
     // Start at match 0, no capture
-    assert_eq!(app.selected_match, 0);
-    assert_eq!(app.selected_capture, None);
+    assert_eq!(app.selection.match_index, 0);
+    assert_eq!(app.selection.capture_index, None);
 
     // Navigate down through matches (no captures here)
     app.select_match_next();
-    assert_eq!(app.selected_match, 1);
+    assert_eq!(app.selection.match_index, 1);
 
     app.select_match_next();
-    assert_eq!(app.selected_match, 2);
+    assert_eq!(app.selection.match_index, 2);
 
     // Can't go past last match
     app.select_match_next();
-    assert_eq!(app.selected_match, 2);
+    assert_eq!(app.selection.match_index, 2);
 
     // Navigate back up
     app.select_match_prev();
-    assert_eq!(app.selected_match, 1);
+    assert_eq!(app.selection.match_index, 1);
 
     app.select_match_prev();
-    assert_eq!(app.selected_match, 0);
+    assert_eq!(app.selection.match_index, 0);
 
     // Can't go before first match
     app.select_match_prev();
-    assert_eq!(app.selected_match, 0);
+    assert_eq!(app.selection.match_index, 0);
 }
 
 #[test]
@@ -300,26 +300,26 @@ fn match_selection_with_captures() {
     assert_eq!(app.matches[0].captures.len(), 2);
 
     // Start at match 0
-    assert_eq!(app.selected_match, 0);
-    assert_eq!(app.selected_capture, None);
+    assert_eq!(app.selection.match_index, 0);
+    assert_eq!(app.selection.capture_index, None);
 
     // Next goes to first capture
     app.select_match_next();
-    assert_eq!(app.selected_match, 0);
-    assert_eq!(app.selected_capture, Some(0));
+    assert_eq!(app.selection.match_index, 0);
+    assert_eq!(app.selection.capture_index, Some(0));
 
     // Next goes to second capture
     app.select_match_next();
-    assert_eq!(app.selected_match, 0);
-    assert_eq!(app.selected_capture, Some(1));
+    assert_eq!(app.selection.match_index, 0);
+    assert_eq!(app.selection.capture_index, Some(1));
 
     // Prev goes back to first capture
     app.select_match_prev();
-    assert_eq!(app.selected_capture, Some(0));
+    assert_eq!(app.selection.capture_index, Some(0));
 
     // Prev goes back to match header
     app.select_match_prev();
-    assert_eq!(app.selected_capture, None);
+    assert_eq!(app.selection.capture_index, None);
 }
 
 #[test]
@@ -328,12 +328,12 @@ fn selection_resets_on_rematch() {
     app.set_test_string("aa bb");
     app.set_pattern(r"\w+");
     app.select_match_next();
-    assert_eq!(app.selected_match, 1);
+    assert_eq!(app.selection.match_index, 1);
 
     // Changing test string resets selection
     app.set_test_string("aa bb cc");
-    assert_eq!(app.selected_match, 0);
-    assert_eq!(app.selected_capture, None);
+    assert_eq!(app.selection.match_index, 0);
+    assert_eq!(app.selection.capture_index, None);
 }
 
 #[test]

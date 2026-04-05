@@ -129,6 +129,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             error: error_str,
             error_offset: app.error_offset,
             border_type: bt,
+            syntax_tokens: &app.syntax_tokens,
         },
         layout.regex_input,
     );
@@ -160,11 +161,11 @@ pub fn render(frame: &mut Frame, app: &App) {
         MatchDisplay {
             matches: &app.matches,
             replace_result: app.replace_result.as_ref(),
-            scroll: app.match_scroll,
+            scroll: app.scroll.match_scroll,
             focused: app.focused_panel == 3,
-            selected_match: app.selected_match,
-            selected_capture: app.selected_capture,
-            clipboard_status: app.clipboard_status.as_deref(),
+            selected_match: app.selection.match_index,
+            selected_capture: app.selection.capture_index,
+            clipboard_status: app.status.text.as_deref(),
             border_type: bt,
         },
         layout.match_display,
@@ -175,7 +176,7 @@ pub fn render(frame: &mut Frame, app: &App) {
         ExplanationPanel {
             nodes: &app.explanation,
             error: error_str,
-            scroll: app.explain_scroll,
+            scroll: app.scroll.explain_scroll,
             focused: app.focused_panel == 4,
             border_type: bt,
         },

@@ -15,6 +15,7 @@ pub struct RegexInput<'a> {
     pub error: Option<&'a str>,
     pub error_offset: Option<usize>,
     pub border_type: BorderType,
+    pub syntax_tokens: &'a [syntax_highlight::SyntaxToken],
 }
 
 impl<'a> Widget for RegexInput<'a> {
@@ -48,14 +49,14 @@ impl<'a> Widget for RegexInput<'a> {
             .title(Span::styled(title, title_style));
 
         let content = self.editor.content();
-        let tokens = syntax_highlight::highlight(content);
+        let tokens = self.syntax_tokens;
         let spans = if tokens.is_empty() {
             vec![Span::styled(
                 content.to_string(),
                 Style::default().fg(theme::TEXT),
             )]
         } else {
-            syntax_highlight::build_highlighted_spans(content, &tokens)
+            syntax_highlight::build_highlighted_spans(content, tokens)
         };
         let line = Line::from(spans);
 

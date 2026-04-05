@@ -116,6 +116,7 @@ pub struct App {
     pub output_on_quit: bool,
     pub workspace_path: Option<String>,
     pub benchmark_results: Vec<BenchmarkResult>,
+    pub syntax_tokens: Vec<crate::ui::syntax_highlight::SyntaxToken>,
     #[cfg(feature = "pcre2-engine")]
     pub debug_session: Option<crate::engine::pcre2_debug::DebugSession>,
     #[cfg(feature = "pcre2-engine")]
@@ -163,6 +164,7 @@ impl App {
             output_on_quit: false,
             workspace_path: None,
             benchmark_results: Vec::new(),
+            syntax_tokens: Vec::new(),
             #[cfg(feature = "pcre2-engine")]
             debug_session: None,
             #[cfg(feature = "pcre2-engine")]
@@ -247,6 +249,7 @@ impl App {
             self.error = None;
             self.compile_time = None;
             self.match_time = None;
+            self.syntax_tokens.clear();
             return;
         }
 
@@ -278,6 +281,9 @@ impl App {
                 self.error = Some(e.to_string());
             }
         }
+
+        // Rebuild syntax highlight tokens (pattern changed)
+        self.syntax_tokens = crate::ui::syntax_highlight::highlight(&pattern);
 
         // Explain (uses regex-syntax, independent of engine)
         match explain::explain(&pattern) {
