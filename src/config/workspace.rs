@@ -132,10 +132,7 @@ impl Workspace {
     }
 }
 
-const ANSI_GREEN: &str = "\x1b[32m";
-const ANSI_RED: &str = "\x1b[31m";
-const ANSI_BOLD: &str = "\x1b[1m";
-const ANSI_RESET: &str = "\x1b[0m";
+use crate::ansi::{BOLD, GREEN, RED, RESET};
 
 /// Print test results to stdout. Returns true if all passed.
 pub fn print_test_results(path: &str, pattern: &str, results: &[TestResult], color: bool) -> bool {
@@ -144,8 +141,8 @@ pub fn print_test_results(path: &str, pattern: &str, results: &[TestResult], col
     let failed = total - passed;
 
     if color {
-        println!("{ANSI_BOLD}Testing:{ANSI_RESET} {path}");
-        println!("{ANSI_BOLD}Pattern:{ANSI_RESET} {pattern}");
+        println!("{BOLD}Testing:{RESET} {path}");
+        println!("{BOLD}Pattern:{RESET} {pattern}");
     } else {
         println!("Testing: {path}");
         println!("Pattern: {pattern}");
@@ -155,12 +152,12 @@ pub fn print_test_results(path: &str, pattern: &str, results: &[TestResult], col
     for (i, r) in results.iter().enumerate() {
         let status = if r.passed() {
             if color {
-                format!("{ANSI_GREEN}PASS{ANSI_RESET}")
+                format!("{GREEN}PASS{RESET}")
             } else {
                 "PASS".to_string()
             }
         } else if color {
-            format!("{ANSI_RED}FAIL{ANSI_RESET}")
+            format!("{RED}FAIL{RESET}")
         } else {
             "FAIL".to_string()
         };
@@ -176,12 +173,12 @@ pub fn print_test_results(path: &str, pattern: &str, results: &[TestResult], col
     println!();
     if failed == 0 {
         if color {
-            println!("{ANSI_GREEN}{ANSI_BOLD}{passed}/{total} passed{ANSI_RESET}");
+            println!("{GREEN}{BOLD}{passed}/{total} passed{RESET}");
         } else {
             println!("{passed}/{total} passed");
         }
     } else if color {
-        println!("{ANSI_RED}{ANSI_BOLD}{failed}/{total} failed{ANSI_RESET}");
+        println!("{RED}{BOLD}{failed}/{total} failed{RESET}");
     } else {
         println!("{failed}/{total} failed");
     }

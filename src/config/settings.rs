@@ -25,14 +25,6 @@ pub struct Settings {
     pub vim_mode: bool,
     #[serde(default = "default_debug_max_steps")]
     pub debug_max_steps: usize,
-    #[serde(default)]
-    pub theme: ThemeSettings,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct ThemeSettings {
-    #[serde(default)]
-    pub catppuccin: bool,
 }
 
 fn default_engine() -> String {
@@ -60,7 +52,6 @@ impl Default for Settings {
             rounded_borders: false,
             vim_mode: false,
             debug_max_steps: default_debug_max_steps(),
-            theme: ThemeSettings::default(),
         }
     }
 }

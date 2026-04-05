@@ -1,14 +1,13 @@
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
 
+use crate::ansi::{GREEN_BOLD, RED_BOLD, RESET};
 use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 
-// ANSI escape codes for batch output coloring
-const ANSI_RED_BOLD: &str = "\x1b[1;31m";
-const ANSI_GREEN_BOLD: &str = "\x1b[1;32m";
-const ANSI_RESET: &str = "\x1b[0m";
+const MAX_PATTERN_HISTORY: usize = 100;
+const STATUS_DISPLAY_TICKS: u32 = 40; // ~2 seconds at 50ms tick rate
 
 #[derive(Debug, Clone)]
 pub struct BenchmarkResult {
@@ -181,6 +180,8 @@ impl App {
         self.recompute();
     }
 
+    /// Low-level engine setter. Does NOT call `recompute()` — the caller
+    /// must trigger recompilation separately if needed.
     pub fn switch_engine_to(&mut self, kind: EngineKind) {
         self.engine_kind = kind;
         self.engine = engine::create_engine(kind);
@@ -307,7 +308,7 @@ impl App {
             return;
         }
         self.pattern_history.push_back(pattern);
-        if self.pattern_history.len() > 100 {
+        if self.pattern_history.len() > MAX_PATTERN_HISTORY {
             self.pattern_history.pop_front();
         }
         self.history_index = None;
@@ -437,7 +438,7 @@ impl App {
 
     pub fn set_status_message(&mut self, message: String) {
         self.clipboard_status = Some(message);
-        self.clipboard_status_ticks = 40; // ~2 sec at 50ms tick
+        self.clipboard_status_ticks = STATUS_DISPLAY_TICKS;
     }
 
     /// Tick down the clipboard status timer. Returns true if status was cleared.
@@ -469,7 +470,7 @@ impl App {
             for m in &self.matches {
                 if let Some(text) = engine::lookup_capture(m, group_spec) {
                     if color {
-                        println!("{ANSI_RED_BOLD}{text}{ANSI_RESET}");
+                        println!("{RED_BOLD}{text}{RESET}");
                     } else {
                         println!("{text}");
                     }
@@ -601,21 +602,6 @@ impl App {
         }
         if self.flags.extended {
             flags.push('x');
-        }
-
-        fn url_encode(s: &str) -> String {
-            let mut out = String::with_capacity(s.len() * 3);
-            for b in s.bytes() {
-                match b {
-                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                        out.push(b as char);
-                    }
-                    _ => {
-                        out.push_str(&format!("%{b:02X}"));
-                    }
-                }
-            }
-            out
         }
 
         format!(
@@ -779,14 +765,28 @@ impl App {
     }
 }
 
-/// Print the test string with matches highlighted using ANSI colors.
+fn url_encode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() * 3);
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char);
+            }
+            _ => {
+                out.push_str(&format!("%{b:02X}"));
+            }
+        }
+    }
+    out
+}
+
 fn print_colored_matches(text: &str, matches: &[engine::Match]) {
     let mut pos = 0;
     for m in matches {
         if m.start > pos {
             print!("{}", &text[pos..m.start]);
         }
-        print!("{ANSI_RED_BOLD}{}{ANSI_RESET}", &text[m.start..m.end]);
+        print!("{RED_BOLD}{}{RESET}", &text[m.start..m.end]);
         pos = m.end;
     }
     if pos < text.len() {
@@ -802,7 +802,7 @@ fn print_colored_replace(output: &str, segments: &[engine::ReplaceSegment]) {
     for seg in segments {
         let chunk = &output[seg.start..seg.end];
         if seg.is_replacement {
-            print!("{ANSI_GREEN_BOLD}{chunk}{ANSI_RESET}");
+            print!("{GREEN_BOLD}{chunk}{RESET}");
         } else {
             print!("{chunk}");
         }

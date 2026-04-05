@@ -14,6 +14,7 @@ use ratatui::Terminal;
 use rgx::app::App;
 use rgx::config::cli::{Cli, ColorMode};
 use rgx::config::settings::Settings;
+use rgx::config::workspace::{print_test_results, Workspace};
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
 use rgx::input::editor::Editor;
@@ -74,12 +75,10 @@ async fn run() -> anyhow::Result<ExitCode> {
 
     // Load workspace if --load or --workspace is set
     if let Some(ref load_path) = cli.load {
-        use rgx::config::workspace::Workspace;
         let ws = Workspace::load(std::path::Path::new(load_path))?;
         ws.apply(&mut app);
         app.workspace_path = Some(load_path.clone());
     } else if let Some(ref ws_path) = cli.workspace {
-        use rgx::config::workspace::Workspace;
         let path = std::path::Path::new(ws_path);
         if path.exists() {
             let ws = Workspace::load(path)?;
@@ -113,7 +112,6 @@ async fn run() -> anyhow::Result<ExitCode> {
         let use_color = io::stdout().is_terminal();
         let mut all_passed = true;
         for path in test_files {
-            use rgx::config::workspace::{print_test_results, Workspace};
             let ws = match Workspace::load(std::path::Path::new(path)) {
                 Ok(ws) => ws,
                 Err(e) => {
@@ -307,7 +305,6 @@ async fn run() -> anyhow::Result<ExitCode> {
                             app.should_quit = true;
                         }
                         Action::SaveWorkspace => {
-                            use rgx::config::workspace::Workspace;
                             let ws = Workspace::from_app(&app);
                             let path = app
                                 .workspace_path
@@ -323,7 +320,10 @@ async fn run() -> anyhow::Result<ExitCode> {
                                 .unwrap_or_else(|| "workspace.toml".to_string());
                             let save_path = std::path::Path::new(&path);
                             if let Some(parent) = save_path.parent() {
-                                let _ = std::fs::create_dir_all(parent);
+                                if let Err(e) = std::fs::create_dir_all(parent) {
+                                    app.set_status_message(format!("Cannot create directory: {e}"));
+                                    continue;
+                                }
                             }
                             match ws.save(save_path) {
                                 Ok(()) => {

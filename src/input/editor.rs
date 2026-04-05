@@ -2,6 +2,8 @@ use std::collections::VecDeque;
 
 use unicode_width::UnicodeWidthStr;
 
+const MAX_UNDO_STACK: usize = 500;
+
 #[derive(Debug, Clone)]
 pub struct Editor {
     content: String,
@@ -105,7 +107,7 @@ impl Editor {
     fn push_undo_snapshot(&mut self) {
         self.undo_stack
             .push_back((self.content.clone(), self.cursor));
-        if self.undo_stack.len() > 500 {
+        if self.undo_stack.len() > MAX_UNDO_STACK {
             self.undo_stack.pop_front();
         }
         self.redo_stack.clear();

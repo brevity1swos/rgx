@@ -12,7 +12,6 @@ fn test_settings_defaults() {
     assert!(settings.unicode); // default true
     assert!(!settings.extended);
     assert!(!settings.show_whitespace);
-    assert!(!settings.theme.catppuccin);
 }
 
 #[test]
@@ -61,9 +60,6 @@ dotall = true
 unicode = false
 extended = true
 show_whitespace = true
-
-[theme]
-catppuccin = true
 "#;
     let settings: Settings = toml::from_str(toml_str).unwrap();
     assert_eq!(settings.default_engine, "rust");
@@ -73,7 +69,6 @@ catppuccin = true
     assert!(!settings.unicode);
     assert!(settings.extended);
     assert!(settings.show_whitespace);
-    assert!(settings.theme.catppuccin);
 }
 
 #[test]
