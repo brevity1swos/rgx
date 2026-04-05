@@ -480,6 +480,12 @@ async fn run() -> anyhow::Result<ExitCode> {
                                 }
                             }
                         }
+                        Action::ToggleDebugger => {
+                            app.show_debugger = !app.show_debugger;
+                            if app.show_debugger {
+                                app.start_debug(settings.debug_max_steps);
+                            }
+                        }
                         Action::None => {}
                     }
                 }

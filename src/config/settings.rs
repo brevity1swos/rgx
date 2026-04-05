@@ -23,6 +23,8 @@ pub struct Settings {
     pub rounded_borders: bool,
     #[serde(default)]
     pub vim_mode: bool,
+    #[serde(default = "default_debug_max_steps")]
+    pub debug_max_steps: usize,
     #[serde(default)]
     pub theme: ThemeSettings,
 }
@@ -41,6 +43,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_debug_max_steps() -> usize {
+    10_000
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -53,6 +59,7 @@ impl Default for Settings {
             show_whitespace: false,
             rounded_borders: false,
             vim_mode: false,
+            debug_max_steps: default_debug_max_steps(),
             theme: ThemeSettings::default(),
         }
     }

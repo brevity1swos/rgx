@@ -53,6 +53,7 @@ pub enum Action {
     EnterInsertModeLineStart,
     EnterInsertModeLineEnd,
     EnterNormalMode,
+    ToggleDebugger,
     Quit,
     None,
 }
@@ -89,6 +90,9 @@ pub fn key_to_action(key: KeyEvent) -> Action {
             Action::ExportRegex101
         }
         KeyCode::Char('g') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::GenerateCode,
+        KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            Action::ToggleDebugger
+        }
         KeyCode::Char('i') if key.modifiers.contains(KeyModifiers::ALT) => {
             Action::ToggleCaseInsensitive
         }

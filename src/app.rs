@@ -74,6 +74,12 @@ pub struct App {
     pub benchmark_results: Vec<BenchmarkResult>,
     pub show_codegen: bool,
     pub codegen_language_index: usize,
+    pub show_debugger: bool,
+    #[cfg(feature = "pcre2-engine")]
+    pub debug_trace: Option<crate::engine::pcre2_debug::DebugTrace>,
+    pub debug_step: usize,
+    pub debug_show_heatmap: bool,
+    pub debug_error: Option<String>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -129,6 +135,12 @@ impl App {
             benchmark_results: Vec::new(),
             show_codegen: false,
             codegen_language_index: 0,
+            show_debugger: false,
+            #[cfg(feature = "pcre2-engine")]
+            debug_trace: None,
+            debug_step: 0,
+            debug_show_heatmap: false,
+            debug_error: None,
             engine,
             compiled: None,
         }
@@ -635,6 +647,109 @@ impl App {
         let code = crate::codegen::generate_code(lang, &pattern, &self.flags);
         self.copy_to_clipboard(&code, &format!("{} code copied to clipboard", lang));
         self.show_codegen = false;
+    }
+
+    // --- Debugger ---
+
+    #[cfg(feature = "pcre2-engine")]
+    pub fn start_debug(&mut self, max_steps: usize) {
+        use crate::engine::pcre2_debug;
+
+        let pattern = self.regex_editor.content().to_string();
+        let subject = self.test_editor.content().to_string();
+        if pattern.is_empty() || subject.is_empty() {
+            self.debug_error = Some("Need both a pattern and test string".to_string());
+            return;
+        }
+
+        // Auto-switch to PCRE2
+        if self.engine_kind != EngineKind::Pcre2 {
+            self.switch_engine_to(EngineKind::Pcre2);
+            self.recompute();
+        }
+
+        let start_offset = if !self.matches.is_empty() && self.selected_match < self.matches.len() {
+            self.matches[self.selected_match].start
+        } else {
+            0
+        };
+
+        match pcre2_debug::debug_match(&pattern, &subject, &self.flags, max_steps, start_offset) {
+            Ok(trace) => {
+                self.debug_trace = Some(trace);
+                self.debug_step = 0;
+                self.debug_error = None;
+                self.show_debugger = true;
+            }
+            Err(e) => {
+                self.debug_error = Some(e.to_string());
+            }
+        }
+    }
+
+    #[cfg(not(feature = "pcre2-engine"))]
+    pub fn start_debug(&mut self, _max_steps: usize) {
+        self.debug_error =
+            Some("Debugger requires PCRE2 (build with --features pcre2-engine)".to_string());
+    }
+
+    pub fn debug_step_forward(&mut self) {
+        #[cfg(feature = "pcre2-engine")]
+        if let Some(ref trace) = self.debug_trace {
+            if self.debug_step + 1 < trace.steps.len() {
+                self.debug_step += 1;
+            }
+        }
+    }
+
+    pub fn debug_step_back(&mut self) {
+        self.debug_step = self.debug_step.saturating_sub(1);
+    }
+
+    pub fn debug_jump_start(&mut self) {
+        self.debug_step = 0;
+    }
+
+    pub fn debug_jump_end(&mut self) {
+        #[cfg(feature = "pcre2-engine")]
+        if let Some(ref trace) = self.debug_trace {
+            if !trace.steps.is_empty() {
+                self.debug_step = trace.steps.len() - 1;
+            }
+        }
+    }
+
+    pub fn debug_next_match(&mut self) {
+        #[cfg(feature = "pcre2-engine")]
+        if let Some(ref trace) = self.debug_trace {
+            let current_attempt = trace
+                .steps
+                .get(self.debug_step)
+                .map(|s| s.match_attempt)
+                .unwrap_or(0);
+            for (i, step) in trace.steps.iter().enumerate().skip(self.debug_step + 1) {
+                if step.match_attempt > current_attempt {
+                    self.debug_step = i;
+                    return;
+                }
+            }
+        }
+    }
+
+    pub fn debug_next_backtrack(&mut self) {
+        #[cfg(feature = "pcre2-engine")]
+        if let Some(ref trace) = self.debug_trace {
+            for (i, step) in trace.steps.iter().enumerate().skip(self.debug_step + 1) {
+                if step.is_backtrack {
+                    self.debug_step = i;
+                    return;
+                }
+            }
+        }
+    }
+
+    pub fn debug_toggle_heatmap(&mut self) {
+        self.debug_show_heatmap = !self.debug_show_heatmap;
     }
 }
 

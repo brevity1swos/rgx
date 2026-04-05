@@ -51,7 +51,8 @@ fn is_global_shortcut(key: &KeyEvent) -> bool {
     if ctrl {
         return matches!(
             key.code,
-            KeyCode::Char('e')
+            KeyCode::Char('d')
+                | KeyCode::Char('e')
                 | KeyCode::Char('z')
                 | KeyCode::Char('Z')
                 | KeyCode::Char('y')
@@ -342,6 +343,13 @@ mod tests {
             vim_key_to_action(key(KeyCode::Char('x')), &mut state),
             Action::DeleteCharAtCursor
         );
+    }
+
+    #[test]
+    fn test_ctrl_d_is_global_shortcut() {
+        let mut state = VimState::new();
+        let action = vim_key_to_action(key_ctrl(KeyCode::Char('d')), &mut state);
+        assert_eq!(action, Action::ToggleDebugger);
     }
 
     #[test]
