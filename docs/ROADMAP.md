@@ -10,28 +10,42 @@
 
 ## Next Up
 
-### Theme customization
-Support `[theme]` section in `config.toml` for custom colors.
+### Interactive grep mode (`--grep`)
+Live-filter files with regex as you type — an interactive ripgrep with rgx's pattern highlighting, capture groups, engine switching, and debugger.
 
-**Why**: Accessibility. Some users need high-contrast or custom color schemes.
+```bash
+rgx --grep src/          # interactively search files
+rgx --grep server.log    # live-filter log file
+cat data.csv | rgx --grep  # filter stdin interactively
+```
 
-### Import from regex101 URL
-Parse a regex101.com URL and load the pattern, test string, and flags.
+**Why**: Turns rgx from occasional-use to daily-use. ripgrep (50k+ stars) has no interactive mode. fzf has no regex power. This fills the gap. Highest adoption ceiling of any planned feature.
 
-**Why**: Complements the existing Ctrl+U export. Enables round-tripping between rgx and regex101.
+### Regex generation from examples (grex integration)
+"I have strings, give me the pattern." Interactive UI to input example strings and generate a matching regex, powered by the `grex` crate.
+
+**Why**: Flips the workflow — appeals to developers who *avoid* regex because it's hard. Broadens the audience beyond regex experts. Low effort since grex is an existing Rust crate.
+
+### Multi-file search/replace with preview
+Interactive preview of replacements across a directory before applying. Like a TUI `sed -i` with safety.
+
+```bash
+rgx --replace src/ 'oldPattern' 'newTemplate'
+```
+
+**Why**: Real pain point — people fear `sed -i` because it's destructive. Interactive preview with confirmation makes regex replace safe. Compounds with the debugger: debug the pattern, then apply it across files.
 
 ## Future Considerations
 
 | Feature | Impact | Effort |
 |---------|--------|--------|
+| Theme customization | Medium | Low |
+| Import from regex101 URL | Low | Low |
 | More engines (JS, Python `re`) | Medium | High |
 | User-saved pattern library | Medium | Medium |
-| Visual railroad diagrams (ASCII) | High | Very High |
-| Regex generation from examples (grex integration) | Medium | Medium |
 
 ## Not Planned
 
 - AI/LLM integration
 - Web version
-- In-place file modification (sd/sed territory)
 - Community pattern sharing platform
