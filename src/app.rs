@@ -32,6 +32,17 @@ fn truncate(s: &str, max_chars: usize) -> String {
     }
 }
 
+#[derive(Default)]
+pub struct OverlayState {
+    pub help: bool,
+    pub help_page: usize,
+    pub recipes: bool,
+    pub recipe_index: usize,
+    pub benchmark: bool,
+    pub codegen: bool,
+    pub codegen_language_index: usize,
+}
+
 pub struct App {
     pub regex_editor: Editor,
     pub test_editor: Editor,
@@ -43,8 +54,7 @@ pub struct App {
     pub replace_result: Option<engine::ReplaceResult>,
     pub explanation: Vec<ExplainNode>,
     pub error: Option<String>,
-    pub show_help: bool,
-    pub help_page: usize,
+    pub overlay: OverlayState,
     pub should_quit: bool,
     pub match_scroll: u16,
     pub replace_scroll: u16,
@@ -67,12 +77,7 @@ pub struct App {
     pub error_offset: Option<usize>,
     pub output_on_quit: bool,
     pub workspace_path: Option<String>,
-    pub show_recipes: bool,
-    pub recipe_index: usize,
-    pub show_benchmark: bool,
     pub benchmark_results: Vec<BenchmarkResult>,
-    pub show_codegen: bool,
-    pub codegen_language_index: usize,
     #[cfg(feature = "pcre2-engine")]
     pub debug_session: Option<crate::engine::pcre2_debug::DebugSession>,
     #[cfg(feature = "pcre2-engine")]
@@ -104,8 +109,7 @@ impl App {
             replace_result: None,
             explanation: Vec::new(),
             error: None,
-            show_help: false,
-            help_page: 0,
+            overlay: OverlayState::default(),
             should_quit: false,
             match_scroll: 0,
             replace_scroll: 0,
@@ -126,12 +130,7 @@ impl App {
             error_offset: None,
             output_on_quit: false,
             workspace_path: None,
-            show_recipes: false,
-            recipe_index: 0,
-            show_benchmark: false,
             benchmark_results: Vec::new(),
-            show_codegen: false,
-            codegen_language_index: 0,
             #[cfg(feature = "pcre2-engine")]
             debug_session: None,
             #[cfg(feature = "pcre2-engine")]
@@ -573,7 +572,7 @@ impl App {
             });
         }
         self.benchmark_results = results;
-        self.show_benchmark = true;
+        self.overlay.benchmark = true;
     }
 
     /// Generate a regex101.com URL from the current state.
@@ -628,7 +627,7 @@ impl App {
         }
         let code = crate::codegen::generate_code(lang, &pattern, &self.flags);
         self.copy_to_clipboard(&code, &format!("{} code copied to clipboard", lang));
-        self.show_codegen = false;
+        self.overlay.codegen = false;
     }
 
     #[cfg(feature = "pcre2-engine")]

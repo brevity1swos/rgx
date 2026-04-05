@@ -89,23 +89,23 @@ pub fn render(frame: &mut Frame, app: &App) {
     let bt = border_type(app.rounded_borders);
 
     // Overlays
-    if app.show_help {
-        render_help_overlay(frame, size, app.engine_kind, app.help_page, bt);
+    if app.overlay.help {
+        render_help_overlay(frame, size, app.engine_kind, app.overlay.help_page, bt);
         return;
     }
-    if app.show_recipes {
-        render_recipe_overlay(frame, size, app.recipe_index, bt);
+    if app.overlay.recipes {
+        render_recipe_overlay(frame, size, app.overlay.recipe_index, bt);
         return;
     }
-    if app.show_benchmark {
+    if app.overlay.benchmark {
         render_benchmark_overlay(frame, size, &app.benchmark_results, bt);
         return;
     }
-    if app.show_codegen {
+    if app.overlay.codegen {
         render_codegen_overlay(
             frame,
             size,
-            app.codegen_language_index,
+            app.overlay.codegen_language_index,
             app.regex_editor.content(),
             &app.flags,
             bt,

@@ -49,7 +49,7 @@ fn render_with_captures() {
 fn render_help_overlay() {
     let mut terminal = create_test_terminal();
     let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
-    app.show_help = true;
+    app.overlay.help = true;
     terminal.draw(|frame| ui::render(frame, &app)).unwrap();
 }
 
@@ -340,17 +340,17 @@ fn selection_resets_on_rematch() {
 fn help_pages_render() {
     let mut terminal = create_test_terminal();
     let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
-    app.show_help = true;
+    app.overlay.help = true;
 
     // Page 0 (default)
     terminal.draw(|frame| ui::render(frame, &app)).unwrap();
 
     // Page 1
-    app.help_page = 1;
+    app.overlay.help_page = 1;
     terminal.draw(|frame| ui::render(frame, &app)).unwrap();
 
     // Page 2
-    app.help_page = 2;
+    app.overlay.help_page = 2;
     terminal.draw(|frame| ui::render(frame, &app)).unwrap();
 }
 
@@ -358,8 +358,8 @@ fn help_pages_render() {
 fn help_page_clamped() {
     let mut terminal = create_test_terminal();
     let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
-    app.show_help = true;
-    app.help_page = 99; // out of bounds, should clamp
+    app.overlay.help = true;
+    app.overlay.help_page = 99; // out of bounds, should clamp
     terminal.draw(|frame| ui::render(frame, &app)).unwrap();
 }
 

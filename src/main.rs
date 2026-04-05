@@ -198,74 +198,75 @@ async fn run() -> anyhow::Result<ExitCode> {
         if let Some(event) = events.next().await {
             match event {
                 AppEvent::Key(key) => {
-                    if app.show_help {
+                    if app.overlay.help {
                         use crossterm::event::KeyCode;
                         match key.code {
                             KeyCode::Left => {
-                                app.help_page = app.help_page.saturating_sub(1);
+                                app.overlay.help_page = app.overlay.help_page.saturating_sub(1);
                             }
                             KeyCode::Right => {
-                                if app.help_page + 1 < ui::HELP_PAGE_COUNT {
-                                    app.help_page += 1;
+                                if app.overlay.help_page + 1 < ui::HELP_PAGE_COUNT {
+                                    app.overlay.help_page += 1;
                                 }
                             }
                             _ => {
-                                app.show_help = false;
-                                app.help_page = 0;
+                                app.overlay.help = false;
+                                app.overlay.help_page = 0;
                             }
                         }
                         continue;
                     }
 
-                    if app.show_recipes {
+                    if app.overlay.recipes {
                         use crossterm::event::KeyCode;
                         match key.code {
                             KeyCode::Up => {
-                                app.recipe_index = app.recipe_index.saturating_sub(1);
+                                app.overlay.recipe_index =
+                                    app.overlay.recipe_index.saturating_sub(1);
                             }
                             KeyCode::Down => {
-                                if app.recipe_index + 1 < RECIPES.len() {
-                                    app.recipe_index += 1;
+                                if app.overlay.recipe_index + 1 < RECIPES.len() {
+                                    app.overlay.recipe_index += 1;
                                 }
                             }
                             KeyCode::Enter => {
-                                let recipe = &RECIPES[app.recipe_index];
+                                let recipe = &RECIPES[app.overlay.recipe_index];
                                 app.set_test_string(recipe.test_string);
                                 app.set_pattern(recipe.pattern);
-                                app.show_recipes = false;
+                                app.overlay.recipes = false;
                             }
                             _ => {
-                                app.show_recipes = false;
+                                app.overlay.recipes = false;
                             }
                         }
                         continue;
                     }
 
-                    if app.show_benchmark {
-                        app.show_benchmark = false;
+                    if app.overlay.benchmark {
+                        app.overlay.benchmark = false;
                         continue;
                     }
 
-                    if app.show_codegen {
+                    if app.overlay.codegen {
                         use crossterm::event::KeyCode;
                         match key.code {
                             KeyCode::Up => {
-                                app.codegen_language_index =
-                                    app.codegen_language_index.saturating_sub(1);
+                                app.overlay.codegen_language_index =
+                                    app.overlay.codegen_language_index.saturating_sub(1);
                             }
                             KeyCode::Down => {
                                 let langs = rgx::codegen::Language::all();
-                                if app.codegen_language_index + 1 < langs.len() {
-                                    app.codegen_language_index += 1;
+                                if app.overlay.codegen_language_index + 1 < langs.len() {
+                                    app.overlay.codegen_language_index += 1;
                                 }
                             }
                             KeyCode::Enter => {
                                 let langs = rgx::codegen::Language::all();
-                                let lang = &langs[app.codegen_language_index];
+                                let lang = &langs[app.overlay.codegen_language_index];
                                 app.generate_code(lang);
                             }
                             _ => {
-                                app.show_codegen = false;
+                                app.overlay.codegen = false;
                             }
                         }
                         continue;
@@ -414,11 +415,11 @@ async fn run() -> anyhow::Result<ExitCode> {
                             app.recompute();
                         }
                         Action::ShowHelp => {
-                            app.show_help = true;
+                            app.overlay.help = true;
                         }
                         Action::OpenRecipes => {
-                            app.show_recipes = true;
-                            app.recipe_index = 0;
+                            app.overlay.recipes = true;
+                            app.overlay.recipe_index = 0;
                         }
                         Action::Benchmark => {
                             app.run_benchmark();
@@ -427,8 +428,8 @@ async fn run() -> anyhow::Result<ExitCode> {
                             app.copy_regex101_url();
                         }
                         Action::GenerateCode => {
-                            app.show_codegen = true;
-                            app.codegen_language_index = 0;
+                            app.overlay.codegen = true;
+                            app.overlay.codegen_language_index = 0;
                         }
                         Action::InsertChar(c) => app.edit_focused(|ed| ed.insert_char(c)),
                         Action::InsertNewline => {
