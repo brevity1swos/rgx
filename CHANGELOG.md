@@ -2,6 +2,189 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2026-04-05
+
+### Bug Fixes
+
+- Escape [[tests]] in doc comment to fix rustdoc link error
+- Preserve debug cache on miss, extract overlay size constants
+- Don't consume debug_cache with .take() when pattern doesn't match;
+    use ref check first so cache survives for future reopens
+  - Extract OVERLAY_WIDTH/OVERLAY_HEIGHT constants from magic numbers
+
+### Documentation
+
+- Update README with code generation, auto engine, test suite mode
+Add new features to feature list, keyboard shortcuts table, usage
+  examples, and comparison tables. Add test suite TOML format section.
+  Add AUR installation method. Update regex101 comparison to reflect
+  that code generation is no longer a gap.
+- *(vscode)* Update extension to v0.3.0 with new features
+Add code generation, auto engine selection, test suite mode,
+  alternating match colors, recipe library, and regex101 export
+  to the feature list. Add key shortcuts table. Add AUR install
+  method. Bump to v0.3.0.
+- Update demo tape with code generation, auto engine, alternating colors
+Add Ctrl+G code generation overlay, auto engine selection with
+  lookahead pattern, and alternating match colors to the VHS demo.
+  Reorganized flow for better pacing.
+- Regenerate demo GIF with code generation and auto engine features
+Updated demo shows: code generation overlay (Ctrl+G), alternating
+  match colors, auto engine selection with lookahead pattern, and
+  existing features. Cache-bust v=5.
+- Slow down code generation section in demo GIF
+Increase sleep durations in the Ctrl+G code generation overlay
+  section for better readability. 400ms → 1s per language browse,
+  1.5s → 3s for overlay display.
+- Update roadmap — move shipped features, add new goals
+Code generation, test suite mode, alternating colors, and auto
+  engine selection are all shipped. New goals: step-through debugger,
+  theme customization, regex101 URL import.
+- Add step-through debugger design spec
+Design for a PCRE2 callout-based step-through regex debugger with
+  dual-cursor visualization, backtrack markers, and heatmap mode.
+- Add step-through debugger implementation plan
+11 tasks covering FFI layer, data model, offset mapping, UI overlay,
+  event loop integration, config, tests, and verification.
+- Update README, roadmap, demo, and VS Code extension for debugger
+- Add step-through debugger to features, keyboard shortcuts, and
+    comparison tables in README
+  - Update "vs regex101" section — rgx now has its own debugger
+  - Move debugger to "Recently Shipped" in roadmap
+  - Add debugger section to demo tape (step-through, heatmap)
+  - Bump VS Code extension to v0.4.0 with debugger keywords
+  - Fix clippy field_reassign_with_default in debugger_tests.rs
+  - Update rust-cache to v2.9.1 (fixes Node.js 20 deprecation)
+
+### Features
+
+- *(vscode)* Improve marketplace discoverability
+Add extension icon, richer description, better categories (Debuggers,
+  Testing), expanded keywords, gallery banner, and LICENSE file. Bump to
+  v0.2.0.
+- Alternate highlight colors between adjacent matches
+Even/odd matches now use distinct background colors for visual
+  distinction, especially when matches are adjacent or dense.
+  Applies to both the test string panel and the match list panel.
+- Add code generation (Ctrl+G) for 8 languages
+Generate ready-to-use code from the current pattern and flags.
+  Select a language from the overlay, copies to clipboard.
+- Auto-select engine based on pattern features
+Detect lookahead, lookbehind, backreferences, recursion, and
+  backtracking verbs in the pattern and auto-upgrade to the
+  simplest engine that supports them. Never auto-downgrades.
+
+  Shows a status message when auto-switching occurs.
+  Includes 14 unit tests for pattern detection.
+- Add test suite mode (--test) for CI-integrated regex validation
+Run `rgx --test file.toml` to validate regex patterns against
+  should-match/should-not-match assertions. Supports multiple files.
+  Exit code 0 = all pass, 1 = failures, 2 = error.
+
+  Extends workspace TOML format with optional [[tests]] sections.
+  Colored pass/fail output in terminals.
+- *(vscode)* Update extension icon with /rgx/ regex delimiter design
+- *(debug)* Add data model and offset map builder for step-through debugger
+Introduces DebugStep, PatternToken, and DebugTrace structs plus build_offset_map()
+  and find_token_at_offset() helpers that walk the regex-syntax AST to map pattern
+  byte offsets to human-readable token descriptions.
+- *(debug)* Implement PCRE2 callout-based debug_match via raw FFI
+Add the core debug_match function that compiles patterns with
+  PCRE2_AUTO_CALLOUT, installs a callout handler to collect execution
+  steps (including backtrack detection via PCRE2_CALLOUT_BACKTRACK),
+  and returns a DebugTrace with steps, heatmap, and match attempt count.
+
+  Manually declares the Pcre2CalloutBlock struct and pcre2_set_callout_8
+  function that are blocklisted by pcre2-sys. Adds pcre2-sys as a direct
+  dependency behind the pcre2-engine feature flag.
+- *(debug)* Add ToggleDebugger action, app state, and config
+Wire up Ctrl+D → ToggleDebugger across the action enum, vim global
+  shortcuts, App struct (show_debugger, debug_trace, debug_step,
+  debug_show_heatmap, debug_error fields + all navigation methods), and
+  Settings.debug_max_steps (default 10_000).
+- *(debug)* Add debugger overlay UI, event loop handler, and help entry
+- Create src/ui/debugger.rs: full-screen RED-bordered overlay with pattern
+    panel (YELLOW token highlight), subject panel (TEAL position highlight),
+    step/backtrack info, optional heatmap (BLUE→PEACH→RED gradient), capture
+    display, and controls footer; gated on pcre2-engine feature
+  - Modify src/ui/mod.rs: declare debugger module, inject render_debugger call
+    after codegen overlay, add Ctrl+D shortcut to help page 0
+  - Modify src/main.rs: add debugger overlay key handler (←/→/h/l/Home/End/g/G/
+    m/f/H/Esc/q); fix ToggleDebugger to only open (start_debug) or only close
+
+### Refactoring
+
+- Simplify workspace, codegen, and fix doc link
+- Extract engine_kind() and flags() helpers in Workspace to
+    deduplicate engine parsing and flag construction
+  - Make TestResult.passed() a method instead of stored field
+  - Change Language::all() from Vec allocation to static slice
+  - Escape [[tests]] in doc comment to fix rustdoc link error
+- Extract escape helper and reuse inline_prefix in codegen
+- Extract escape_double_quoted() to deduplicate pattern escaping
+    in Rust, Python, and Java generators
+  - Reuse EngineFlags::to_inline_prefix() for PHP flag building
+- Extract collect_flags helper, fix formatting in theme
+- Add collect_flags() to deduplicate flag-building in Python, Java,
+    and C# code generators
+  - Fix missing blank line after match_bg() in theme.rs
+- Fix debugger tech debt — dedup overlay, surface errors, tidy imports
+- Share centered_overlay() from ui/mod.rs instead of duplicating in debugger.rs
+  - Surface debug errors via status bar instead of silent debug_error field
+  - Remove unused debug_error field from App
+  - Move regex-syntax imports to file top in pcre2_debug.rs
+  - Restore launch/r_commandline.md to clean state
+- Simplify debugger code after review
+- Remove redundant DebugStep::index field (always equals Vec position)
+  - Extract panel_block() helper to deduplicate 4 identical Block builders
+  - Replace hand-written token descriptions with explain::formatter functions
+  - Replace magic callout return values with named constants
+  - Collapse find_token_at_offset double-scan into single pass
+  - Move centered_overlay import to top of debugger.rs
+  - Remove WHAT comments, improve WHY comments
+  - Remove section banner comments
+  - Remove duplicate integration tests (covered by unit tests)
+- Introduce DebugSession, shared parse_ast, char span helper, trace cache, byte_to_token precomputation
+Co-locates debugger state into DebugSession struct, extracts shared
+  parse_ast helper to avoid duplicated AST parsing, adds build_char_spans
+  to DRY the char-iteration pattern, caches debug traces across
+  close/reopen, and pre-computes byte_to_token map for O(1) heatmap
+  lookups.
+- Remove redundant params, use byte_to_token in captures, fix cfg gates
+- render_debugger reads pattern/subject from DebugSession instead of
+    extra params (8 -> 4 args)
+  - render_captures uses byte_to_token O(1) lookup instead of
+    find_token_at_offset O(n) scan
+  - Remove Option<()> dummy field for non-PCRE2 builds; gate call sites
+    with #[cfg] instead
+  - close_debug() saves session to cache preserving step/heatmap state
+    on reopen
+  - Cache stores full DebugSession instead of just the trace
+- Resolve pre-existing tech debt
+- Extract shared ansi module to deduplicate ANSI escape constants
+    between app.rs and workspace.rs
+  - Remove dead ThemeSettings struct and catppuccin field (never read)
+  - Surface create_dir_all error in workspace save instead of swallowing
+  - Hoist inline `use Workspace` imports to top-level in main.rs
+  - Move url_encode from nested function to module-level
+  - Replace magic numbers with named constants (MAX_PATTERN_HISTORY,
+    STATUS_DISPLAY_TICKS, MAX_UNDO_STACK)
+  - Document switch_engine_to low-level contract
+
+### Testing
+
+- Add integration tests for step-through debugger
+Covers debug_match end-to-end, backtracking detection with heatmap
+  validation, offset map accuracy, find_token_at_offset, flag handling
+  (case-insensitive, unicode), all gated behind #![cfg(feature = "pcre2-engine")].
+
+### Ci
+
+- Update VS Code extension workflow to Node.js 22
+Node.js 20 is deprecated on GitHub Actions runners starting
+  June 2, 2026. Upgrade proactively to avoid forced migration.
+
+
 ## [0.9.0] - 2026-04-01
 
 ### Bug Fixes
