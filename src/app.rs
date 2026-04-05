@@ -79,7 +79,6 @@ pub struct App {
     pub debug_trace: Option<crate::engine::pcre2_debug::DebugTrace>,
     pub debug_step: usize,
     pub debug_show_heatmap: bool,
-    pub debug_error: Option<String>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -140,7 +139,6 @@ impl App {
             debug_trace: None,
             debug_step: 0,
             debug_show_heatmap: false,
-            debug_error: None,
             engine,
             compiled: None,
         }
@@ -658,7 +656,7 @@ impl App {
         let pattern = self.regex_editor.content().to_string();
         let subject = self.test_editor.content().to_string();
         if pattern.is_empty() || subject.is_empty() {
-            self.debug_error = Some("Need both a pattern and test string".to_string());
+            self.set_status_message("Debugger needs both a pattern and test string".to_string());
             return;
         }
 
@@ -678,19 +676,19 @@ impl App {
             Ok(trace) => {
                 self.debug_trace = Some(trace);
                 self.debug_step = 0;
-                self.debug_error = None;
                 self.show_debugger = true;
             }
             Err(e) => {
-                self.debug_error = Some(e.to_string());
+                self.set_status_message(format!("Debugger error: {e}"));
             }
         }
     }
 
     #[cfg(not(feature = "pcre2-engine"))]
     pub fn start_debug(&mut self, _max_steps: usize) {
-        self.debug_error =
-            Some("Debugger requires PCRE2 (build with --features pcre2-engine)".to_string());
+        self.set_status_message(
+            "Debugger requires PCRE2 (build with --features pcre2-engine)".to_string(),
+        );
     }
 
     pub fn debug_step_forward(&mut self) {

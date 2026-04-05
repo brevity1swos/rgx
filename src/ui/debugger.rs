@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Clear, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph},
     Frame,
 };
 
@@ -26,8 +26,7 @@ pub fn render_debugger(
     subject: &str,
     bt: BorderType,
 ) {
-    // Use a large centered overlay
-    let overlay = centered_overlay(frame, area, 90, 28);
+    let overlay = centered_overlay(frame, area, 90, 30);
 
     let heatmap_height: u16 = if show_heatmap { 3 } else { 0 };
 
@@ -92,16 +91,7 @@ pub fn render_debugger(
     render_controls(frame, inner_chunks[5], show_heatmap);
 }
 
-/// Create a centered overlay rect and clear it.
-fn centered_overlay(frame: &mut Frame, area: Rect, max_width: u16, content_height: u16) -> Rect {
-    let w = max_width.min(area.width.saturating_sub(4));
-    let h = content_height.min(area.height.saturating_sub(2));
-    let x = (area.width.saturating_sub(w)) / 2;
-    let y = (area.height.saturating_sub(h)) / 2;
-    let rect = Rect::new(x, y, w, h);
-    frame.render_widget(Clear, rect);
-    rect
-}
+use super::centered_overlay;
 
 /// Render the pattern with the current token range highlighted in YELLOW.
 #[cfg(feature = "pcre2-engine")]

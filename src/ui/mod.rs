@@ -357,7 +357,12 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     ]
 }
 
-fn centered_overlay(frame: &mut Frame, area: Rect, max_width: u16, content_height: u16) -> Rect {
+pub(crate) fn centered_overlay(
+    frame: &mut Frame,
+    area: Rect,
+    max_width: u16,
+    content_height: u16,
+) -> Rect {
     let w = max_width.min(area.width.saturating_sub(4));
     let h = content_height.min(area.height.saturating_sub(4));
     let x = (area.width.saturating_sub(w)) / 2;

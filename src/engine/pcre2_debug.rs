@@ -7,6 +7,9 @@ use std::ptr;
 
 use pcre2_sys::*;
 
+use regex_syntax::ast::parse::Parser;
+use regex_syntax::ast::Ast;
+
 use super::{EngineError, EngineFlags, EngineResult};
 
 /// A single step in the regex engine's execution trace.
@@ -254,9 +257,6 @@ unsafe fn debug_match_ffi(
 
     Ok((collector.steps, truncated, match_attempts))
 }
-
-use regex_syntax::ast::parse::Parser;
-use regex_syntax::ast::Ast;
 
 pub fn build_offset_map(pattern: &str) -> Vec<PatternToken> {
     let ast = match Parser::new().parse(pattern) {
