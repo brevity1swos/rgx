@@ -273,6 +273,25 @@ async fn run() -> anyhow::Result<ExitCode> {
                         continue;
                     }
 
+                    if app.show_debugger {
+                        use crossterm::event::KeyCode;
+                        match key.code {
+                            KeyCode::Right | KeyCode::Char('l') => app.debug_step_forward(),
+                            KeyCode::Left | KeyCode::Char('h') => app.debug_step_back(),
+                            KeyCode::Home => app.debug_jump_start(),
+                            KeyCode::End | KeyCode::Char('G') => app.debug_jump_end(),
+                            KeyCode::Char('g') => app.debug_jump_start(),
+                            KeyCode::Char('m') => app.debug_next_match(),
+                            KeyCode::Char('f') => app.debug_next_backtrack(),
+                            KeyCode::Char('H') => app.debug_toggle_heatmap(),
+                            KeyCode::Esc | KeyCode::Char('q') => {
+                                app.show_debugger = false;
+                            }
+                            _ => {}
+                        }
+                        continue;
+                    }
+
                     let action = if app.vim_mode {
                         vim_key_to_action(key, &mut app.vim_state)
                     } else {
@@ -481,8 +500,9 @@ async fn run() -> anyhow::Result<ExitCode> {
                             }
                         }
                         Action::ToggleDebugger => {
-                            app.show_debugger = !app.show_debugger;
                             if app.show_debugger {
+                                app.show_debugger = false;
+                            } else {
                                 app.start_debug(settings.debug_max_steps);
                             }
                         }

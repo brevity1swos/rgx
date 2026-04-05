@@ -7,6 +7,9 @@ pub mod syntax_highlight;
 pub mod test_input;
 pub mod theme;
 
+#[cfg(feature = "pcre2-engine")]
+pub mod debugger;
+
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -108,6 +111,23 @@ pub fn render(frame: &mut Frame, app: &App) {
             bt,
         );
         return;
+    }
+
+    #[cfg(feature = "pcre2-engine")]
+    if app.show_debugger {
+        if let Some(ref trace) = app.debug_trace {
+            debugger::render_debugger(
+                frame,
+                size,
+                trace,
+                app.debug_step,
+                app.debug_show_heatmap,
+                app.regex_editor.content(),
+                app.test_editor.content(),
+                bt,
+            );
+            return;
+        }
     }
 
     let error_str = app.error.as_deref();
@@ -227,6 +247,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+R", "Open regex recipe library"),
         shortcut("Ctrl+B", "Benchmark pattern across all engines"),
         shortcut("Ctrl+U", "Copy regex101.com URL to clipboard"),
+        shortcut("Ctrl+D", "Step-through regex debugger"),
         shortcut("Ctrl+G", "Generate code for pattern"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
