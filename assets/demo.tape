@@ -147,7 +147,7 @@ Type "f"
 Sleep 1.5s
 
 # Toggle heatmap
-Shift+h
+Type "H"
 Sleep 2s
 
 # Close debugger
