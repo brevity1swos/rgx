@@ -17,7 +17,6 @@ use rgx::config::settings::Settings;
 use rgx::config::workspace::{print_test_results, Workspace};
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
-use rgx::input::editor::Editor;
 use rgx::input::vim::vim_key_to_action;
 use rgx::input::{key_to_action, Action};
 use rgx::recipe::RECIPES;
@@ -298,13 +297,6 @@ async fn run() -> anyhow::Result<ExitCode> {
                         key_to_action(key)
                     };
                     match action {
-                        Action::Quit => {
-                            app.should_quit = true;
-                        }
-                        Action::OutputAndQuit => {
-                            app.output_on_quit = true;
-                            app.should_quit = true;
-                        }
                         Action::SaveWorkspace => {
                             let ws = Workspace::from_app(&app);
                             let path = app
@@ -322,196 +314,21 @@ async fn run() -> anyhow::Result<ExitCode> {
                             let save_path = std::path::Path::new(&path);
                             if let Some(parent) = save_path.parent() {
                                 if let Err(e) = std::fs::create_dir_all(parent) {
-                                    app.set_status_message(format!("Cannot create directory: {e}"));
+                                    app.status.set(format!("Cannot create directory: {e}"));
                                     continue;
                                 }
                             }
                             match ws.save(save_path) {
                                 Ok(()) => {
                                     app.workspace_path = Some(path.clone());
-                                    app.set_status_message(format!("Saved: {path}"));
+                                    app.status.set(format!("Saved: {path}"));
                                 }
                                 Err(e) => {
-                                    app.set_status_message(format!("Save error: {e}"));
+                                    app.status.set(format!("Save error: {e}"));
                                 }
                             }
                         }
-                        Action::SwitchPanel => {
-                            if app.focused_panel == App::PANEL_REGEX {
-                                app.commit_pattern_to_history();
-                            }
-                            app.focused_panel = (app.focused_panel + 1) % App::PANEL_COUNT;
-                        }
-                        Action::SwitchPanelBack => {
-                            if app.focused_panel == App::PANEL_REGEX {
-                                app.commit_pattern_to_history();
-                            }
-                            app.focused_panel =
-                                (app.focused_panel + App::PANEL_COUNT - 1) % App::PANEL_COUNT;
-                        }
-                        Action::SwitchEngine => {
-                            app.switch_engine();
-                        }
-                        Action::Undo => {
-                            if app.focused_panel == App::PANEL_REGEX && app.regex_editor.undo() {
-                                app.recompute();
-                            } else if app.focused_panel == App::PANEL_TEST && app.test_editor.undo()
-                            {
-                                app.rematch();
-                            } else if app.focused_panel == App::PANEL_REPLACE
-                                && app.replace_editor.undo()
-                            {
-                                app.rereplace();
-                            }
-                        }
-                        Action::Redo => {
-                            if app.focused_panel == App::PANEL_REGEX && app.regex_editor.redo() {
-                                app.recompute();
-                            } else if app.focused_panel == App::PANEL_TEST && app.test_editor.redo()
-                            {
-                                app.rematch();
-                            } else if app.focused_panel == App::PANEL_REPLACE
-                                && app.replace_editor.redo()
-                            {
-                                app.rereplace();
-                            }
-                        }
-                        Action::HistoryPrev => {
-                            if app.focused_panel == App::PANEL_REGEX {
-                                app.history_prev();
-                            }
-                        }
-                        Action::HistoryNext => {
-                            if app.focused_panel == App::PANEL_REGEX {
-                                app.history_next();
-                            }
-                        }
-                        Action::CopyMatch => {
-                            if app.focused_panel == App::PANEL_MATCHES {
-                                app.copy_selected_match();
-                            }
-                        }
-                        Action::ToggleWhitespace => {
-                            app.show_whitespace = !app.show_whitespace;
-                        }
-                        Action::ToggleCaseInsensitive => {
-                            app.flags.toggle_case_insensitive();
-                            app.recompute();
-                        }
-                        Action::ToggleMultiLine => {
-                            app.flags.toggle_multi_line();
-                            app.recompute();
-                        }
-                        Action::ToggleDotAll => {
-                            app.flags.toggle_dot_matches_newline();
-                            app.recompute();
-                        }
-                        Action::ToggleUnicode => {
-                            app.flags.toggle_unicode();
-                            app.recompute();
-                        }
-                        Action::ToggleExtended => {
-                            app.flags.toggle_extended();
-                            app.recompute();
-                        }
-                        Action::ShowHelp => {
-                            app.overlay.help = true;
-                        }
-                        Action::OpenRecipes => {
-                            app.overlay.recipes = true;
-                            app.overlay.recipe_index = 0;
-                        }
-                        Action::Benchmark => {
-                            app.run_benchmark();
-                        }
-                        Action::ExportRegex101 => {
-                            app.copy_regex101_url();
-                        }
-                        Action::GenerateCode => {
-                            app.overlay.codegen = true;
-                            app.overlay.codegen_language_index = 0;
-                        }
-                        Action::InsertChar(c) => app.edit_focused(|ed| ed.insert_char(c)),
-                        Action::InsertNewline => {
-                            if app.focused_panel == App::PANEL_TEST {
-                                app.test_editor.insert_newline();
-                                app.rematch();
-                            }
-                        }
-                        Action::DeleteBack => app.edit_focused(Editor::delete_back),
-                        Action::DeleteForward => app.edit_focused(Editor::delete_forward),
-                        Action::MoveCursorLeft => app.move_focused(Editor::move_left),
-                        Action::MoveCursorRight => app.move_focused(Editor::move_right),
-                        Action::MoveCursorWordLeft => app.move_focused(Editor::move_word_left),
-                        Action::MoveCursorWordRight => app.move_focused(Editor::move_word_right),
-                        Action::ScrollUp => match app.focused_panel {
-                            App::PANEL_TEST => app.test_editor.move_up(),
-                            App::PANEL_MATCHES => app.select_match_prev(),
-                            App::PANEL_EXPLAIN => app.scroll_explain_up(),
-                            _ => {}
-                        },
-                        Action::ScrollDown => match app.focused_panel {
-                            App::PANEL_TEST => app.test_editor.move_down(),
-                            App::PANEL_MATCHES => app.select_match_next(),
-                            App::PANEL_EXPLAIN => app.scroll_explain_down(),
-                            _ => {}
-                        },
-                        Action::MoveCursorHome => app.move_focused(Editor::move_home),
-                        Action::MoveCursorEnd => app.move_focused(Editor::move_end),
-                        Action::DeleteCharAtCursor => {
-                            app.edit_focused(Editor::delete_char_at_cursor)
-                        }
-                        Action::DeleteLine => app.edit_focused(Editor::delete_line),
-                        Action::ChangeLine => app.edit_focused(Editor::clear_line),
-                        Action::OpenLineBelow => {
-                            if app.focused_panel == App::PANEL_TEST {
-                                app.test_editor.open_line_below();
-                                app.rematch();
-                            } else {
-                                app.vim_state.cancel_insert();
-                            }
-                        }
-                        Action::OpenLineAbove => {
-                            if app.focused_panel == App::PANEL_TEST {
-                                app.test_editor.open_line_above();
-                                app.rematch();
-                            } else {
-                                app.vim_state.cancel_insert();
-                            }
-                        }
-                        Action::MoveToFirstNonBlank => {
-                            app.move_focused(Editor::move_to_first_non_blank)
-                        }
-                        Action::MoveToFirstLine => app.move_focused(Editor::move_to_first_line),
-                        Action::MoveToLastLine => app.move_focused(Editor::move_to_last_line),
-                        Action::MoveCursorWordForwardEnd => {
-                            app.move_focused(Editor::move_word_forward_end)
-                        }
-                        Action::EnterInsertMode => {}
-                        Action::EnterInsertModeAppend => app.move_focused(Editor::move_right),
-                        Action::EnterInsertModeLineStart => {
-                            app.move_focused(Editor::move_to_first_non_blank)
-                        }
-                        Action::EnterInsertModeLineEnd => app.move_focused(Editor::move_end),
-                        Action::EnterNormalMode => app.move_focused(Editor::move_left_in_line),
-                        Action::PasteClipboard => {
-                            if let Ok(mut cb) = arboard::Clipboard::new() {
-                                if let Ok(text) = cb.get_text() {
-                                    app.edit_focused(|ed| ed.insert_str(&text));
-                                }
-                            }
-                        }
-                        Action::ToggleDebugger => {
-                            #[cfg(feature = "pcre2-engine")]
-                            if app.debug_session.is_some() {
-                                app.close_debug();
-                            } else {
-                                app.start_debug(settings.debug_max_steps);
-                            }
-                            #[cfg(not(feature = "pcre2-engine"))]
-                            app.start_debug(settings.debug_max_steps);
-                        }
-                        Action::None => {}
+                        other => app.handle_action(other, settings.debug_max_steps),
                     }
                 }
                 AppEvent::Mouse(mouse) => {
@@ -577,7 +394,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                     }
                 }
                 AppEvent::Tick => {
-                    app.tick_clipboard_status();
+                    app.status.tick();
                 }
                 AppEvent::Resize(_, _) => {}
             }

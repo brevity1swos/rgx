@@ -5,6 +5,7 @@ use crate::ansi::{GREEN_BOLD, RED_BOLD, RESET};
 use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
+use crate::input::Action;
 
 const MAX_PATTERN_HISTORY: usize = 100;
 const STATUS_DISPLAY_TICKS: u32 = 40; // ~2 seconds at 50ms tick rate
@@ -43,6 +44,51 @@ pub struct OverlayState {
     pub codegen_language_index: usize,
 }
 
+#[derive(Default)]
+pub struct ScrollState {
+    pub match_scroll: u16,
+    pub replace_scroll: u16,
+    pub explain_scroll: u16,
+}
+
+#[derive(Default)]
+pub struct PatternHistory {
+    pub entries: VecDeque<String>,
+    pub index: Option<usize>,
+    pub temp: Option<String>,
+}
+
+#[derive(Default)]
+pub struct MatchSelection {
+    pub match_index: usize,
+    pub capture_index: Option<usize>,
+}
+
+#[derive(Default)]
+pub struct StatusMessage {
+    pub text: Option<String>,
+    ticks: u32,
+}
+
+impl StatusMessage {
+    pub fn set(&mut self, message: String) {
+        self.text = Some(message);
+        self.ticks = STATUS_DISPLAY_TICKS;
+    }
+
+    pub fn tick(&mut self) -> bool {
+        if self.text.is_some() {
+            if self.ticks > 0 {
+                self.ticks -= 1;
+            } else {
+                self.text = None;
+                return true;
+            }
+        }
+        false
+    }
+}
+
 pub struct App {
     pub regex_editor: Editor,
     pub test_editor: Editor,
@@ -56,18 +102,10 @@ pub struct App {
     pub error: Option<String>,
     pub overlay: OverlayState,
     pub should_quit: bool,
-    pub match_scroll: u16,
-    pub replace_scroll: u16,
-    pub explain_scroll: u16,
-    // Pattern history
-    pub pattern_history: VecDeque<String>,
-    pub history_index: Option<usize>,
-    history_temp: Option<String>,
-    // Match selection + clipboard
-    pub selected_match: usize,
-    pub selected_capture: Option<usize>,
-    pub clipboard_status: Option<String>,
-    clipboard_status_ticks: u32,
+    pub scroll: ScrollState,
+    pub history: PatternHistory,
+    pub selection: MatchSelection,
+    pub status: StatusMessage,
     pub show_whitespace: bool,
     pub rounded_borders: bool,
     pub vim_mode: bool,
@@ -111,16 +149,10 @@ impl App {
             error: None,
             overlay: OverlayState::default(),
             should_quit: false,
-            match_scroll: 0,
-            replace_scroll: 0,
-            explain_scroll: 0,
-            pattern_history: VecDeque::new(),
-            history_index: None,
-            history_temp: None,
-            selected_match: 0,
-            selected_capture: None,
-            clipboard_status: None,
-            clipboard_status_ticks: 0,
+            scroll: ScrollState::default(),
+            history: PatternHistory::default(),
+            selection: MatchSelection::default(),
+            status: StatusMessage::default(),
             show_whitespace: false,
             rounded_borders: false,
             vim_mode: false,
@@ -146,11 +178,11 @@ impl App {
     }
 
     pub fn scroll_replace_up(&mut self) {
-        self.replace_scroll = self.replace_scroll.saturating_sub(1);
+        self.scroll.replace_scroll = self.scroll.replace_scroll.saturating_sub(1);
     }
 
     pub fn scroll_replace_down(&mut self) {
-        self.replace_scroll = self.replace_scroll.saturating_add(1);
+        self.scroll.replace_scroll = self.scroll.replace_scroll.saturating_add(1);
     }
 
     pub fn rereplace(&mut self) {
@@ -187,25 +219,25 @@ impl App {
     }
 
     pub fn scroll_match_up(&mut self) {
-        self.match_scroll = self.match_scroll.saturating_sub(1);
+        self.scroll.match_scroll = self.scroll.match_scroll.saturating_sub(1);
     }
 
     pub fn scroll_match_down(&mut self) {
-        self.match_scroll = self.match_scroll.saturating_add(1);
+        self.scroll.match_scroll = self.scroll.match_scroll.saturating_add(1);
     }
 
     pub fn scroll_explain_up(&mut self) {
-        self.explain_scroll = self.explain_scroll.saturating_sub(1);
+        self.scroll.explain_scroll = self.scroll.explain_scroll.saturating_sub(1);
     }
 
     pub fn scroll_explain_down(&mut self) {
-        self.explain_scroll = self.explain_scroll.saturating_add(1);
+        self.scroll.explain_scroll = self.scroll.explain_scroll.saturating_add(1);
     }
 
     pub fn recompute(&mut self) {
         let pattern = self.regex_editor.content().to_string();
-        self.match_scroll = 0;
-        self.explain_scroll = 0;
+        self.scroll.match_scroll = 0;
+        self.scroll.explain_scroll = 0;
         self.error_offset = None;
 
         if pattern.is_empty() {
@@ -225,7 +257,7 @@ impl App {
             let prev = self.engine_kind;
             self.engine_kind = suggested;
             self.engine = engine::create_engine(suggested);
-            self.set_status_message(format!(
+            self.status.set(format!(
                 "Auto-switched {} \u{2192} {} for this pattern",
                 prev, suggested,
             ));
@@ -266,9 +298,9 @@ impl App {
     }
 
     pub fn rematch(&mut self) {
-        self.match_scroll = 0;
-        self.selected_match = 0;
-        self.selected_capture = None;
+        self.scroll.match_scroll = 0;
+        self.selection.match_index = 0;
+        self.selection.capture_index = None;
         if let Some(compiled) = &self.compiled {
             let text = self.test_editor.content().to_string();
             if text.is_empty() {
@@ -303,50 +335,50 @@ impl App {
         if pattern.is_empty() {
             return;
         }
-        if self.pattern_history.back().map(|s| s.as_str()) == Some(&pattern) {
+        if self.history.entries.back().map(|s| s.as_str()) == Some(&pattern) {
             return;
         }
-        self.pattern_history.push_back(pattern);
-        if self.pattern_history.len() > MAX_PATTERN_HISTORY {
-            self.pattern_history.pop_front();
+        self.history.entries.push_back(pattern);
+        if self.history.entries.len() > MAX_PATTERN_HISTORY {
+            self.history.entries.pop_front();
         }
-        self.history_index = None;
-        self.history_temp = None;
+        self.history.index = None;
+        self.history.temp = None;
     }
 
     pub fn history_prev(&mut self) {
-        if self.pattern_history.is_empty() {
+        if self.history.entries.is_empty() {
             return;
         }
-        let new_index = match self.history_index {
+        let new_index = match self.history.index {
             Some(0) => return,
             Some(idx) => idx - 1,
             None => {
-                self.history_temp = Some(self.regex_editor.content().to_string());
-                self.pattern_history.len() - 1
+                self.history.temp = Some(self.regex_editor.content().to_string());
+                self.history.entries.len() - 1
             }
         };
-        self.history_index = Some(new_index);
-        let pattern = self.pattern_history[new_index].clone();
+        self.history.index = Some(new_index);
+        let pattern = self.history.entries[new_index].clone();
         self.regex_editor = Editor::with_content(pattern);
         self.recompute();
     }
 
     pub fn history_next(&mut self) {
-        let idx = match self.history_index {
+        let idx = match self.history.index {
             Some(idx) => idx,
             None => return,
         };
-        if idx + 1 < self.pattern_history.len() {
+        if idx + 1 < self.history.entries.len() {
             let new_index = idx + 1;
-            self.history_index = Some(new_index);
-            let pattern = self.pattern_history[new_index].clone();
+            self.history.index = Some(new_index);
+            let pattern = self.history.entries[new_index].clone();
             self.regex_editor = Editor::with_content(pattern);
             self.recompute();
         } else {
             // Past end — restore temp
-            self.history_index = None;
-            let content = self.history_temp.take().unwrap_or_default();
+            self.history.index = None;
+            let content = self.history.temp.take().unwrap_or_default();
             self.regex_editor = Editor::with_content(content);
             self.recompute();
         }
@@ -358,22 +390,22 @@ impl App {
         if self.matches.is_empty() {
             return;
         }
-        match self.selected_capture {
+        match self.selection.capture_index {
             None => {
-                let m = &self.matches[self.selected_match];
+                let m = &self.matches[self.selection.match_index];
                 if !m.captures.is_empty() {
-                    self.selected_capture = Some(0);
-                } else if self.selected_match + 1 < self.matches.len() {
-                    self.selected_match += 1;
+                    self.selection.capture_index = Some(0);
+                } else if self.selection.match_index + 1 < self.matches.len() {
+                    self.selection.match_index += 1;
                 }
             }
             Some(ci) => {
-                let m = &self.matches[self.selected_match];
+                let m = &self.matches[self.selection.match_index];
                 if ci + 1 < m.captures.len() {
-                    self.selected_capture = Some(ci + 1);
-                } else if self.selected_match + 1 < self.matches.len() {
-                    self.selected_match += 1;
-                    self.selected_capture = None;
+                    self.selection.capture_index = Some(ci + 1);
+                } else if self.selection.match_index + 1 < self.matches.len() {
+                    self.selection.match_index += 1;
+                    self.selection.capture_index = None;
                 }
             }
         }
@@ -384,19 +416,19 @@ impl App {
         if self.matches.is_empty() {
             return;
         }
-        match self.selected_capture {
+        match self.selection.capture_index {
             Some(0) => {
-                self.selected_capture = None;
+                self.selection.capture_index = None;
             }
             Some(ci) => {
-                self.selected_capture = Some(ci - 1);
+                self.selection.capture_index = Some(ci - 1);
             }
             None => {
-                if self.selected_match > 0 {
-                    self.selected_match -= 1;
-                    let m = &self.matches[self.selected_match];
+                if self.selection.match_index > 0 {
+                    self.selection.match_index -= 1;
+                    let m = &self.matches[self.selection.match_index];
                     if !m.captures.is_empty() {
-                        self.selected_capture = Some(m.captures.len() - 1);
+                        self.selection.capture_index = Some(m.captures.len() - 1);
                     }
                 }
             }
@@ -405,17 +437,17 @@ impl App {
     }
 
     fn scroll_to_selected(&mut self) {
-        if self.matches.is_empty() || self.selected_match >= self.matches.len() {
+        if self.matches.is_empty() || self.selection.match_index >= self.matches.len() {
             return;
         }
         let mut line = 0usize;
-        for i in 0..self.selected_match {
+        for i in 0..self.selection.match_index {
             line += 1 + self.matches[i].captures.len();
         }
-        if let Some(ci) = self.selected_capture {
+        if let Some(ci) = self.selection.capture_index {
             line += 1 + ci;
         }
-        self.match_scroll = u16::try_from(line).unwrap_or(u16::MAX);
+        self.scroll.match_scroll = u16::try_from(line).unwrap_or(u16::MAX);
     }
 
     pub fn copy_selected_match(&mut self) {
@@ -428,29 +460,11 @@ impl App {
     fn copy_to_clipboard(&mut self, text: &str, success_msg: &str) {
         match arboard::Clipboard::new() {
             Ok(mut cb) => match cb.set_text(text) {
-                Ok(()) => self.set_status_message(success_msg.to_string()),
-                Err(e) => self.set_status_message(format!("Clipboard error: {e}")),
+                Ok(()) => self.status.set(success_msg.to_string()),
+                Err(e) => self.status.set(format!("Clipboard error: {e}")),
             },
-            Err(e) => self.set_status_message(format!("Clipboard error: {e}")),
+            Err(e) => self.status.set(format!("Clipboard error: {e}")),
         }
-    }
-
-    pub fn set_status_message(&mut self, message: String) {
-        self.clipboard_status = Some(message);
-        self.clipboard_status_ticks = STATUS_DISPLAY_TICKS;
-    }
-
-    /// Tick down the clipboard status timer. Returns true if status was cleared.
-    pub fn tick_clipboard_status(&mut self) -> bool {
-        if self.clipboard_status.is_some() {
-            if self.clipboard_status_ticks > 0 {
-                self.clipboard_status_ticks -= 1;
-            } else {
-                self.clipboard_status = None;
-                return true;
-            }
-        }
-        false
     }
 
     /// Print match results or replacement output to stdout.
@@ -496,8 +510,8 @@ impl App {
     }
 
     fn selected_text(&self) -> Option<String> {
-        let m = self.matches.get(self.selected_match)?;
-        match self.selected_capture {
+        let m = self.matches.get(self.selection.match_index)?;
+        match self.selection.capture_index {
             None => Some(m.text.clone()),
             Some(ci) => m.captures.get(ci).map(|c| c.text.clone()),
         }
@@ -622,7 +636,8 @@ impl App {
     pub fn generate_code(&mut self, lang: &crate::codegen::Language) {
         let pattern = self.regex_editor.content().to_string();
         if pattern.is_empty() {
-            self.set_status_message("No pattern to generate code for".to_string());
+            self.status
+                .set("No pattern to generate code for".to_string());
             return;
         }
         let code = crate::codegen::generate_code(lang, &pattern, &self.flags);
@@ -637,7 +652,8 @@ impl App {
         let pattern = self.regex_editor.content().to_string();
         let subject = self.test_editor.content().to_string();
         if pattern.is_empty() || subject.is_empty() {
-            self.set_status_message("Debugger needs both a pattern and test string".to_string());
+            self.status
+                .set("Debugger needs both a pattern and test string".to_string());
             return;
         }
 
@@ -668,22 +684,21 @@ impl App {
                 });
             }
             Err(e) => {
-                self.set_status_message(format!("Debugger error: {e}"));
+                self.status.set(format!("Debugger error: {e}"));
             }
         }
     }
 
     #[cfg(not(feature = "pcre2-engine"))]
     pub fn start_debug(&mut self, _max_steps: usize) {
-        self.set_status_message(
-            "Debugger requires PCRE2 (build with --features pcre2-engine)".to_string(),
-        );
+        self.status
+            .set("Debugger requires PCRE2 (build with --features pcre2-engine)".to_string());
     }
 
     #[cfg(feature = "pcre2-engine")]
     fn selected_match_start(&self) -> usize {
-        if !self.matches.is_empty() && self.selected_match < self.matches.len() {
-            self.matches[self.selected_match].start
+        if !self.matches.is_empty() && self.selection.match_index < self.matches.len() {
+            self.matches[self.selection.match_index].start
         } else {
             0
         }
@@ -760,6 +775,180 @@ impl App {
         #[cfg(feature = "pcre2-engine")]
         if let Some(ref mut s) = self.debug_session {
             s.show_heatmap = !s.show_heatmap;
+        }
+    }
+
+    pub fn handle_action(&mut self, action: Action, debug_max_steps: usize) {
+        match action {
+            Action::Quit => {
+                self.should_quit = true;
+            }
+            Action::OutputAndQuit => {
+                self.output_on_quit = true;
+                self.should_quit = true;
+            }
+            Action::SwitchPanel => {
+                if self.focused_panel == Self::PANEL_REGEX {
+                    self.commit_pattern_to_history();
+                }
+                self.focused_panel = (self.focused_panel + 1) % Self::PANEL_COUNT;
+            }
+            Action::SwitchPanelBack => {
+                if self.focused_panel == Self::PANEL_REGEX {
+                    self.commit_pattern_to_history();
+                }
+                self.focused_panel =
+                    (self.focused_panel + Self::PANEL_COUNT - 1) % Self::PANEL_COUNT;
+            }
+            Action::SwitchEngine => {
+                self.switch_engine();
+            }
+            Action::Undo => {
+                if self.focused_panel == Self::PANEL_REGEX && self.regex_editor.undo() {
+                    self.recompute();
+                } else if self.focused_panel == Self::PANEL_TEST && self.test_editor.undo() {
+                    self.rematch();
+                } else if self.focused_panel == Self::PANEL_REPLACE && self.replace_editor.undo() {
+                    self.rereplace();
+                }
+            }
+            Action::Redo => {
+                if self.focused_panel == Self::PANEL_REGEX && self.regex_editor.redo() {
+                    self.recompute();
+                } else if self.focused_panel == Self::PANEL_TEST && self.test_editor.redo() {
+                    self.rematch();
+                } else if self.focused_panel == Self::PANEL_REPLACE && self.replace_editor.redo() {
+                    self.rereplace();
+                }
+            }
+            Action::HistoryPrev => {
+                if self.focused_panel == Self::PANEL_REGEX {
+                    self.history_prev();
+                }
+            }
+            Action::HistoryNext => {
+                if self.focused_panel == Self::PANEL_REGEX {
+                    self.history_next();
+                }
+            }
+            Action::CopyMatch => {
+                if self.focused_panel == Self::PANEL_MATCHES {
+                    self.copy_selected_match();
+                }
+            }
+            Action::ToggleWhitespace => {
+                self.show_whitespace = !self.show_whitespace;
+            }
+            Action::ToggleCaseInsensitive => {
+                self.flags.toggle_case_insensitive();
+                self.recompute();
+            }
+            Action::ToggleMultiLine => {
+                self.flags.toggle_multi_line();
+                self.recompute();
+            }
+            Action::ToggleDotAll => {
+                self.flags.toggle_dot_matches_newline();
+                self.recompute();
+            }
+            Action::ToggleUnicode => {
+                self.flags.toggle_unicode();
+                self.recompute();
+            }
+            Action::ToggleExtended => {
+                self.flags.toggle_extended();
+                self.recompute();
+            }
+            Action::ShowHelp => {
+                self.overlay.help = true;
+            }
+            Action::OpenRecipes => {
+                self.overlay.recipes = true;
+                self.overlay.recipe_index = 0;
+            }
+            Action::Benchmark => {
+                self.run_benchmark();
+            }
+            Action::ExportRegex101 => {
+                self.copy_regex101_url();
+            }
+            Action::GenerateCode => {
+                self.overlay.codegen = true;
+                self.overlay.codegen_language_index = 0;
+            }
+            Action::InsertChar(c) => self.edit_focused(|ed| ed.insert_char(c)),
+            Action::InsertNewline => {
+                if self.focused_panel == Self::PANEL_TEST {
+                    self.test_editor.insert_newline();
+                    self.rematch();
+                }
+            }
+            Action::DeleteBack => self.edit_focused(Editor::delete_back),
+            Action::DeleteForward => self.edit_focused(Editor::delete_forward),
+            Action::MoveCursorLeft => self.move_focused(Editor::move_left),
+            Action::MoveCursorRight => self.move_focused(Editor::move_right),
+            Action::MoveCursorWordLeft => self.move_focused(Editor::move_word_left),
+            Action::MoveCursorWordRight => self.move_focused(Editor::move_word_right),
+            Action::ScrollUp => match self.focused_panel {
+                Self::PANEL_TEST => self.test_editor.move_up(),
+                Self::PANEL_MATCHES => self.select_match_prev(),
+                Self::PANEL_EXPLAIN => self.scroll_explain_up(),
+                _ => {}
+            },
+            Action::ScrollDown => match self.focused_panel {
+                Self::PANEL_TEST => self.test_editor.move_down(),
+                Self::PANEL_MATCHES => self.select_match_next(),
+                Self::PANEL_EXPLAIN => self.scroll_explain_down(),
+                _ => {}
+            },
+            Action::MoveCursorHome => self.move_focused(Editor::move_home),
+            Action::MoveCursorEnd => self.move_focused(Editor::move_end),
+            Action::DeleteCharAtCursor => self.edit_focused(Editor::delete_char_at_cursor),
+            Action::DeleteLine => self.edit_focused(Editor::delete_line),
+            Action::ChangeLine => self.edit_focused(Editor::clear_line),
+            Action::OpenLineBelow => {
+                if self.focused_panel == Self::PANEL_TEST {
+                    self.test_editor.open_line_below();
+                    self.rematch();
+                } else {
+                    self.vim_state.cancel_insert();
+                }
+            }
+            Action::OpenLineAbove => {
+                if self.focused_panel == Self::PANEL_TEST {
+                    self.test_editor.open_line_above();
+                    self.rematch();
+                } else {
+                    self.vim_state.cancel_insert();
+                }
+            }
+            Action::MoveToFirstNonBlank => self.move_focused(Editor::move_to_first_non_blank),
+            Action::MoveToFirstLine => self.move_focused(Editor::move_to_first_line),
+            Action::MoveToLastLine => self.move_focused(Editor::move_to_last_line),
+            Action::MoveCursorWordForwardEnd => self.move_focused(Editor::move_word_forward_end),
+            Action::EnterInsertMode => {}
+            Action::EnterInsertModeAppend => self.move_focused(Editor::move_right),
+            Action::EnterInsertModeLineStart => self.move_focused(Editor::move_to_first_non_blank),
+            Action::EnterInsertModeLineEnd => self.move_focused(Editor::move_end),
+            Action::EnterNormalMode => self.move_focused(Editor::move_left_in_line),
+            Action::PasteClipboard => {
+                if let Ok(mut cb) = arboard::Clipboard::new() {
+                    if let Ok(text) = cb.get_text() {
+                        self.edit_focused(|ed| ed.insert_str(&text));
+                    }
+                }
+            }
+            Action::ToggleDebugger => {
+                #[cfg(feature = "pcre2-engine")]
+                if self.debug_session.is_some() {
+                    self.close_debug();
+                } else {
+                    self.start_debug(debug_max_steps);
+                }
+                #[cfg(not(feature = "pcre2-engine"))]
+                self.start_debug(debug_max_steps);
+            }
+            Action::SaveWorkspace | Action::None => {}
         }
     }
 }
