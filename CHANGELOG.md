@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1] - 2026-04-08
+
+### Bug Fixes
+
+- Use runtime PCRE2 version detection instead of hard-coded pcre2-sys constants
+  `pcre2::version()` returns compile-time constants baked into `pcre2-sys`,
+  not the actual linked library version. This caused the CVE-2025-58050
+  guard and status bar warning to trigger incorrectly on systems linking
+  against PCRE2 >= 10.46 (e.g. NixOS). Now calls `pcre2_config_8` directly
+  to query the real runtime version.
+
 ## [0.10.0] - 2026-04-05
 
 ### Bug Fixes

@@ -5,8 +5,42 @@ use super::{
 
 /// Returns `true` when the linked PCRE2 is affected by CVE-2025-58050.
 /// Affects PCRE2 10.45; upgrade to >= 10.46 to resolve.
+///
+/// Note: `pcre2::version()` returns hardcoded constants from `pcre2-sys`,
+/// not the actual linked library version. We call `pcre2_config_8` directly
+/// to get the real runtime version string (e.g. "10.45 2025-02-21").
 pub fn is_pcre2_10_45() -> bool {
-    pcre2::version() == (10, 45)
+    runtime_pcre2_version() == Some((10, 45))
+}
+
+/// Queries the actual linked PCRE2 library for its version at runtime.
+fn runtime_pcre2_version() -> Option<(u32, u32)> {
+    use std::ffi::CStr;
+
+    unsafe {
+        // First call with null to get the required buffer size (in code units).
+        let needed =
+            pcre2_sys::pcre2_config_8(pcre2_sys::PCRE2_CONFIG_VERSION, std::ptr::null_mut());
+        if needed <= 0 {
+            return None;
+        }
+        let mut buf: Vec<u8> = vec![0u8; needed as usize];
+        let rc = pcre2_sys::pcre2_config_8(
+            pcre2_sys::PCRE2_CONFIG_VERSION,
+            buf.as_mut_ptr() as *mut std::ffi::c_void,
+        );
+        if rc < 0 {
+            return None;
+        }
+        let cstr = CStr::from_ptr(buf.as_ptr() as *const std::ffi::c_char);
+        let s = cstr.to_str().ok()?;
+        // Version string looks like "10.45 2025-02-21" — parse major.minor.
+        let version_part = s.split_whitespace().next()?;
+        let mut parts = version_part.split('.');
+        let major = parts.next()?.parse::<u32>().ok()?;
+        let minor = parts.next()?.parse::<u32>().ok()?;
+        Some((major, minor))
+    }
 }
 
 /// Returns `true` if `pattern` invokes the scan-substring verb (`(*scs:…)` or
