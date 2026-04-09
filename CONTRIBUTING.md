@@ -55,13 +55,16 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ## Architecture
 
-- `src/engine/` — Regex engine abstraction and implementations
+- `src/engine/` — Regex engine abstraction, implementations (Rust regex, fancy-regex, PCRE2), auto-detection, replace/substitution, step-through debugger
 - `src/explain/` — Plain-English regex explanation generator
-- `src/ui/` — TUI rendering (ratatui widgets)
-- `src/input/` — Keyboard input handling and text editing
-- `src/config/` — CLI arguments and persistent settings
-- `src/app.rs` — Central application state
+- `src/ui/` — TUI rendering (ratatui widgets: pattern input, test input, replace input, match display, explanation, debugger overlay, status bar, syntax highlighting)
+- `src/input/` — Keyboard input handling, text editing, vim mode
+- `src/config/` — CLI arguments, persistent settings, workspace save/load
+- `src/app.rs` — Central application state and action dispatch
 - `src/event.rs` — Async event loop
+- `src/codegen.rs` — Code generation for 8 languages
+- `src/recipe.rs` — Built-in regex recipe library
+- `src/ansi.rs` — ANSI color output for batch mode
 
 ## License
 
