@@ -29,7 +29,7 @@ impl CompiledRegex for RustCompiledRegex {
         let mut matches = Vec::new();
 
         for caps in self.re.captures_iter(text) {
-            let overall = caps.get(0).unwrap();
+            let overall = caps.get(0).expect("capture group 0 must exist");
             let mut captures = Vec::new();
 
             for (i, name) in self.re.capture_names().enumerate() {

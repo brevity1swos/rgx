@@ -117,24 +117,24 @@ fn visualize_whitespace<'a>(spans: Vec<Span<'a>>) -> Vec<Span<'a>> {
         let ws_style = Style::default().fg(theme::OVERLAY);
         let mut segment = String::new();
 
+        let flush = |segment: &mut String, result: &mut Vec<Span<'a>>| {
+            if !segment.is_empty() {
+                result.push(Span::styled(std::mem::take(segment), style));
+            }
+        };
+
         for c in text.chars() {
             match c {
                 ' ' => {
-                    if !segment.is_empty() {
-                        result.push(Span::styled(std::mem::take(&mut segment), style));
-                    }
+                    flush(&mut segment, &mut result);
                     result.push(Span::styled("\u{00b7}", ws_style)); // ·
                 }
                 '\n' => {
-                    if !segment.is_empty() {
-                        result.push(Span::styled(std::mem::take(&mut segment), style));
-                    }
+                    flush(&mut segment, &mut result);
                     result.push(Span::styled("\u{21b5}\n", ws_style)); // ↵ + actual newline
                 }
                 '\t' => {
-                    if !segment.is_empty() {
-                        result.push(Span::styled(std::mem::take(&mut segment), style));
-                    }
+                    flush(&mut segment, &mut result);
                     result.push(Span::styled("\u{2192}", ws_style)); // →
                 }
                 _ => {

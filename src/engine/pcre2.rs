@@ -109,7 +109,7 @@ impl CompiledRegex for Pcre2CompiledRegex {
                 Err(e) => return Err(EngineError::MatchError(e.to_string())),
             };
 
-            let overall = caps.get(0).unwrap();
+            let overall = caps.get(0).expect("capture group 0 must exist");
             if overall.start() == overall.end() && overall.start() == 0 && offset > 0 {
                 offset += 1;
                 continue;
@@ -143,7 +143,7 @@ impl CompiledRegex for Pcre2CompiledRegex {
             });
 
             if overall.start() == overall.end() {
-                offset += abs_end + 1;
+                offset = abs_end + 1;
             } else {
                 offset = abs_end;
             }

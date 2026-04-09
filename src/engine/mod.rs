@@ -311,7 +311,7 @@ fn expand_replacement(template: &str, m: &Match) -> String {
                     }
                 }
                 Some(&(_, next_c)) if next_c.is_ascii_digit() => {
-                    let (_, d1) = chars.next().unwrap();
+                    let (_, d1) = chars.next().expect("peeked value must exist");
                     let mut num_str = String::from(d1);
                     // Grab a second digit if present
                     if let Some(&(_, d2)) = chars.peek() {
