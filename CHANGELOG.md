@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.2] - 2026-04-09
+
+### Bug Fixes
+
+- Pcre2 zero-length match offset bug, replace bare unwrap with expect
+- Fix `offset += abs_end + 1` → `offset = abs_end + 1` in PCRE2
+    find_matches() — the += caused skipped matches when a zero-length
+    match occurred at a non-zero position after the first iteration
+  - Replace bare .unwrap() with .expect() on capture group 0 across all
+    three engine implementations (rust_regex, fancy, pcre2) and in
+    expand_replacement() for peeked iterator values
+  - Deduplicate whitespace visualization flush pattern in test_input.rs
+
+### Documentation
+
+- Update CONTRIBUTING.md architecture section
+Add codegen, recipe, ansi, workspace, debugger, syntax highlighting,
+  and vim mode to the architecture overview. Reflects current v0.10.1
+  source tree.
+
+
 ## [0.10.1] - 2026-04-08
 
 ### Bug Fixes
