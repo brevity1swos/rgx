@@ -33,6 +33,7 @@ tokio = { version = "1", features = ["full"] }
 regex = "1"
 regex-syntax = "0.8"
 fancy-regex = "0.17"
+grex = "1"
 pcre2 = { version = "0.2", optional = true }
 pcre2-sys = { version = "0.2", optional = true }
 clap = { version = "4", features = ["derive"] }

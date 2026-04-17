@@ -5,6 +5,7 @@ pub mod config;
 pub mod engine;
 pub mod event;
 pub mod explain;
+pub mod grex_integration;
 pub mod input;
 pub mod recipe;
 pub mod ui;
