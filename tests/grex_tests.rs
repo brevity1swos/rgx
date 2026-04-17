@@ -214,6 +214,78 @@ fn editing_sets_debounce_deadline() {
         .is_some());
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn typing_then_tick_produces_generated_pattern() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    for line in ["foo", "bar", "baz"] {
+        for ch in line.chars() {
+            app.dispatch_grex_overlay_key(press(KeyCode::Char(ch), KeyModifiers::NONE));
+        }
+        app.dispatch_grex_overlay_key(press(KeyCode::Enter, KeyModifiers::NONE));
+    }
+
+    // Wait past the 150ms debounce window.
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    app.maybe_run_grex_generation();
+
+    // Give the blocking task a chance to deliver its result.
+    for _ in 0..20 {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        app.drain_grex_results();
+        if app
+            .overlay
+            .grex
+            .as_ref()
+            .and_then(|o| o.generated_pattern.as_deref())
+            .is_some()
+        {
+            break;
+        }
+    }
+
+    let overlay = app.overlay.grex.as_ref().unwrap();
+    let pattern = overlay
+        .generated_pattern
+        .as_deref()
+        .expect("generation should have completed");
+    assert!(!pattern.is_empty());
+}
+
+#[test]
+fn stale_generation_results_are_dropped() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    // Fast-forward the counter past any inbound stale result.
+    if let Some(overlay) = app.overlay.grex.as_mut() {
+        overlay.generation_counter = 10;
+    }
+    app.grex_result_tx
+        .send((5, "stale pattern".to_string()))
+        .unwrap();
+    app.drain_grex_results();
+    let overlay = app.overlay.grex.as_ref().unwrap();
+    assert_ne!(overlay.generated_pattern.as_deref(), Some("stale pattern"));
+}
+
+#[test]
+fn current_generation_results_are_applied() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    if let Some(overlay) = app.overlay.grex.as_mut() {
+        overlay.generation_counter = 7;
+    }
+    app.grex_result_tx
+        .send((7, "current pattern".to_string()))
+        .unwrap();
+    app.drain_grex_results();
+    let overlay = app.overlay.grex.as_ref().unwrap();
+    assert_eq!(
+        overlay.generated_pattern.as_deref(),
+        Some("current pattern")
+    );
+}
+
 #[test]
 fn ui_render_routes_to_grex_overlay_when_open() {
     let mut terminal = new_test_terminal();

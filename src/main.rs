@@ -400,6 +400,8 @@ async fn run() -> anyhow::Result<ExitCode> {
                 }
                 AppEvent::Tick => {
                     app.status.tick();
+                    app.maybe_run_grex_generation();
+                    app.drain_grex_results();
                 }
                 AppEvent::Resize(_, _) => {}
             }

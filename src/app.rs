@@ -122,6 +122,8 @@ pub struct App {
     pub debug_session: Option<crate::engine::pcre2_debug::DebugSession>,
     #[cfg(feature = "pcre2-engine")]
     debug_cache: Option<crate::engine::pcre2_debug::DebugSession>,
+    pub grex_result_tx: tokio::sync::mpsc::UnboundedSender<(u64, String)>,
+    grex_result_rx: tokio::sync::mpsc::UnboundedReceiver<(u64, String)>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
 }
@@ -138,6 +140,7 @@ impl App {
 impl App {
     pub fn new(engine_kind: EngineKind, flags: EngineFlags) -> Self {
         let engine = engine::create_engine(engine_kind);
+        let (grex_result_tx, grex_result_rx) = tokio::sync::mpsc::unbounded_channel();
         Self {
             regex_editor: Editor::new(),
             test_editor: Editor::new(),
@@ -170,6 +173,8 @@ impl App {
             debug_session: None,
             #[cfg(feature = "pcre2-engine")]
             debug_cache: None,
+            grex_result_tx,
+            grex_result_rx,
             engine,
             compiled: None,
         }
@@ -959,6 +964,50 @@ impl App {
                 self.start_debug(debug_max_steps);
             }
             Action::SaveWorkspace | Action::None => {}
+        }
+    }
+
+    /// If the grex overlay has a pending debounce deadline that has passed, spawn a
+    /// blocking task to regenerate the pattern with the current options. Results are
+    /// delivered via `grex_result_tx` and claimed later by `drain_grex_results`.
+    pub fn maybe_run_grex_generation(&mut self) {
+        let Some(overlay) = self.overlay.grex.as_mut() else {
+            return;
+        };
+        let Some(deadline) = overlay.debounce_deadline else {
+            return;
+        };
+        if std::time::Instant::now() < deadline {
+            return;
+        }
+        overlay.debounce_deadline = None;
+        overlay.generation_counter += 1;
+        let counter = overlay.generation_counter;
+        let examples: Vec<String> = overlay
+            .editor
+            .content()
+            .lines()
+            .filter(|l| !l.is_empty())
+            .map(|l| l.to_string())
+            .collect();
+        let options = overlay.options;
+        let tx = self.grex_result_tx.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let pattern = crate::grex_integration::generate(&examples, options);
+            let _ = tx.send((counter, pattern));
+        });
+    }
+
+    /// Drain any grex generation results that arrived since the last tick, applying
+    /// only the result that matches the current generation counter.
+    pub fn drain_grex_results(&mut self) {
+        while let Ok((counter, pattern)) = self.grex_result_rx.try_recv() {
+            if let Some(overlay) = self.overlay.grex.as_mut() {
+                if counter == overlay.generation_counter {
+                    overlay.generated_pattern = Some(pattern);
+                }
+            }
         }
     }
 
