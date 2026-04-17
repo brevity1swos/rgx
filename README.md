@@ -56,6 +56,7 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Vim mode** — optional modal editing (`--vim` or `vim_mode = true`) with Normal/Insert modes, h/j/k/l navigation, w/b/e word motions, dd/cc/x editing, and all global shortcuts preserved
 - **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
 - **Code generation** — Ctrl+G generates ready-to-use code in Rust, Python, JavaScript, Go, Java, C#, PHP, or Ruby — copies to clipboard
+- **Generate regex from examples** — Ctrl+X opens an overlay where you enter example strings (one per line) and get back a regex via the [grex](https://crates.io/crates/grex) crate; Tab to load it into the main editor
 - **Auto engine selection** — automatically upgrades to fancy-regex or PCRE2 when your pattern uses lookahead, backreferences, or recursion
 - **Test suite mode** — `rgx --test file.toml` validates regex against should-match/should-not-match assertions — CI-friendly exit codes
 - **Alternating match colors** — adjacent matches use distinct background colors for visual clarity
@@ -191,6 +192,7 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `Ctrl+O` | Output results to stdout and quit |
 | `Ctrl+S` | Save workspace |
 | `Ctrl+G` | Generate code in 8 languages (copies to clipboard) |
+| `Ctrl+X` | Generate regex from examples (grex) |
 | `Ctrl+U` | Copy regex101.com URL to clipboard |
 | `Ctrl+D` | Step-through regex debugger (PCRE2) |
 | `Ctrl+B` | Benchmark pattern across all engines |
