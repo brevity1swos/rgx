@@ -87,6 +87,133 @@ fn grex_overlay_renders_populated_state() {
     assert!(!rendered.contains("(none yet)"), "empty placeholder leaked");
 }
 
+fn press(key: KeyCode, mods: KeyModifiers) -> KeyEvent {
+    KeyEvent::new(key, mods)
+}
+
+#[test]
+fn tab_with_generated_pattern_loads_into_regex_editor_and_closes_overlay() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    if let Some(overlay) = app.overlay.grex.as_mut() {
+        overlay.generated_pattern = Some("^hello$".to_string());
+    }
+    app.dispatch_grex_overlay_key(press(KeyCode::Tab, KeyModifiers::NONE));
+    assert!(app.overlay.grex.is_none());
+    assert_eq!(app.regex_editor.content(), "^hello$");
+}
+
+#[test]
+fn tab_without_pattern_is_noop() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    app.dispatch_grex_overlay_key(press(KeyCode::Tab, KeyModifiers::NONE));
+    // Overlay stays open; no pattern loaded.
+    assert!(app.overlay.grex.is_some());
+}
+
+#[test]
+fn esc_closes_grex_overlay_without_loading() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    if let Some(overlay) = app.overlay.grex.as_mut() {
+        overlay.generated_pattern = Some("should not be loaded".to_string());
+    }
+    let prior_pattern = app.regex_editor.content().to_string();
+    app.dispatch_grex_overlay_key(press(KeyCode::Esc, KeyModifiers::NONE));
+    assert!(app.overlay.grex.is_none());
+    assert_eq!(app.regex_editor.content(), prior_pattern);
+}
+
+#[test]
+fn alt_d_toggles_digit_flag() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    let before = app.overlay.grex.as_ref().unwrap().options.digit;
+    app.dispatch_grex_overlay_key(press(KeyCode::Char('d'), KeyModifiers::ALT));
+    let after = app.overlay.grex.as_ref().unwrap().options.digit;
+    assert_ne!(before, after);
+}
+
+#[test]
+fn alt_a_toggles_anchors_flag() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    let before = app.overlay.grex.as_ref().unwrap().options.anchors;
+    app.dispatch_grex_overlay_key(press(KeyCode::Char('a'), KeyModifiers::ALT));
+    let after = app.overlay.grex.as_ref().unwrap().options.anchors;
+    assert_ne!(before, after);
+}
+
+#[test]
+fn alt_c_toggles_case_insensitive_flag() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    let before = app.overlay.grex.as_ref().unwrap().options.case_insensitive;
+    app.dispatch_grex_overlay_key(press(KeyCode::Char('c'), KeyModifiers::ALT));
+    let after = app.overlay.grex.as_ref().unwrap().options.case_insensitive;
+    assert_ne!(before, after);
+}
+
+#[test]
+fn plain_characters_append_to_overlay_editor() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    for ch in ['h', 'i'] {
+        app.dispatch_grex_overlay_key(press(KeyCode::Char(ch), KeyModifiers::NONE));
+    }
+    let content = app
+        .overlay
+        .grex
+        .as_ref()
+        .unwrap()
+        .editor
+        .content()
+        .to_string();
+    assert_eq!(content, "hi");
+}
+
+#[test]
+fn enter_inserts_newline_in_overlay_editor() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    for ch in ['a', 'b'] {
+        app.dispatch_grex_overlay_key(press(KeyCode::Char(ch), KeyModifiers::NONE));
+    }
+    app.dispatch_grex_overlay_key(press(KeyCode::Enter, KeyModifiers::NONE));
+    app.dispatch_grex_overlay_key(press(KeyCode::Char('c'), KeyModifiers::NONE));
+    let content = app
+        .overlay
+        .grex
+        .as_ref()
+        .unwrap()
+        .editor
+        .content()
+        .to_string();
+    assert_eq!(content, "ab\nc");
+}
+
+#[test]
+fn editing_sets_debounce_deadline() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    assert!(app
+        .overlay
+        .grex
+        .as_ref()
+        .unwrap()
+        .debounce_deadline
+        .is_none());
+    app.dispatch_grex_overlay_key(press(KeyCode::Char('x'), KeyModifiers::NONE));
+    assert!(app
+        .overlay
+        .grex
+        .as_ref()
+        .unwrap()
+        .debounce_deadline
+        .is_some());
+}
+
 #[test]
 fn ui_render_routes_to_grex_overlay_when_open() {
     let mut terminal = new_test_terminal();

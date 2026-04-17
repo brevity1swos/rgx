@@ -197,6 +197,11 @@ async fn run() -> anyhow::Result<ExitCode> {
         if let Some(event) = events.next().await {
             match event {
                 AppEvent::Key(key) => {
+                    if app.overlay.grex.is_some() {
+                        app.dispatch_grex_overlay_key(key);
+                        continue;
+                    }
+
                     if app.overlay.help {
                         use crossterm::event::KeyCode;
                         match key.code {

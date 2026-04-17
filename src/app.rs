@@ -961,6 +961,90 @@ impl App {
             Action::SaveWorkspace | Action::None => {}
         }
     }
+
+    /// Dispatch a key event to the grex overlay. Returns true if the key was consumed.
+    /// Caller should only invoke this when `self.overlay.grex.is_some()`.
+    pub fn dispatch_grex_overlay_key(&mut self, key: crossterm::event::KeyEvent) -> bool {
+        use crossterm::event::{KeyCode, KeyModifiers};
+        const DEBOUNCE_MS: u64 = 150;
+        let debounce = std::time::Duration::from_millis(DEBOUNCE_MS);
+
+        let Some(overlay) = self.overlay.grex.as_mut() else {
+            return false;
+        };
+
+        // Accept / cancel first — these take precedence regardless of other modifiers.
+        match key.code {
+            KeyCode::Esc => {
+                self.overlay.grex = None;
+                return true;
+            }
+            KeyCode::Tab => {
+                let pattern = overlay
+                    .generated_pattern
+                    .as_deref()
+                    .filter(|p| !p.is_empty())
+                    .map(str::to_string);
+                if let Some(pattern) = pattern {
+                    self.set_pattern(&pattern);
+                    self.overlay.grex = None;
+                }
+                return true;
+            }
+            _ => {}
+        }
+
+        // Flag toggles (Alt+d/a/c). These reset the debounce so the new flags regenerate.
+        if key.modifiers.contains(KeyModifiers::ALT) {
+            match key.code {
+                KeyCode::Char('d') => {
+                    overlay.options.digit = !overlay.options.digit;
+                    overlay.debounce_deadline = Some(std::time::Instant::now() + debounce);
+                    return true;
+                }
+                KeyCode::Char('a') => {
+                    overlay.options.anchors = !overlay.options.anchors;
+                    overlay.debounce_deadline = Some(std::time::Instant::now() + debounce);
+                    return true;
+                }
+                KeyCode::Char('c') => {
+                    overlay.options.case_insensitive = !overlay.options.case_insensitive;
+                    overlay.debounce_deadline = Some(std::time::Instant::now() + debounce);
+                    return true;
+                }
+                _ => {}
+            }
+        }
+
+        // Editor input — dispatch a focused set of keys to the overlay editor.
+        let mut consumed = true;
+        match key.code {
+            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                overlay.editor.insert_char(c);
+            }
+            KeyCode::Enter => overlay.editor.insert_newline(),
+            KeyCode::Backspace => overlay.editor.delete_back(),
+            KeyCode::Delete => overlay.editor.delete_forward(),
+            KeyCode::Left if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                overlay.editor.move_word_left();
+            }
+            KeyCode::Right if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                overlay.editor.move_word_right();
+            }
+            KeyCode::Left => overlay.editor.move_left(),
+            KeyCode::Right => overlay.editor.move_right(),
+            KeyCode::Up => overlay.editor.move_up(),
+            KeyCode::Down => overlay.editor.move_down(),
+            KeyCode::Home => overlay.editor.move_home(),
+            KeyCode::End => overlay.editor.move_end(),
+            _ => consumed = false,
+        }
+
+        if consumed {
+            overlay.debounce_deadline = Some(std::time::Instant::now() + debounce);
+        }
+        consumed
+    }
 }
 
 fn url_encode(s: &str) -> String {
