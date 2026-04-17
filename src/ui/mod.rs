@@ -113,6 +113,10 @@ pub fn render(frame: &mut Frame, app: &App) {
         );
         return;
     }
+    if let Some(grex_state) = app.overlay.grex.as_ref() {
+        grex_overlay::render_with_border(frame, size, grex_state, bt);
+        return;
+    }
 
     #[cfg(feature = "pcre2-engine")]
     if let Some(ref session) = app.debug_session {
@@ -240,6 +244,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Ctrl+U", "Copy regex101.com URL to clipboard"),
         shortcut("Ctrl+D", "Step-through regex debugger"),
         shortcut("Ctrl+G", "Generate code for pattern"),
+        shortcut("Ctrl+X", "Generate regex from examples (grex)"),
         shortcut("Ctrl+W", "Toggle whitespace visualization"),
         shortcut("Ctrl+Left/Right", "Move cursor by word"),
         shortcut("Alt+Up/Down", "Browse pattern history"),
