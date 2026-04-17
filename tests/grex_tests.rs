@@ -1,5 +1,26 @@
-use rgx::app::OverlayState;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use rgx::app::{App, OverlayState};
+use rgx::engine::{EngineFlags, EngineKind};
 use rgx::grex_integration::{generate, GrexOptions};
+use rgx::input::{key_to_action, Action};
+
+fn new_test_app() -> App {
+    App::new(EngineKind::RustRegex, EngineFlags::default())
+}
+
+#[test]
+fn ctrl_x_maps_to_open_grex() {
+    let key = KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL);
+    assert_eq!(key_to_action(key), Action::OpenGrex);
+}
+
+#[test]
+fn open_grex_action_opens_overlay() {
+    let mut app = new_test_app();
+    assert!(app.overlay.grex.is_none());
+    app.handle_action(Action::OpenGrex, 10_000);
+    assert!(app.overlay.grex.is_some());
+}
 
 #[test]
 fn overlay_state_default_has_no_grex_overlay() {

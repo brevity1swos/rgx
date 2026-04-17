@@ -873,6 +873,9 @@ impl App {
                 self.overlay.recipes = true;
                 self.overlay.recipe_index = 0;
             }
+            Action::OpenGrex => {
+                self.overlay.grex = Some(crate::ui::grex_overlay::GrexOverlayState::default());
+            }
             Action::Benchmark => {
                 self.run_benchmark();
             }

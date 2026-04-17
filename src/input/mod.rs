@@ -45,6 +45,7 @@ pub enum Action {
     OutputAndQuit,
     SaveWorkspace,
     OpenRecipes,
+    OpenGrex,
     Benchmark,
     ExportRegex101,
     GenerateCode,
@@ -85,6 +86,7 @@ pub fn key_to_action(key: KeyEvent) -> Action {
             Action::SaveWorkspace
         }
         KeyCode::Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::OpenRecipes,
+        KeyCode::Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::OpenGrex,
         KeyCode::Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => Action::Benchmark,
         KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             Action::ExportRegex101
