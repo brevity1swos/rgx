@@ -1,4 +1,5 @@
 pub mod explanation;
+pub mod grex_overlay;
 pub mod match_display;
 pub mod regex_input;
 pub mod replace_input;

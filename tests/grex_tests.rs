@@ -1,4 +1,11 @@
+use rgx::app::OverlayState;
 use rgx::grex_integration::{generate, GrexOptions};
+
+#[test]
+fn overlay_state_default_has_no_grex_overlay() {
+    let overlay = OverlayState::default();
+    assert!(overlay.grex.is_none());
+}
 
 #[test]
 fn default_options_match_spec_defaults() {

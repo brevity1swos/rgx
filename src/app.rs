@@ -42,6 +42,7 @@ pub struct OverlayState {
     pub benchmark: bool,
     pub codegen: bool,
     pub codegen_language_index: usize,
+    pub grex: Option<crate::ui::grex_overlay::GrexOverlayState>,
 }
 
 #[derive(Default)]
