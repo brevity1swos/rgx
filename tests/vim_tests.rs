@@ -79,3 +79,39 @@ fn vim_editor_insert_str() {
     app.test_editor.insert_str("ello worl");
     assert_eq!(app.test_editor.content(), "hello world");
 }
+
+#[test]
+fn ctrl_x_opens_grex_overlay_in_vim_normal_mode() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+    use rgx::input::Action;
+
+    let mut state = VimState::new();
+    assert_eq!(state.mode, VimMode::Normal);
+
+    let key = KeyEvent {
+        code: KeyCode::Char('x'),
+        modifiers: KeyModifiers::CONTROL,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE,
+    };
+    let action = vim_key_to_action(key, &mut state);
+    assert_eq!(action, Action::OpenGrex);
+    // Mode should remain Normal (Ctrl+X is a global shortcut, not a mode-changer).
+    assert_eq!(state.mode, VimMode::Normal);
+}
+
+#[test]
+fn plain_x_still_deletes_char_in_vim_normal_mode() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
+    use rgx::input::Action;
+
+    let mut state = VimState::new();
+    let key = KeyEvent {
+        code: KeyCode::Char('x'),
+        modifiers: KeyModifiers::NONE,
+        kind: KeyEventKind::Press,
+        state: KeyEventState::NONE,
+    };
+    let action = vim_key_to_action(key, &mut state);
+    assert_eq!(action, Action::DeleteCharAtCursor);
+}

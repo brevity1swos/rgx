@@ -215,6 +215,50 @@ fn editing_sets_debounce_deadline() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn grex_roundtrip_full_flow_loads_valid_regex() {
+    // Open overlay, type examples, wait for debounce, press Tab, verify
+    // the pattern is loaded into the main editor AND compiles AND matches all examples.
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+
+    for line in ["foo", "bar", "baz"] {
+        for ch in line.chars() {
+            app.dispatch_grex_overlay_key(press(KeyCode::Char(ch), KeyModifiers::NONE));
+        }
+        app.dispatch_grex_overlay_key(press(KeyCode::Enter, KeyModifiers::NONE));
+    }
+
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    app.maybe_run_grex_generation();
+
+    for _ in 0..20 {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        app.drain_grex_results();
+        if app
+            .overlay
+            .grex
+            .as_ref()
+            .and_then(|o| o.generated_pattern.as_deref())
+            .is_some()
+        {
+            break;
+        }
+    }
+
+    // Accept via Tab.
+    app.dispatch_grex_overlay_key(press(KeyCode::Tab, KeyModifiers::NONE));
+
+    assert!(app.overlay.grex.is_none(), "overlay should close on Tab");
+    let content = app.regex_editor.content().to_string();
+    assert!(!content.is_empty(), "regex editor should be populated");
+
+    let re = regex::Regex::new(&content).expect("grex output must compile");
+    assert!(re.is_match("foo"), "pattern should match 'foo': {content}");
+    assert!(re.is_match("bar"), "pattern should match 'bar': {content}");
+    assert!(re.is_match("baz"), "pattern should match 'baz': {content}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn typing_then_tick_produces_generated_pattern() {
     let mut app = new_test_app();
     app.handle_action(Action::OpenGrex, 10_000);
