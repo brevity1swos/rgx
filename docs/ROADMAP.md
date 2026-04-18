@@ -1,18 +1,19 @@
 # rgx Roadmap
 
-## Current Direction (updated 2026-04-18, post-v0.11.0)
+## Current Direction (updated 2026-04-17, post-v0.11.0)
 
 **v0.11.0 shipped — grex overlay AND `rgx filter` sub-mode.**
 
 Road A as framed on 2026-04-11 expected v0.11.0 to be the "grex and done" farewell release. In practice, `rgx filter` landed in the same cycle because it was low cost to add and opened a genuinely new use-case surface (piping into agx / sift toolchains). The original Road A spirit — avoid a 2–3 month ripgrep replacement fight — still holds. The filter subcommand is a bounded feature, not a grep replacement: it loads input into memory, wants a single pattern per session, and intentionally lacks the ripgrep flags that would invite feature creep.
 
-**Decision gate before the next feature commit:**
+**Status: filter polish + Scope C shipped. Back to genuine maintenance mode.**
 
-1. **Filter Scope C** — `--json <path>` JSONL-field extraction for deeper agx synergy (~1-2 days)
-2. **Filter polish** — match-span highlighting in the results pane, UTF-8-lossy input mode, `--max-lines` safety cap (~1 day total)
-3. **Genuine maintenance mode** — stop feature work, reinvest capacity in revenue-generating SaaS projects. Matches original Road A.
+Filter Scope C (`--json <path>`) and the filter polish items (match-span
+highlighting, UTF-8-lossy input, `--max-lines`) have all landed on main.
+The next-round decision gate is now:
 
-Until a choice is made, rgx is in de-facto maintenance mode.
+1. **Genuine maintenance mode** — stop feature work, reinvest capacity in revenue-generating SaaS projects. Matches original Road A. **This is the current posture.**
+2. Any new feature proposal must clear the bar of "solves a real user-reported gap" and "fits inside the bounded-scope filter framing".
 
 **What "maintenance mode" continues to mean:**
 - Active monitoring of GitHub issues and external PRs; respond within a reasonable window
@@ -35,6 +36,7 @@ Deferred from v0.11.0 (documented as follow-ups, not blocking):
 
 ## Recently Shipped
 
+- **Filter `--json <PATH>`** — dotted/indexed path language (`.msg`, `.steps[0].text`) extracts a field from each JSONL line; the regex matches against the extracted string, but raw JSON lines are still what gets emitted. TUI renders two-line rows (raw JSON + `↳ extracted`) for context on wide terminals, with a single-line narrow fallback. Parse failures, missing paths, and non-string values are skipped silently. Shipped 2026-04-17.
 - **`rgx filter`** — interactive grep mode with stdin/file input, live regex refinement, `--invert`/`--count`/`--line-number` flags, and non-TTY piping. Synergizes with agx and sift pipelines. Shipped 2026-04-18.
 - **v0.10.2** — PCRE2 zero-length match offset fix, runtime PCRE2 version detection, syntax highlight token caching, `OverlayState` extraction, action dispatch moved into `App::handle_action()`.
 - **Step-Through Debugger (Ctrl+D)** — PCRE2 callout-based step-through debugger with dual-cursor visualization, backtrack markers, heatmap mode, and debug-from-selected-match. No other terminal regex tool has this.

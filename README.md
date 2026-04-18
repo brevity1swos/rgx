@@ -57,7 +57,7 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
 - **Code generation** — Ctrl+G generates ready-to-use code in Rust, Python, JavaScript, Go, Java, C#, PHP, or Ruby — copies to clipboard
 - **Generate regex from examples** — Ctrl+X opens an overlay where you enter example strings (one per line) and get back a regex via the [grex](https://crates.io/crates/grex) crate; Tab to load it into the main editor
-- **Live filter mode** — `rgx filter [PATTERN]` reads stdin or a file, shows an interactive TUI where you refine a regex against the stream, and emits matching lines on Enter. Supports `--invert`, `--count`, `--line-number`, `--case-insensitive`, and piping (non-TTY stdout skips the TUI entirely).
+- **Live filter mode** — `rgx filter [PATTERN]` reads stdin or a file, shows an interactive TUI where you refine a regex against the stream, and emits matching lines on Enter. Supports `--invert`, `--count`, `--line-number`, `--case-insensitive`, `--json <PATH>` (match against a JSONL field rather than the raw line), and piping (non-TTY stdout skips the TUI entirely).
 - **Auto engine selection** — automatically upgrades to fancy-regex or PCRE2 when your pattern uses lookahead, backreferences, or recursion
 - **Test suite mode** — `rgx --test file.toml` validates regex against should-match/should-not-match assertions — CI-friendly exit codes
 - **Alternating match colors** — adjacent matches use distinct background colors for visual clarity
@@ -266,7 +266,17 @@ agx session.jsonl --export md | rgx filter '\btool_use\b.*\.rs'
 
 # Count how many error responses showed up in a session
 agx session.jsonl --export md | rgx filter --count '(?i)error'
+
+# Match only the `text` field of each JSONL record, not the raw line.
+# Useful when structured metadata (ids, timestamps) would give false positives.
+agx session.jsonl --export json | rgx filter --json '.text' '(?i)error'
 ```
+
+The `--json <PATH>` flag accepts a minimal dotted/indexed path (e.g.
+`.msg`, `.steps[0].text`). Each line is parsed as JSON and the extracted
+field's string value is what the pattern matches against. Non-string
+values, missing paths, and malformed JSON lines are skipped silently.
+Raw JSON lines are still what gets emitted when a match is found.
 
 ### With [sift](https://github.com/brevity1swos/sift)
 
