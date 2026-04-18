@@ -65,6 +65,56 @@ pub fn filter_lines(
     Ok(indices)
 }
 
+/// Apply the pattern to the extracted string for each line. Lines whose
+/// `extracted[i]` is `None` are excluded from the match set regardless of
+/// whether the pattern is empty or `invert` is set — a missing/non-string
+/// field is not a "line" for matching purposes.
+///
+/// Returns the 0-indexed line numbers of the raw input that should be emitted
+/// (i.e. whose extracted value satisfies the pattern + invert flag).
+pub fn filter_lines_with_extracted(
+    extracted: &[Option<String>],
+    pattern: &str,
+    options: FilterOptions,
+) -> Result<Vec<usize>, String> {
+    if pattern.is_empty() {
+        // Empty pattern: every line with a present extracted value passes
+        // (iff not inverted). A None extracted value is excluded either way.
+        return Ok(extracted
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, v)| {
+                if v.is_some() && !options.invert {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect());
+    }
+
+    let engine = engine::create_engine(EngineKind::RustRegex);
+    let compiled = engine
+        .compile(pattern, &options.flags())
+        .map_err(|e| e.to_string())?;
+
+    let mut indices = Vec::with_capacity(extracted.len());
+    for (idx, slot) in extracted.iter().enumerate() {
+        let Some(s) = slot else {
+            // Missing field or parse failure — never emit.
+            continue;
+        };
+        let matched = compiled
+            .find_matches(s)
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+        if matched != options.invert {
+            indices.push(idx);
+        }
+    }
+    Ok(indices)
+}
+
 /// Returns per-line extracted strings. `None` means the line should be excluded
 /// from matching (JSON parse failure, path miss, or non-string value). The
 /// returned vector has the same length as `lines`, so callers can index it
@@ -194,15 +244,29 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
     let stdout_is_tty = io::stdout().is_terminal();
     let non_interactive = args.count || args.line_number || (has_pattern && !stdout_is_tty);
 
+    // If --json was given, resolve the per-line extracted strings up front.
+    // We do this before splitting non-interactive vs. TUI so both paths
+    // see the same view of the input.
+    let json_extracted = if let Some(path_expr) = args.json.as_deref() {
+        Some(extract_strings(&lines, path_expr).map_err(|e| format!("--json: {e}"))?)
+    } else {
+        None
+    };
+
     if non_interactive {
         let pattern = args.pattern.unwrap_or_default();
-        let matched =
-            filter_lines(&lines, &pattern, options).map_err(|e| format!("pattern: {e}"))?;
+        let matched = match &json_extracted {
+            Some(extracted) => filter_lines_with_extracted(extracted, &pattern, options)
+                .map_err(|e| format!("pattern: {e}"))?,
+            None => filter_lines(&lines, &pattern, options).map_err(|e| format!("pattern: {e}"))?,
+        };
 
         let mut stdout = io::stdout().lock();
         if args.count {
             emit_count(&mut stdout, matched.len()).map_err(|e| format!("writing output: {e}"))?;
         } else {
+            // Emit the raw lines regardless of --json — users still get the
+            // full JSON records back, not just the extracted fields.
             emit_matches(&mut stdout, &lines, &matched, args.line_number)
                 .map_err(|e| format!("writing output: {e}"))?;
         }
@@ -213,7 +277,9 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
         });
     }
 
-    // TUI mode.
+    // TUI mode. --json is wired into FilterApp in a follow-up task; for now
+    // the TUI constructor ignores json_extracted.
+    let _ = json_extracted;
     let initial_pattern = args.pattern.unwrap_or_default();
     let app = FilterApp::new(lines, &initial_pattern, options);
     let (final_app, outcome) = run::run_tui(app).map_err(|e| format!("tui: {e}"))?;

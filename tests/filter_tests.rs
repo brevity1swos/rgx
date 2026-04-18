@@ -3,8 +3,8 @@ use std::io::Cursor;
 use clap::Parser;
 use rgx::config::cli::{Cli, Command};
 use rgx::filter::{
-    emit_count, emit_matches, extract_strings, filter_lines, read_input, FilterApp, FilterOptions,
-    Outcome,
+    emit_count, emit_matches, extract_strings, filter_lines, filter_lines_with_extracted,
+    read_input, FilterApp, FilterOptions, Outcome,
 };
 
 fn to_lines(strs: &[&str]) -> Vec<String> {
@@ -112,6 +112,58 @@ fn extract_strings_skips_missing_path() {
     let lines = to_lines(&[r#"{"other":"x"}"#, r#"{"msg":"found"}"#]);
     let got = extract_strings(&lines, ".msg").unwrap();
     assert_eq!(got, vec![None, Some("found".to_string())]);
+}
+
+#[test]
+fn filter_lines_with_extracted_matches_extracted_values() {
+    // Raw lines are irrelevant; the extracted field is what gets matched.
+    let extracted = vec![
+        Some("hello".to_string()),
+        Some("boom".to_string()),
+        Some("goodbye".to_string()),
+    ];
+    let got = filter_lines_with_extracted(&extracted, "^b", FilterOptions::default()).unwrap();
+    assert_eq!(got, vec![1]);
+}
+
+#[test]
+fn filter_lines_with_extracted_skips_none_entries() {
+    let extracted = vec![
+        Some("keep".to_string()),
+        None, // parse failure / missing path / non-string
+        Some("other".to_string()),
+    ];
+    // Pattern `.` would match any non-empty string. None lines must still be skipped.
+    let got = filter_lines_with_extracted(&extracted, ".", FilterOptions::default()).unwrap();
+    assert_eq!(got, vec![0, 2]);
+}
+
+#[test]
+fn filter_lines_with_extracted_empty_pattern_passes_present_values() {
+    let extracted = vec![Some("a".to_string()), None, Some("b".to_string())];
+    let got = filter_lines_with_extracted(&extracted, "", FilterOptions::default()).unwrap();
+    assert_eq!(got, vec![0, 2]);
+}
+
+#[test]
+fn filter_lines_with_extracted_invert_skips_none() {
+    // In invert mode, None entries still don't emit. Only present-and-non-matching
+    // values qualify.
+    let extracted = vec![Some("match".to_string()), None, Some("other".to_string())];
+    let options = FilterOptions {
+        invert: true,
+        case_insensitive: false,
+    };
+    let got = filter_lines_with_extracted(&extracted, "match", options).unwrap();
+    assert_eq!(got, vec![2]);
+}
+
+#[test]
+fn filter_lines_with_extracted_invalid_pattern_errors() {
+    let extracted = vec![Some("x".to_string())];
+    assert!(
+        filter_lines_with_extracted(&extracted, "(unclosed", FilterOptions::default()).is_err()
+    );
 }
 
 #[test]
@@ -821,5 +873,68 @@ mod cli_e2e {
         child.stdin.as_mut().unwrap().write_all(b"foo\n").unwrap();
         let out = child.wait_with_output().unwrap();
         assert_eq!(out.status.code(), Some(2));
+    }
+
+    #[test]
+    fn cli_filter_json_extracts_and_matches() {
+        let bin = rgx_bin();
+        let input = concat!(
+            r#"{"level":"info","msg":"hello"}"#,
+            "\n",
+            r#"{"level":"error","msg":"boom"}"#,
+            "\n",
+            r#"{"level":"info","msg":"goodbye"}"#,
+            "\n",
+            "bad line not json\n",
+        );
+        let mut child = Command::new(&bin)
+            .args(["filter", "--json", ".msg", "--count", "^b"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        // Only "boom" matches ^b; "hello" and "goodbye" don't; bad line skipped.
+        assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "1");
+    }
+
+    #[test]
+    fn cli_filter_json_emits_raw_line_not_extracted() {
+        // When --json is set and the pattern matches, the RAW JSON line is
+        // emitted — not the extracted value.
+        let bin = rgx_bin();
+        let input = concat!(
+            r#"{"level":"info","msg":"hello"}"#,
+            "\n",
+            r#"{"level":"error","msg":"boom"}"#,
+            "\n",
+        );
+        let mut child = Command::new(&bin)
+            .args(["filter", "--json", ".msg", "-n", "boom"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(input.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            "2:{\"level\":\"error\",\"msg\":\"boom\"}\n"
+        );
     }
 }
