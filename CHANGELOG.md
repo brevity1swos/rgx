@@ -2,6 +2,94 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-04-18
+
+### Bug Fixes
+
+- *(filter)* Plain 'q' belongs in the pattern; keep selection in view
+Two fixes from code-review feedback on the filter mode:
+
+  - Removed the plain-'q' exit shortcut. It hijacked the letter 'q' so users
+    could not type patterns like `quote`, `sequence`, or `\bq\w+`. Esc and
+    Ctrl+C already handle discard. Added a regression test.
+
+  - The matched-line pane used app.scroll (never mutated after init), so
+    pressing Down past the viewport moved selection off-screen. Render now
+    derives a start offset that keeps selected visible. app.scroll is retained
+    as a hint for a future page-up/down binding. Added a regression test.
+- *(event)* Collapse nested if into outer match (clippy 1.95)
+rust 1.95's clippy::collapsible_match flagged the per-arm send-and-break
+  pattern in the EventHandler's reader.next() branch. Refactor to a single
+  translation match that produces an AppEvent, followed by one send point.
+  Clearer intent (translate → forward), fewer branches, satisfies clippy.
+
+  CI was green on rust 1.93 but started failing once the toolchain bumped
+  to 1.95 mid-release cycle.
+
+### Documentation
+
+- Document Road A direction and v0.11.0 grex overlay design
+Road A commits rgx to a final polish release (v0.11.0 — grex overlay
+  integration) followed by maintenance-only mode, with capacity reinvested
+  into revenue-generating side projects. ROADMAP.md captures the direction
+  change, the v0.11.0 scope, and the non-negotiable editor-mode parity
+  commitment during maintenance.
+
+  The grex overlay spec locks in six design decisions from brainstorming:
+  one-example-per-line text area, 150ms debounced regeneration via
+  spawn_blocking with a generation counter for stale-result suppression,
+  three flag toggles (digit/anchors/case-insensitive) mirroring the main
+  flag row, Tab-accepts / Esc-cancels, dimmed placeholder for empty state,
+  and Ctrl+X as the shortcut. Covers architecture, data flow, layout,
+  testing strategy (unit + snapshot + end-to-end + vim regression), and
+  explicit out-of-scope items to hold the line against scope creep.
+- Add v0.11.0 grex overlay implementation plan
+13 bite-sized tasks with TDD steps: grex dep + GrexOptions, generate()
+  wrapper with flag tests, GrexOverlayState skeleton, Ctrl+X binding,
+  handle_action(OpenGrex), empty-state render, render wiring + help page,
+  overlay key handler (Tab/Esc/Alt toggles), debounced spawn_blocking
+  with stale-result suppression, populated snapshots, end-to-end
+  roundtrip, vim regression guards, and README/CLAUDE.md/demo polish.
+
+  Plan follows the design spec at
+  docs/superpowers/specs/2026-04-11-grex-overlay-design.md.
+- *(grex)* Add Ctrl+X to README features and CLAUDE.md architecture
+- *(filter)* README feature list, shortcuts table, and piping recipes
+- *(filter)* Move rgx filter to shipped in roadmap
+- *(filter)* Commit the v0.12 filter mode implementation plan
+13-task plan executed in prior commits (6e6eba9..32f8373).
+  Saved for future reference and auditability.
+
+### Features
+
+- *(grex)* Add grex dependency and GrexOptions struct
+- *(grex)* Implement generate() wrapper with flag handling
+- *(grex)* Add GrexOverlayState with default constructor
+- *(grex)* Bind Ctrl+X to Action::OpenGrex and open overlay
+- *(grex)* Render overlay, wire into ui::render, add to help page
+- *(grex)* Implement overlay key handler with Tab/Esc/flag toggles
+- *(grex)* Debounced spawn_blocking generation with stale-result suppression
+- *(filter)* Add rgx filter subcommand to CLI
+- *(filter)* Add filter_lines pure function with tests
+- *(filter)* Add read_input helper for stdin or file source
+- *(filter)* Emit_matches and emit_count non-interactive helpers
+- *(filter)* TTY-aware entry dispatcher with non-interactive paths
+Uses std::io::IsTerminal rather than adding is-terminal crate dependency,
+  matching the existing pattern in main.rs.
+- *(filter)* Wire Command::Filter in main.rs + e2e CLI tests
+- *(filter)* FilterApp state struct with recompute logic
+- *(filter)* TUI render function with pattern, match list, status
+- *(filter)* TUI event loop with key handling and emit/discard outcomes
+
+### Miscellaneous
+
+- Ignore .omc/ tooling state dir
+
+### Testing
+
+- *(grex)* End-to-end roundtrip and vim mode regression guards
+
+
 ## [0.10.2] - 2026-04-09
 
 ### Bug Fixes
