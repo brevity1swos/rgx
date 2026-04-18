@@ -7,6 +7,7 @@ use crate::config::cli::FilterArgs;
 use crate::engine::{self, EngineFlags, EngineKind};
 
 pub mod app;
+pub mod json_path;
 pub mod run;
 pub mod ui;
 pub use app::{FilterApp, Outcome};

@@ -516,6 +516,85 @@ fn filter_ui_render_with_invalid_pattern_shows_error() {
     assert!(rendered.contains("error"));
 }
 
+mod json_path_tests {
+    use rgx::filter::json_path::{parse_path, Segment};
+
+    #[test]
+    fn parse_path_single_key() {
+        assert_eq!(
+            parse_path(".msg").unwrap(),
+            vec![Segment::Key("msg".into())]
+        );
+    }
+
+    #[test]
+    fn parse_path_nested() {
+        assert_eq!(
+            parse_path(".a.b.c").unwrap(),
+            vec![
+                Segment::Key("a".into()),
+                Segment::Key("b".into()),
+                Segment::Key("c".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_path_index() {
+        assert_eq!(
+            parse_path(".items[0]").unwrap(),
+            vec![Segment::Key("items".into()), Segment::Index(0)]
+        );
+    }
+
+    #[test]
+    fn parse_path_mixed() {
+        assert_eq!(
+            parse_path(".steps[1].text").unwrap(),
+            vec![
+                Segment::Key("steps".into()),
+                Segment::Index(1),
+                Segment::Key("text".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_path_empty_returns_err() {
+        assert!(parse_path("").is_err());
+    }
+
+    #[test]
+    fn parse_path_missing_dot_errors() {
+        // `msg` without a leading `.` is not a valid expression.
+        assert!(parse_path("msg").is_err());
+    }
+
+    #[test]
+    fn parse_path_unclosed_bracket_errors() {
+        assert!(parse_path(".items[0").is_err());
+    }
+
+    #[test]
+    fn parse_path_non_numeric_index_errors() {
+        assert!(parse_path(".items[abc]").is_err());
+    }
+
+    #[test]
+    fn parse_path_identifier_with_underscores_and_digits() {
+        assert_eq!(
+            parse_path(".field_1.a2b").unwrap(),
+            vec![Segment::Key("field_1".into()), Segment::Key("a2b".into()),]
+        );
+    }
+
+    #[test]
+    fn parse_path_identifier_starting_with_digit_errors() {
+        // Identifiers may not start with a digit.
+        assert!(parse_path(".1field").is_err());
+    }
+}
+
 mod cli_e2e {
     use std::io::Write as _;
     use std::process::{Command, Stdio};
