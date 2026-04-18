@@ -1,5 +1,10 @@
 use clap::Parser;
 use rgx::config::cli::{Cli, Command};
+use rgx::filter::{filter_lines, FilterOptions};
+
+fn to_lines(strs: &[&str]) -> Vec<String> {
+    strs.iter().map(|s| s.to_string()).collect()
+}
 
 #[test]
 fn filter_subcommand_with_pattern_parses() {
@@ -38,4 +43,70 @@ fn filter_subcommand_with_flags_parses() {
 fn bare_rgx_has_no_subcommand() {
     let cli = Cli::try_parse_from(["rgx"]).unwrap();
     assert!(cli.command.is_none());
+}
+
+#[test]
+fn empty_pattern_passes_every_line() {
+    let lines = to_lines(&["foo", "bar", "baz"]);
+    let got = filter_lines(&lines, "", FilterOptions::default()).unwrap();
+    assert_eq!(got, vec![0, 1, 2]);
+}
+
+#[test]
+fn empty_pattern_with_invert_passes_nothing() {
+    let lines = to_lines(&["foo", "bar", "baz"]);
+    let got = filter_lines(
+        &lines,
+        "",
+        FilterOptions {
+            invert: true,
+            case_insensitive: false,
+        },
+    )
+    .unwrap();
+    assert!(got.is_empty());
+}
+
+#[test]
+fn simple_pattern_selects_matching_lines() {
+    let lines = to_lines(&["hello 42", "world", "hello 99", "foo"]);
+    let got = filter_lines(&lines, r"\d+", FilterOptions::default()).unwrap();
+    assert_eq!(got, vec![0, 2]);
+}
+
+#[test]
+fn invert_flag_selects_non_matching_lines() {
+    let lines = to_lines(&["hello 42", "world", "hello 99", "foo"]);
+    let got = filter_lines(
+        &lines,
+        r"\d+",
+        FilterOptions {
+            invert: true,
+            case_insensitive: false,
+        },
+    )
+    .unwrap();
+    assert_eq!(got, vec![1, 3]);
+}
+
+#[test]
+fn case_insensitive_flag() {
+    let lines = to_lines(&["Error: boom", "OK", "ERROR again"]);
+    let got = filter_lines(
+        &lines,
+        "error",
+        FilterOptions {
+            invert: false,
+            case_insensitive: true,
+        },
+    )
+    .unwrap();
+    assert_eq!(got, vec![0, 2]);
+}
+
+#[test]
+fn invalid_pattern_returns_err() {
+    let lines = to_lines(&["a"]);
+    let got = filter_lines(&lines, "(unclosed", FilterOptions::default());
+    assert!(got.is_err());
 }
