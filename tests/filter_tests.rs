@@ -410,6 +410,71 @@ fn filter_app_populates_match_spans() {
 }
 
 #[test]
+fn filter_app_with_json_matches_extracted_field() {
+    // Three JSONL lines — match against the `msg` field only.
+    let lines = to_lines(&[
+        r#"{"level":"info","msg":"hello"}"#,
+        r#"{"level":"error","msg":"boom"}"#,
+        r#"{"level":"info","msg":"goodbye"}"#,
+    ]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    let app = FilterApp::with_json_extracted(lines, extracted, "boom", FilterOptions::default());
+    // Only the second line has a msg that matches `boom`.
+    assert_eq!(app.matched, vec![1]);
+}
+
+#[test]
+fn filter_app_with_json_skips_parse_failures() {
+    let lines = to_lines(&[
+        r#"{"msg":"ok"}"#,
+        "this is not json",
+        r#"{"msg":"also-ok"}"#,
+    ]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    // Pattern `.` would match any non-empty string — the bad line must be
+    // excluded because its extracted value is None.
+    let app = FilterApp::with_json_extracted(lines, extracted, ".", FilterOptions::default());
+    assert_eq!(app.matched, vec![0, 2]);
+}
+
+#[test]
+fn filter_app_match_spans_refer_to_extracted_string() {
+    // The raw line has `msg` at index >20, but the match span should be
+    // computed within the extracted string "boom" — so `oo` lives at 1..3.
+    let lines = to_lines(&[r#"{"level":"error","msg":"boom"}"#]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    let app = FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default());
+    assert_eq!(app.matched, vec![0]);
+    assert_eq!(app.match_spans, vec![vec![1..3]]);
+}
+
+#[test]
+fn filter_app_with_json_empty_pattern_shows_only_parseable_lines() {
+    let lines = to_lines(&[r#"{"msg":"ok"}"#, "nope", r#"{"msg":"also"}"#]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    let app = FilterApp::with_json_extracted(lines, extracted, "", FilterOptions::default());
+    assert_eq!(app.matched, vec![0, 2]);
+}
+
+#[test]
+fn filter_app_with_json_invert_skips_none() {
+    let lines = to_lines(&[r#"{"msg":"match"}"#, "not json", r#"{"msg":"other"}"#]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    let app = FilterApp::with_json_extracted(
+        lines,
+        extracted,
+        "match",
+        FilterOptions {
+            invert: true,
+            case_insensitive: false,
+        },
+    );
+    // Only line 2 qualifies: its extracted value exists AND doesn't match.
+    // The "not json" line is still excluded even in invert mode.
+    assert_eq!(app.matched, vec![2]);
+}
+
+#[test]
 fn filter_app_match_spans_empty_in_invert_mode() {
     // Invert mode emits lines that didn't match — there's nothing to highlight.
     let lines = to_lines(&["error 1", "ok", "error 2"]);

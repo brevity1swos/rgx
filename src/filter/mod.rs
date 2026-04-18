@@ -277,11 +277,14 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
         });
     }
 
-    // TUI mode. --json is wired into FilterApp in a follow-up task; for now
-    // the TUI constructor ignores json_extracted.
-    let _ = json_extracted;
+    // TUI mode.
     let initial_pattern = args.pattern.unwrap_or_default();
-    let app = FilterApp::new(lines, &initial_pattern, options);
+    let app = match json_extracted {
+        Some(extracted) => {
+            FilterApp::with_json_extracted(lines, extracted, &initial_pattern, options)
+        }
+        None => FilterApp::new(lines, &initial_pattern, options),
+    };
     let (final_app, outcome) = run::run_tui(app).map_err(|e| format!("tui: {e}"))?;
 
     match outcome {

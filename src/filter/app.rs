@@ -8,11 +8,16 @@ pub struct FilterApp {
     pub pattern_editor: Editor,
     pub options: FilterOptions,
     pub lines: Vec<String>,
+    /// Optional per-line extracted strings when the user passed `--json`.
+    /// Same length as `lines`. `None` at index `i` means line `i` should be
+    /// skipped (JSON parse failure, missing path, or non-string value). When
+    /// `json_extracted` is `None`, matching runs against the raw lines.
+    pub json_extracted: Option<Vec<Option<String>>>,
     /// Indices of `lines` that currently match the pattern.
     pub matched: Vec<usize>,
-    /// Byte ranges within each matched line that the pattern matched.
-    /// Length equals `matched.len()`; empty per-line in invert mode (no spans
-    /// to highlight when we're showing lines that did NOT match).
+    /// Byte ranges within each matched *input* that the pattern matched.
+    /// In `--json` mode these are spans within the extracted string, not the
+    /// raw line. Length equals `matched.len()`; empty per-line in invert mode.
     pub match_spans: Vec<Vec<std::ops::Range<usize>>>,
     /// Selected index into `matched` for the cursor in the match list.
     pub selected: usize,
@@ -37,6 +42,32 @@ pub enum Outcome {
 
 impl FilterApp {
     pub fn new(lines: Vec<String>, initial_pattern: &str, options: FilterOptions) -> Self {
+        Self::build(lines, None, initial_pattern, options)
+    }
+
+    /// Construct a filter app whose matching runs against pre-extracted JSON
+    /// field values (from the `--json` flag). `extracted[i]` is `Some(s)` when
+    /// line `i` parsed and yielded a string value; `None` otherwise.
+    pub fn with_json_extracted(
+        lines: Vec<String>,
+        extracted: Vec<Option<String>>,
+        initial_pattern: &str,
+        options: FilterOptions,
+    ) -> Self {
+        assert_eq!(
+            lines.len(),
+            extracted.len(),
+            "extracted length must match lines length"
+        );
+        Self::build(lines, Some(extracted), initial_pattern, options)
+    }
+
+    fn build(
+        lines: Vec<String>,
+        json_extracted: Option<Vec<Option<String>>>,
+        initial_pattern: &str,
+        options: FilterOptions,
+    ) -> Self {
         let pattern_editor = Editor::with_content(initial_pattern.to_string());
         let engine_flags = EngineFlags {
             case_insensitive: options.case_insensitive,
@@ -47,6 +78,7 @@ impl FilterApp {
             pattern_editor,
             options,
             lines,
+            json_extracted,
             matched: Vec::new(),
             match_spans: Vec::new(),
             selected: 0,
@@ -69,12 +101,27 @@ impl FilterApp {
         self.error = None;
         let pattern = self.pattern().to_string();
         if pattern.is_empty() {
-            self.matched = if self.options.invert {
+            // Empty pattern: every line with a "present" input passes (iff not
+            // inverted). In --json mode, lines whose extracted value is None
+            // are excluded regardless of invert.
+            self.matched = if let Some(extracted) = self.json_extracted.as_ref() {
+                extracted
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, v)| {
+                        if v.is_some() && !self.options.invert {
+                            Some(idx)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else if self.options.invert {
                 Vec::new()
             } else {
                 (0..self.lines.len()).collect()
             };
-            // Empty pattern: nothing to highlight. One empty Vec per matched line.
+            // Nothing to highlight with an empty pattern.
             self.match_spans = vec![Vec::new(); self.matched.len()];
             self.clamp_selection();
             return;
@@ -102,8 +149,19 @@ impl FilterApp {
     ) -> (Vec<usize>, Vec<Vec<std::ops::Range<usize>>>) {
         let mut indices = Vec::with_capacity(self.lines.len());
         let mut all_spans = Vec::with_capacity(self.lines.len());
-        for (idx, line) in self.lines.iter().enumerate() {
-            let line_matches = compiled.find_matches(line).unwrap_or_default();
+        for idx in 0..self.lines.len() {
+            // In --json mode we match against the extracted field, not the
+            // raw line. None extracted values never match (and are excluded
+            // from invert-mode output too).
+            let haystack: &str = if let Some(extracted) = self.json_extracted.as_ref() {
+                match &extracted[idx] {
+                    Some(s) => s.as_str(),
+                    None => continue,
+                }
+            } else {
+                &self.lines[idx]
+            };
+            let line_matches = compiled.find_matches(haystack).unwrap_or_default();
             let hit = !line_matches.is_empty();
             if hit != self.options.invert {
                 indices.push(idx);
