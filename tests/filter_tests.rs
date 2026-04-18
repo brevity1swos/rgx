@@ -153,3 +153,13 @@ fn emit_count_writes_number() {
     emit_count(&mut buf, 7).unwrap();
     assert_eq!(String::from_utf8(buf).unwrap(), "7\n");
 }
+
+#[test]
+fn count_mode_returns_expected_count() {
+    let lines = to_lines(&["one 1", "two", "three 3", "four 4"]);
+    let options = FilterOptions::default();
+    let matched = filter_lines(&lines, r"\d", options).unwrap();
+    let mut buf = Vec::new();
+    emit_count(&mut buf, matched.len()).unwrap();
+    assert_eq!(String::from_utf8(buf).unwrap(), "3\n");
+}
