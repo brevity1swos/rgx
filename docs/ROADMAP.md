@@ -1,40 +1,37 @@
 # rgx Roadmap
 
-## Current Direction (decided 2026-04-11)
+## Current Direction (updated 2026-04-18, post-v0.11.0)
 
-**Road A — ship final polish, declare rgx feature-complete, move on.**
+**v0.11.0 shipped — grex overlay AND `rgx filter` sub-mode.**
 
-rgx has saturated the "in-memory regex editor" niche at v0.10.2. Step-through debugger, codegen, recipes, test suite mode, workspace save/load, vim mode, regex101 export — everything in the "debug a regex" workflow has shipped. There is no meaningful remaining gap to close in that mode.
+Road A as framed on 2026-04-11 expected v0.11.0 to be the "grex and done" farewell release. In practice, `rgx filter` landed in the same cycle because it was low cost to add and opened a genuinely new use-case surface (piping into agx / sift toolchains). The original Road A spirit — avoid a 2–3 month ripgrep replacement fight — still holds. The filter subcommand is a bounded feature, not a grep replacement: it loads input into memory, wants a single pattern per session, and intentionally lacks the ripgrep flags that would invite feature creep.
 
-The strategic question on 2026-04-11 was whether to pivot rgx into building a daily-driver grep replacement (Road B — 2–3 months of main-project focus building `rgx --grep`) or to round out the niche and exit cleanly (Road A). **Road A won on opportunity cost.** With ~1 day/week of sustained capacity, that time is worth more invested in revenue-generating side projects than in a 2–3 month fight with ripgrep for a niche that likely tops out at 500–1000 stars. rgx at 184 stars on a plateau is a respectable resting place, not a failure — the regex-debugging audience has been served.
+**Decision gate before the next feature commit:**
 
-**What this means:**
-- rgx remains actively maintained: bug fixes, dependency updates, external PR review, and community responses all continue
-- New feature development stops after the v0.11.0 polish release
-- Active-development capacity reinvests in the revenue-generating side projects queued behind rgx
+1. **Filter Scope C** — `--json <path>` JSONL-field extraction for deeper agx synergy (~1-2 days)
+2. **Filter polish** — match-span highlighting in the results pane, UTF-8-lossy input mode, `--max-lines` safety cap (~1 day total)
+3. **Genuine maintenance mode** — stop feature work, reinvest capacity in revenue-generating SaaS projects. Matches original Road A.
 
-## v0.11.0 — final polish release
+Until a choice is made, rgx is in de-facto maintenance mode.
 
-Ship grex integration as the farewell feature. Optionally round out with shareable permalinks or a user-saved pattern library if there is natural energy — but do not bundle them upfront.
-
-**In scope:**
-- **grex integration** — new overlay (candidate shortcut: `F3` or `Ctrl+X`) for the "I have strings, give me the pattern" workflow. User enters example strings one per line; rgx calls the `grex` crate and drops the generated pattern into the main editor. Days of work, broadens the audience beyond regex experts, and compounds with the existing recipe library and codegen.
-
-**Optional — only if grex lands well and there is leftover energy:**
-- Shareable permalinks — host state in a URL that round-trips back into rgx (closes the last real gap vs regex101.com)
-- User-saved pattern library — user patterns alongside the built-in recipes
-
-**Deliberately out of scope (and staying out of scope):**
-- Multi-file search/replace with preview
-- Any further major features after v0.11.0 (beyond the `rgx filter` sub-mode noted below)
-
-## Post-v0.11.0 — maintenance mode
-
-- Monitor GitHub issues and external PRs; respond within a reasonable window
-- Keep dependencies current (`cargo update`, CI green, MSRV honored)
-- **Editor-mode parity is non-negotiable** — any bug that affects the existing pattern-editor workflow gets fixed, even in maintenance mode. Users adopted rgx for that workflow; regressions there are the one thing we cannot ship.
+**What "maintenance mode" continues to mean:**
+- Active monitoring of GitHub issues and external PRs; respond within a reasonable window
+- Dependencies kept current (`cargo update`, CI green, MSRV honored)
+- **Editor-mode parity is non-negotiable** — any bug that affects the existing pattern-editor workflow gets fixed, even in maintenance. Users adopted rgx for that workflow; regressions there are the one thing we cannot ship.
 - Dogfood occasionally to catch regressions
-- No active feature development; new feature requests get labeled and parked
+
+## v0.11.0 — shipped 2026-04-18
+
+**Two major features + a pre-existing-code clippy fix:**
+
+- **grex overlay (Ctrl+X)** — user enters example strings one per line; rgx calls the `grex` crate and drops the generated pattern into the main editor. Three flag toggles (digit, anchors, case-insensitive). Debounced 150ms regeneration on `spawn_blocking` with a generation counter for stale-result suppression. Broadens the audience beyond regex experts; compounds with the existing recipe library and codegen.
+- **`rgx filter` subcommand** — live-filter stdin or a file through a regex with a grep-like TUI: pattern pane + filtered match list + flag toggles. Supports `-v/--invert`, `-c/--count`, `-n/--line-number`, `-i/--case-insensitive`, `-f/--file`. Non-TTY stdout auto-skips the TUI for clean piping (`agx session.jsonl --export md | rgx filter error`). Exit codes match grep (0/1/2).
+- **`event.rs` refactor** — collapse the per-arm `if tx.send().is_err() { break }` pattern into a single translation match + one send point, to satisfy clippy 1.95's `collapsible_match` lint. Zero behavior change.
+
+Deferred from v0.11.0 (documented as follow-ups, not blocking):
+- Shareable permalinks — still open as a future round-out option
+- User-saved pattern library — still open
+- Demo GIF regeneration — scheduled for next user-driven release window
 
 ## Recently Shipped
 
