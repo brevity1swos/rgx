@@ -32,29 +32,19 @@ impl EventHandler {
                         }
                     }
                     event = reader.next() => {
-                        match event {
-                            Some(Ok(Event::Key(key))) => {
-                                // Only process Press events to avoid double input
-                                // on Windows/WSL where Release/Repeat are also emitted
-                                if key.kind != KeyEventKind::Press {
-                                    continue;
-                                }
-                                if tx.send(AppEvent::Key(key)).is_err() {
-                                    break;
-                                }
+                        // Translate the terminal event into an AppEvent. On Windows/WSL,
+                        // Key Release/Repeat arrive alongside Press — filter to Press only.
+                        let app_event = match event {
+                            Some(Ok(Event::Key(key))) if key.kind == KeyEventKind::Press => {
+                                AppEvent::Key(key)
                             }
-                            Some(Ok(Event::Mouse(mouse))) => {
-                                if tx.send(AppEvent::Mouse(mouse)).is_err() {
-                                    break;
-                                }
-                            }
-                            Some(Ok(Event::Resize(w, h))) => {
-                                if tx.send(AppEvent::Resize(w, h)).is_err() {
-                                    break;
-                                }
-                            }
+                            Some(Ok(Event::Mouse(mouse))) => AppEvent::Mouse(mouse),
+                            Some(Ok(Event::Resize(w, h))) => AppEvent::Resize(w, h),
                             Some(Err(_)) | None => break,
-                            _ => {}
+                            _ => continue,
+                        };
+                        if tx.send(app_event).is_err() {
+                            break;
                         }
                     }
                 }
