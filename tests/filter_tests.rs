@@ -220,6 +220,50 @@ fn filter_app_selection_clamps_on_pattern_change() {
     assert_eq!(app.selected, 0);
 }
 
+#[test]
+fn filter_ui_render_does_not_panic() {
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    let mut terminal = Terminal::new(TestBackend::new(80, 20)).unwrap();
+    let lines = to_lines(&["alpha", "beta", "gamma"]);
+    let app = FilterApp::new(lines, "a", FilterOptions::default());
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+    let buf = terminal.backend().buffer().clone();
+    let rendered: String = buf
+        .content()
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<Vec<_>>()
+        .join("");
+    assert!(rendered.contains("Pattern"));
+    assert!(rendered.contains("Matches"));
+    assert!(rendered.contains("alpha"));
+    assert!(rendered.contains("gamma"));
+}
+
+#[test]
+fn filter_ui_render_with_invalid_pattern_shows_error() {
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    let mut terminal = Terminal::new(TestBackend::new(80, 20)).unwrap();
+    let lines = to_lines(&["a"]);
+    let app = FilterApp::new(lines, "(unclosed", FilterOptions::default());
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+    let buf = terminal.backend().buffer().clone();
+    let rendered: String = buf
+        .content()
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<Vec<_>>()
+        .join("");
+    assert!(rendered.contains("invalid"));
+    assert!(rendered.contains("error"));
+}
+
 mod cli_e2e {
     use std::io::Write as _;
     use std::process::{Command, Stdio};
