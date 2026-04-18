@@ -55,10 +55,6 @@ pub fn handle_key(app: &mut FilterApp, key: KeyEvent) {
             app.outcome = Outcome::Discard;
             app.should_quit = true;
         }
-        KeyCode::Char('q') if key.modifiers == KeyModifiers::NONE => {
-            app.outcome = Outcome::Discard;
-            app.should_quit = true;
-        }
         KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
             app.outcome = Outcome::Discard;
             app.should_quit = true;

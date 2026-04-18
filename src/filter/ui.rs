@@ -58,7 +58,14 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
     }
 
     let inner_height = area.height.saturating_sub(2) as usize;
-    let start = app.scroll.min(app.matched.len().saturating_sub(1));
+    // Derive the scroll offset so the selected row is always visible. `app.scroll`
+    // is retained as a hint for future page-up/down, but the effective start is
+    // whatever keeps `selected` in view.
+    let start = if inner_height == 0 || app.matched.is_empty() {
+        0
+    } else {
+        (app.selected + 1).saturating_sub(inner_height)
+    };
     let end = (start + inner_height).min(app.matched.len());
     let visible = if start < end {
         &app.matched[start..end]

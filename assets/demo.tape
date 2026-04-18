@@ -118,6 +118,39 @@ Sleep 1s
 Escape
 Sleep 500ms
 
+# === Part 2.5: Generate regex from examples (Ctrl+X / grex) ===
+
+# Launch rgx empty
+Type "rgx"
+Enter
+Sleep 1s
+
+# Open grex overlay
+Ctrl+x
+Sleep 1.5s
+
+# Type three example strings, one per line
+Type "foo"
+Enter
+Type "bar"
+Enter
+Type "baz"
+Sleep 2s
+
+# Toggle case-insensitive flag to show it regenerates
+Alt+c
+Sleep 1.5s
+Alt+c
+Sleep 1s
+
+# Tab accepts the generated pattern — loads it into the main regex editor
+Tab
+Sleep 2.5s
+
+# Quit
+Escape
+Sleep 500ms
+
 # === Part 3: Step-through debugger ===
 
 # Launch with a pattern that causes backtracking

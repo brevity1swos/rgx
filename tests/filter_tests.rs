@@ -330,6 +330,61 @@ fn handle_key_backspace_refilters() {
 }
 
 #[test]
+fn handle_key_plain_q_inserts_into_pattern_not_quit() {
+    // Regression: 'q' as an exit shortcut prevented users from typing patterns
+    // like `quote`, `sequence`, or `\bq\w+`. Esc and Ctrl+C still handle exit.
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["quick brown fox"]);
+    let mut app = FilterApp::new(lines, "", FilterOptions::default());
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('q'), KeyModifiers::NONE),
+    );
+    assert!(
+        !app.should_quit,
+        "plain 'q' must not quit — it belongs in the pattern"
+    );
+    assert_eq!(app.pattern(), "q");
+    // The pattern "q" matches the single line.
+    assert_eq!(app.matched, vec![0]);
+}
+
+#[test]
+fn filter_ui_render_scrolls_selection_into_view() {
+    // Regression: selection could scroll past the visible pane when the match
+    // list was longer than the viewport. Now the render function derives a
+    // start offset that always keeps `selected` visible.
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let lines: Vec<String> = (0..50).map(|i| format!("line-{i:02}")).collect();
+    let mut app = FilterApp::new(lines, "line", FilterOptions::default());
+    app.selected = 45;
+
+    // 10-row viewport: match pane is rows 3..9 (6 rows inner after borders+pattern+status).
+    let mut terminal = Terminal::new(TestBackend::new(60, 10)).unwrap();
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+    let buf = terminal.backend().buffer().clone();
+    let rendered: String = buf
+        .content()
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<Vec<_>>()
+        .join("");
+    assert!(
+        rendered.contains("line-45"),
+        "selected row (line-45) must be visible at bottom of pane"
+    );
+    assert!(
+        !rendered.contains("line-00"),
+        "viewport should have scrolled past the top — line-00 must not be visible"
+    );
+}
+
+#[test]
 fn filter_ui_render_with_invalid_pattern_shows_error() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;
