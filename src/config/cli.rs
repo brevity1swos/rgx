@@ -1,4 +1,4 @@
-use clap::{CommandFactory, Parser};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 use clap_complete::{generate, Shell};
 
 #[derive(Parser, Debug)]
@@ -100,6 +100,42 @@ pub struct Cli {
     /// Generate shell completions and exit.
     #[arg(long, value_name = "SHELL")]
     pub completions: Option<Shell>,
+
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum Command {
+    /// Live-filter stdin or a file through a regex (grep-like, with a TUI).
+    Filter(FilterArgs),
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct FilterArgs {
+    /// Regex pattern to filter with. If omitted, the TUI starts with an empty pattern.
+    #[arg(value_name = "PATTERN")]
+    pub pattern: Option<String>,
+
+    /// Read input from a file instead of stdin.
+    #[arg(short = 'f', long)]
+    pub file: Option<std::path::PathBuf>,
+
+    /// Invert the match — emit lines that do NOT match (like `grep -v`).
+    #[arg(short = 'v', long)]
+    pub invert: bool,
+
+    /// Emit only the count of matching lines (non-interactive).
+    #[arg(short = 'c', long)]
+    pub count: bool,
+
+    /// Prefix each emitted line with its line number (non-interactive).
+    #[arg(short = 'n', long = "line-number")]
+    pub line_number: bool,
+
+    /// Case-insensitive matching (equivalent to Alt+i inside the TUI).
+    #[arg(short = 'i', long)]
+    pub case_insensitive: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
