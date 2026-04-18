@@ -244,6 +244,92 @@ fn filter_ui_render_does_not_panic() {
 }
 
 #[test]
+fn handle_key_enter_sets_emit() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["x"]);
+    let mut app = FilterApp::new(lines, "x", FilterOptions::default());
+    handle_key(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+    assert_eq!(app.outcome, Outcome::Emit);
+    assert!(app.should_quit);
+}
+
+#[test]
+fn handle_key_esc_sets_discard() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["x"]);
+    let mut app = FilterApp::new(lines, "x", FilterOptions::default());
+    handle_key(&mut app, KeyEvent::new(KeyCode::Esc, KeyModifiers::NONE));
+    assert_eq!(app.outcome, Outcome::Discard);
+    assert!(app.should_quit);
+}
+
+#[test]
+fn handle_key_alt_v_toggles_invert() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["error", "ok"]);
+    let mut app = FilterApp::new(lines, "error", FilterOptions::default());
+    assert_eq!(app.matched, vec![0]);
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('v'), KeyModifiers::ALT),
+    );
+    assert_eq!(app.matched, vec![1]);
+}
+
+#[test]
+fn handle_key_alt_i_toggles_case() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["ERROR", "ok"]);
+    let mut app = FilterApp::new(lines, "error", FilterOptions::default());
+    assert!(app.matched.is_empty());
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('i'), KeyModifiers::ALT),
+    );
+    assert_eq!(app.matched, vec![0]);
+}
+
+#[test]
+fn handle_key_typing_refilters() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["alpha", "beta", "gamma"]);
+    let mut app = FilterApp::new(lines, "", FilterOptions::default());
+    assert_eq!(app.matched.len(), 3);
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('a'), KeyModifiers::NONE),
+    );
+    // Pattern is now "a" — matches alpha, beta, gamma all contain 'a'.
+    assert_eq!(app.matched.len(), 3);
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('l'), KeyModifiers::NONE),
+    );
+    // Pattern is "al" — only alpha matches.
+    assert_eq!(app.matched, vec![0]);
+}
+
+#[test]
+fn handle_key_backspace_refilters() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let lines = to_lines(&["alpha", "beta", "gamma"]);
+    let mut app = FilterApp::new(lines, "al", FilterOptions::default());
+    assert_eq!(app.matched, vec![0]);
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE),
+    );
+    // Back to "a" — all three match.
+    assert_eq!(app.matched.len(), 3);
+}
+
+#[test]
 fn filter_ui_render_with_invalid_pattern_shows_error() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;

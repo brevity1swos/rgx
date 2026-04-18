@@ -7,6 +7,7 @@ use crate::config::cli::FilterArgs;
 use crate::engine::{self, EngineFlags, EngineKind};
 
 pub mod app;
+pub mod run;
 pub mod ui;
 pub use app::{FilterApp, Outcome};
 
@@ -152,6 +153,23 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
         });
     }
 
-    // TUI mode — implemented in Task 9.
-    Err("TUI mode not yet implemented (see Task 9)".to_string())
+    // TUI mode.
+    let initial_pattern = args.pattern.unwrap_or_default();
+    let app = FilterApp::new(lines, &initial_pattern, options);
+    let (final_app, outcome) = run::run_tui(app).map_err(|e| format!("tui: {e}"))?;
+
+    match outcome {
+        Outcome::Emit => {
+            let mut stdout = io::stdout().lock();
+            emit_matches(&mut stdout, &final_app.lines, &final_app.matched, false)
+                .map_err(|e| format!("writing output: {e}"))?;
+            Ok(if final_app.matched.is_empty() {
+                EXIT_NO_MATCH
+            } else {
+                EXIT_MATCH
+            })
+        }
+        Outcome::Discard => Ok(EXIT_NO_MATCH),
+        Outcome::Pending => Ok(EXIT_ERROR),
+    }
 }
