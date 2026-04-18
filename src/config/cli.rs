@@ -142,6 +142,13 @@ pub struct FilterArgs {
     /// if you know your input fits in memory.
     #[arg(long, default_value_t = 100_000, value_name = "N")]
     pub max_lines: usize,
+
+    /// Extract a field from JSON lines using a dotted path before matching.
+    /// Example: --json '.msg' filters the `msg` field of each JSONL record.
+    /// Non-string values and parse failures skip that line silently. The raw
+    /// JSON line is still what gets emitted when matched.
+    #[arg(long, value_name = "PATH")]
+    pub json: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]

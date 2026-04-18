@@ -65,6 +65,23 @@ pub fn filter_lines(
     Ok(indices)
 }
 
+/// Returns per-line extracted strings. `None` means the line should be excluded
+/// from matching (JSON parse failure, path miss, or non-string value). The
+/// returned vector has the same length as `lines`, so callers can index it
+/// directly alongside the raw lines.
+pub fn extract_strings(lines: &[String], path_expr: &str) -> Result<Vec<Option<String>>, String> {
+    let path = json_path::parse_path(path_expr)?;
+    let mut out = Vec::with_capacity(lines.len());
+    for line in lines {
+        let extracted = match serde_json::from_str::<serde_json::Value>(line) {
+            Ok(v) => json_path::extract(&v, &path).and_then(|v| v.as_str().map(str::to_string)),
+            Err(_) => None,
+        };
+        out.push(extracted);
+    }
+    Ok(out)
+}
+
 /// Exit codes, matching grep conventions.
 pub const EXIT_MATCH: i32 = 0;
 pub const EXIT_NO_MATCH: i32 = 1;

@@ -3,7 +3,8 @@ use std::io::Cursor;
 use clap::Parser;
 use rgx::config::cli::{Cli, Command};
 use rgx::filter::{
-    emit_count, emit_matches, filter_lines, read_input, FilterApp, FilterOptions, Outcome,
+    emit_count, emit_matches, extract_strings, filter_lines, read_input, FilterApp, FilterOptions,
+    Outcome,
 };
 
 fn to_lines(strs: &[&str]) -> Vec<String> {
@@ -41,6 +42,83 @@ fn filter_subcommand_with_flags_parses() {
         }
         _ => panic!("expected Filter subcommand"),
     }
+}
+
+#[test]
+fn filter_subcommand_with_json_flag_parses() {
+    let cli = Cli::try_parse_from(["rgx", "filter", "--json", ".msg", "boom"]).unwrap();
+    match cli.command {
+        Some(Command::Filter(args)) => {
+            assert_eq!(args.json.as_deref(), Some(".msg"));
+            assert_eq!(args.pattern.as_deref(), Some("boom"));
+        }
+        _ => panic!("expected Filter subcommand"),
+    }
+}
+
+#[test]
+fn filter_subcommand_without_json_flag_defaults_to_none() {
+    let cli = Cli::try_parse_from(["rgx", "filter", "pat"]).unwrap();
+    match cli.command {
+        Some(Command::Filter(args)) => {
+            assert!(args.json.is_none());
+        }
+        _ => panic!("expected Filter subcommand"),
+    }
+}
+
+#[test]
+fn extract_strings_happy_path() {
+    let lines = to_lines(&[
+        r#"{"msg":"hello"}"#,
+        r#"{"msg":"world"}"#,
+        r#"{"msg":"boom"}"#,
+    ]);
+    let got = extract_strings(&lines, ".msg").unwrap();
+    assert_eq!(
+        got,
+        vec![
+            Some("hello".to_string()),
+            Some("world".to_string()),
+            Some("boom".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn extract_strings_skips_parse_failure() {
+    let lines = to_lines(&[
+        r#"{"msg":"ok"}"#,
+        "this is not json",
+        r#"{"msg":"also-ok"}"#,
+    ]);
+    let got = extract_strings(&lines, ".msg").unwrap();
+    assert_eq!(
+        got,
+        vec![Some("ok".to_string()), None, Some("also-ok".to_string()),]
+    );
+}
+
+#[test]
+fn extract_strings_skips_non_string_value() {
+    let lines = to_lines(&[r#"{"n":42}"#, r#"{"n":"forty-two"}"#]);
+    let got = extract_strings(&lines, ".n").unwrap();
+    // Only the string value survives; the integer is None.
+    assert_eq!(got, vec![None, Some("forty-two".to_string())]);
+}
+
+#[test]
+fn extract_strings_skips_missing_path() {
+    let lines = to_lines(&[r#"{"other":"x"}"#, r#"{"msg":"found"}"#]);
+    let got = extract_strings(&lines, ".msg").unwrap();
+    assert_eq!(got, vec![None, Some("found".to_string())]);
+}
+
+#[test]
+fn extract_strings_propagates_parse_path_error() {
+    let lines = to_lines(&[r#"{"msg":"x"}"#]);
+    let err = extract_strings(&lines, "not-a-path").unwrap_err();
+    assert!(!err.is_empty(), "error message should not be empty");
 }
 
 #[test]
