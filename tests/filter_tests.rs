@@ -2,7 +2,7 @@ use std::io::Cursor;
 
 use clap::Parser;
 use rgx::config::cli::{Cli, Command};
-use rgx::filter::{filter_lines, read_input, FilterOptions};
+use rgx::filter::{emit_count, emit_matches, filter_lines, read_input, FilterOptions};
 
 fn to_lines(strs: &[&str]) -> Vec<String> {
     strs.iter().map(|s| s.to_string()).collect()
@@ -127,4 +127,29 @@ fn read_input_from_file() {
     std::fs::write(&path, "alpha\nbeta\n").unwrap();
     let got = read_input(Some(&path), Cursor::new("ignored")).unwrap();
     assert_eq!(got, vec!["alpha", "beta"]);
+}
+
+#[test]
+fn emit_matches_plain() {
+    let lines = to_lines(&["alpha", "beta", "gamma"]);
+    let matched = vec![0, 2];
+    let mut buf = Vec::new();
+    emit_matches(&mut buf, &lines, &matched, false).unwrap();
+    assert_eq!(String::from_utf8(buf).unwrap(), "alpha\ngamma\n");
+}
+
+#[test]
+fn emit_matches_with_line_numbers() {
+    let lines = to_lines(&["alpha", "beta", "gamma"]);
+    let matched = vec![0, 2];
+    let mut buf = Vec::new();
+    emit_matches(&mut buf, &lines, &matched, true).unwrap();
+    assert_eq!(String::from_utf8(buf).unwrap(), "1:alpha\n3:gamma\n");
+}
+
+#[test]
+fn emit_count_writes_number() {
+    let mut buf = Vec::new();
+    emit_count(&mut buf, 7).unwrap();
+    assert_eq!(String::from_utf8(buf).unwrap(), "7\n");
 }

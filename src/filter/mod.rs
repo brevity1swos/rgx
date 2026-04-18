@@ -1,6 +1,6 @@
 //! `rgx filter` subcommand — live/non-interactive regex filter over stdin or a file.
 
-use std::io::{self, BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::path::Path;
 
 use crate::engine::{self, EngineFlags, EngineKind};
@@ -56,6 +56,34 @@ pub fn filter_lines(
         }
     }
     Ok(indices)
+}
+
+/// Exit codes, matching grep conventions.
+pub const EXIT_MATCH: i32 = 0;
+pub const EXIT_NO_MATCH: i32 = 1;
+pub const EXIT_ERROR: i32 = 2;
+
+/// Emit matching lines to `writer`. If `line_number` is true, each line is
+/// prefixed with its 1-indexed line number and a colon.
+pub fn emit_matches(
+    writer: &mut dyn Write,
+    lines: &[String],
+    matched: &[usize],
+    line_number: bool,
+) -> io::Result<()> {
+    for &idx in matched {
+        if line_number {
+            writeln!(writer, "{}:{}", idx + 1, lines[idx])?;
+        } else {
+            writeln!(writer, "{}", lines[idx])?;
+        }
+    }
+    Ok(())
+}
+
+/// Emit only the count of matched lines.
+pub fn emit_count(writer: &mut dyn Write, matched_count: usize) -> io::Result<()> {
+    writeln!(writer, "{matched_count}")
 }
 
 /// Read all lines from either a file path or the provided reader (typically stdin).
