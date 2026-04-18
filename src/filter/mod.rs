@@ -1,5 +1,8 @@
 //! `rgx filter` subcommand — live/non-interactive regex filter over stdin or a file.
 
+use std::io::{self, BufRead, BufReader, Read};
+use std::path::Path;
+
 use crate::engine::{self, EngineFlags, EngineKind};
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -53,4 +56,19 @@ pub fn filter_lines(
         }
     }
     Ok(indices)
+}
+
+/// Read all lines from either a file path or the provided reader (typically stdin).
+/// Trailing `\n`/`\r\n` is stripped per line. A trailing empty line (from a
+/// terminating newline) is dropped.
+pub fn read_input(file: Option<&Path>, fallback: impl Read) -> io::Result<Vec<String>> {
+    let reader: Box<dyn BufRead> = match file {
+        Some(path) => Box::new(BufReader::new(std::fs::File::open(path)?)),
+        None => Box::new(BufReader::new(fallback)),
+    };
+    let mut out = Vec::new();
+    for line in reader.lines() {
+        out.push(line?);
+    }
+    Ok(out)
 }

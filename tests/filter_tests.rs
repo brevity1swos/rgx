@@ -1,6 +1,8 @@
+use std::io::Cursor;
+
 use clap::Parser;
 use rgx::config::cli::{Cli, Command};
-use rgx::filter::{filter_lines, FilterOptions};
+use rgx::filter::{filter_lines, read_input, FilterOptions};
 
 fn to_lines(strs: &[&str]) -> Vec<String> {
     strs.iter().map(|s| s.to_string()).collect()
@@ -109,4 +111,20 @@ fn invalid_pattern_returns_err() {
     let lines = to_lines(&["a"]);
     let got = filter_lines(&lines, "(unclosed", FilterOptions::default());
     assert!(got.is_err());
+}
+
+#[test]
+fn read_input_from_in_memory_stdin() {
+    let data = "foo\nbar\nbaz\n";
+    let got = read_input(None, Cursor::new(data)).unwrap();
+    assert_eq!(got, vec!["foo", "bar", "baz"]);
+}
+
+#[test]
+fn read_input_from_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("input.txt");
+    std::fs::write(&path, "alpha\nbeta\n").unwrap();
+    let got = read_input(Some(&path), Cursor::new("ignored")).unwrap();
+    assert_eq!(got, vec!["alpha", "beta"]);
 }
