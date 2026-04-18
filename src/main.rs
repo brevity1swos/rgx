@@ -42,6 +42,12 @@ async fn run() -> anyhow::Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     }
 
+    // Dispatch subcommands before entering main TUI flow.
+    if let Some(rgx::config::cli::Command::Filter(args)) = cli.command.clone() {
+        let code = rgx::filter::entry(args);
+        return Ok(ExitCode::from(code as u8));
+    }
+
     let settings = Settings::load();
 
     let engine_kind = match cli.engine {

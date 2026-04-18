@@ -163,3 +163,94 @@ fn count_mode_returns_expected_count() {
     emit_count(&mut buf, matched.len()).unwrap();
     assert_eq!(String::from_utf8(buf).unwrap(), "3\n");
 }
+
+mod cli_e2e {
+    use std::io::Write as _;
+    use std::process::{Command, Stdio};
+
+    fn rgx_bin() -> std::path::PathBuf {
+        // Cargo puts integration test binaries next to the main binary under target/debug.
+        let mut p = std::env::current_exe().unwrap();
+        p.pop(); // test binary name
+        if p.ends_with("deps") {
+            p.pop();
+        }
+        p.push(if cfg!(windows) { "rgx.exe" } else { "rgx" });
+        p
+    }
+
+    #[test]
+    fn cli_filter_count_reads_stdin() {
+        let bin = rgx_bin();
+        assert!(bin.exists(), "rgx binary not found at {bin:?}; build first");
+        let mut child = Command::new(&bin)
+            .args(["filter", "--count", r"\d+"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(b"error 1\nok\nerror 2\nwarn\n")
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "2");
+    }
+
+    #[test]
+    fn cli_filter_emit_matching_lines_from_file() {
+        let bin = rgx_bin();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("log.txt");
+        std::fs::write(&path, "info: ok\nerror: boom\ninfo: ok2\nerror: kaboom\n").unwrap();
+        let out = Command::new(&bin)
+            .args(["filter", "-f", path.to_str().unwrap(), "-n", "error"])
+            .stderr(Stdio::piped())
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            "2:error: boom\n4:error: kaboom\n"
+        );
+    }
+
+    #[test]
+    fn cli_filter_no_match_returns_exit_1() {
+        let bin = rgx_bin();
+        let mut child = Command::new(&bin)
+            .args(["filter", "--count", "zzz"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .as_mut()
+            .unwrap()
+            .write_all(b"foo\nbar\n")
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "0");
+    }
+
+    #[test]
+    fn cli_filter_invalid_pattern_returns_exit_2() {
+        let bin = rgx_bin();
+        let mut child = Command::new(&bin)
+            .args(["filter", "--count", "(unclosed"])
+            .stdin(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child.stdin.as_mut().unwrap().write_all(b"foo\n").unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(2));
+    }
+}
