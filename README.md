@@ -57,6 +57,7 @@ If you write regex a few times a month and regex101.com works fine for you, it p
 - **Recipe library** — built-in common patterns (email, URL, IP, semver, etc.) — Ctrl+R to browse and load
 - **Code generation** — Ctrl+G generates ready-to-use code in Rust, Python, JavaScript, Go, Java, C#, PHP, or Ruby — copies to clipboard
 - **Generate regex from examples** — Ctrl+X opens an overlay where you enter example strings (one per line) and get back a regex via the [grex](https://crates.io/crates/grex) crate; Tab to load it into the main editor
+- **Live filter mode** — `rgx filter [PATTERN]` reads stdin or a file, shows an interactive TUI where you refine a regex against the stream, and emits matching lines on Enter. Supports `--invert`, `--count`, `--line-number`, `--case-insensitive`, and piping (non-TTY stdout skips the TUI entirely).
 - **Auto engine selection** — automatically upgrades to fancy-regex or PCRE2 when your pattern uses lookahead, backreferences, or recursion
 - **Test suite mode** — `rgx --test file.toml` validates regex against should-match/should-not-match assertions — CI-friendly exit codes
 - **Alternating match colors** — adjacent matches use distinct background colors for visual clarity
@@ -223,6 +224,65 @@ rgx -p -t "test" '\d+' || echo "no digits found"
 | `Esc` | Normal | Quit |
 
 All global shortcuts (`Ctrl+*`, `Alt+*`, `F1`, `Tab`) work in both modes.
+
+### Filter mode (`rgx filter`) shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Up/Down` | Browse matching lines |
+| `Alt+i` | Toggle case-insensitive |
+| `Alt+v` | Toggle invert match |
+| `Enter` | Emit matched lines to stdout and exit (exit 0) |
+| `Esc` / `q` / `Ctrl+C` | Discard and exit (exit 1) |
+| Typing / Backspace | Edit the regex pattern (re-filters live) |
+
+## Piping recipes
+
+`rgx filter` detects whether stdout is a terminal. If it's piped, the TUI is
+skipped — it behaves like a regular `grep`-style filter.
+
+### General
+
+```bash
+# Count error lines in a log
+cat /var/log/system.log | rgx filter --count 'error|fail'
+
+# Emit only non-matching lines (like grep -v)
+cat access.log | rgx filter -v '200 '
+
+# Prefix matches with line numbers
+rgx filter -f server.log -n 'Exception'
+```
+
+### With [agx](https://github.com/brevity1swos/agx)
+
+agx emits AI agent session timelines as Markdown or JSON. Pipe the export
+through `rgx filter` to iterate on a regex over the whole session without
+re-running agx:
+
+```bash
+# Find all steps where a tool call mentions a file path
+agx session.jsonl --export md | rgx filter '\btool_use\b.*\.rs'
+
+# Count how many error responses showed up in a session
+agx session.jsonl --export md | rgx filter --count '(?i)error'
+```
+
+### With [sift](https://github.com/brevity1swos/sift)
+
+sift shows diffs of AI-generated file writes. Use `rgx filter` to prototype
+detection rules against real diffs before encoding them into a sift policy:
+
+```bash
+# See every diff line that adds a console.log call
+sift diff | rgx filter '^\+.*console\.log'
+
+# Test whether a policy regex catches what you expect
+sift diff --session current | rgx filter --count '^\+.*TODO'
+```
+
+Once a pattern matches what you want in `rgx filter`, copy-paste it into the
+appropriate `.sift/policy.yml` rule.
 
 ## Engines
 
