@@ -593,6 +593,66 @@ mod json_path_tests {
         // Identifiers may not start with a digit.
         assert!(parse_path(".1field").is_err());
     }
+
+    // --- extract() tests ---
+
+    use rgx::filter::json_path::extract;
+    use serde_json::json;
+
+    #[test]
+    fn extract_top_level_field() {
+        let v = json!({"a": 1});
+        let path = parse_path(".a").unwrap();
+        assert_eq!(extract(&v, &path), Some(&json!(1)));
+    }
+
+    #[test]
+    fn extract_nested_field() {
+        let v = json!({"a": {"b": "x"}});
+        let path = parse_path(".a.b").unwrap();
+        assert_eq!(extract(&v, &path), Some(&json!("x")));
+    }
+
+    #[test]
+    fn extract_array_index() {
+        let v = json!({"items": ["x", "y"]});
+        let path = parse_path(".items[1]").unwrap();
+        assert_eq!(extract(&v, &path), Some(&json!("y")));
+    }
+
+    #[test]
+    fn extract_missing_key_returns_none() {
+        let v = json!({"a": 1});
+        let path = parse_path(".b").unwrap();
+        assert_eq!(extract(&v, &path), None);
+    }
+
+    #[test]
+    fn extract_out_of_bounds_index_returns_none() {
+        let v = json!({"items": ["x"]});
+        let path = parse_path(".items[5]").unwrap();
+        assert_eq!(extract(&v, &path), None);
+    }
+
+    #[test]
+    fn extract_type_mismatch_returns_none() {
+        // Asking for an array index on a string value must not panic.
+        let v = json!({"items": "not-an-array"});
+        let path = parse_path(".items[0]").unwrap();
+        assert_eq!(extract(&v, &path), None);
+    }
+
+    #[test]
+    fn extract_mixed_path_on_realistic_value() {
+        let v = json!({
+            "steps": [
+                {"text": "hello"},
+                {"text": "world"},
+            ]
+        });
+        let path = parse_path(".steps[1].text").unwrap();
+        assert_eq!(extract(&v, &path), Some(&json!("world")));
+    }
 }
 
 mod cli_e2e {
