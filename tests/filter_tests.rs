@@ -221,6 +221,67 @@ fn filter_app_selection_clamps_on_pattern_change() {
 }
 
 #[test]
+fn filter_app_populates_match_spans() {
+    let lines = to_lines(&["a1b22", "nope"]);
+    let app = FilterApp::new(lines, r"\d+", FilterOptions::default());
+    assert_eq!(app.matched, vec![0]);
+    assert_eq!(app.match_spans.len(), 1);
+    assert_eq!(app.match_spans[0], vec![1..2, 3..5]);
+}
+
+#[test]
+fn filter_app_match_spans_empty_in_invert_mode() {
+    // Invert mode emits lines that didn't match — there's nothing to highlight.
+    let lines = to_lines(&["error 1", "ok", "error 2"]);
+    let app = FilterApp::new(
+        lines,
+        r"\d+",
+        FilterOptions {
+            invert: true,
+            case_insensitive: false,
+        },
+    );
+    assert_eq!(app.matched, vec![1]);
+    assert_eq!(app.match_spans, vec![Vec::<std::ops::Range<usize>>::new()]);
+}
+
+#[test]
+fn filter_ui_highlights_match_spans_with_match_bg() {
+    // A pattern that matches — verify at least one cell in the match list
+    // has the MATCH_BG background color applied.
+    use ratatui::backend::TestBackend;
+    use ratatui::style::Color;
+    use ratatui::Terminal;
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 10)).unwrap();
+    let lines = to_lines(&["abc123def"]);
+    let app = FilterApp::new(lines, r"\d+", FilterOptions::default());
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+    let buf = terminal.backend().buffer().clone();
+
+    let match_bg = Color::Rgb(69, 71, 90); // theme::MATCH_BG
+    let mut found_highlighted = false;
+    for y in 0..buf.area.height {
+        for x in 0..buf.area.width {
+            let cell = &buf[(x, y)];
+            if cell.bg == match_bg {
+                // Match background cells should correspond to digit characters.
+                let sym = cell.symbol();
+                if sym == "1" || sym == "2" || sym == "3" {
+                    found_highlighted = true;
+                }
+            }
+        }
+    }
+    assert!(
+        found_highlighted,
+        "expected at least one cell with MATCH_BG covering a digit"
+    );
+}
+
+#[test]
 fn filter_ui_render_does_not_panic() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;

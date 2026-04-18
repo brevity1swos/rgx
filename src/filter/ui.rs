@@ -77,12 +77,14 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
         .enumerate()
         .map(|(visible_idx, &line_idx)| {
             let absolute = start + visible_idx;
-            let mut style = Style::default().fg(theme::TEXT);
-            if absolute == app.selected {
-                style = style.add_modifier(Modifier::REVERSED);
-            }
-            let content = format!("{:>5}  {}", line_idx + 1, app.lines[line_idx]);
-            ListItem::new(Line::from(Span::styled(content, style)))
+            let is_selected = absolute == app.selected;
+            // Empty Vec if invert mode or empty pattern.
+            let spans_for_line: &[std::ops::Range<usize>] = app
+                .match_spans
+                .get(absolute)
+                .map(|v| v.as_slice())
+                .unwrap_or(&[]);
+            build_line_spans(&app.lines[line_idx], line_idx, spans_for_line, is_selected)
         })
         .collect();
     let block = Block::default().borders(Borders::ALL).title(Span::styled(
@@ -90,6 +92,67 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
         Style::default().fg(theme::BLUE),
     ));
     frame.render_widget(List::new(items).block(block), area);
+}
+
+/// Build a styled `ListItem` for a single line, alternating match-span backgrounds
+/// to match the main rgx match-display panel. When `is_selected` is true the
+/// entire row is reversed to preserve the existing selection indicator.
+fn build_line_spans<'a>(
+    line: &'a str,
+    line_idx: usize,
+    spans: &[std::ops::Range<usize>],
+    is_selected: bool,
+) -> ListItem<'a> {
+    let base_style = Style::default().fg(theme::TEXT);
+    let modifier = if is_selected {
+        Modifier::REVERSED
+    } else {
+        Modifier::empty()
+    };
+
+    let mut out: Vec<Span<'a>> = Vec::new();
+    // Prefix stays unstyled (no match background) but still reverses on selection.
+    out.push(Span::styled(
+        format!("{:>5}  ", line_idx + 1),
+        base_style.add_modifier(modifier),
+    ));
+
+    if spans.is_empty() {
+        out.push(Span::styled(line, base_style.add_modifier(modifier)));
+        return ListItem::new(Line::from(out));
+    }
+
+    let mut pos = 0;
+    for (i, range) in spans.iter().enumerate() {
+        // Clamp to line length defensively; a malformed range would panic the slice.
+        let start = range.start.min(line.len());
+        let end = range.end.min(line.len());
+        if start < end {
+            if start > pos {
+                out.push(Span::styled(
+                    &line[pos..start],
+                    base_style.add_modifier(modifier),
+                ));
+            }
+            let bg = theme::match_bg(i);
+            out.push(Span::styled(
+                &line[start..end],
+                base_style
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+                    .add_modifier(modifier),
+            ));
+            pos = end;
+        }
+    }
+    if pos < line.len() {
+        out.push(Span::styled(
+            &line[pos..],
+            base_style.add_modifier(modifier),
+        ));
+    }
+
+    ListItem::new(Line::from(out))
 }
 
 fn render_status(frame: &mut Frame, area: Rect, app: &FilterApp) {
