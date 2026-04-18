@@ -123,6 +123,23 @@ fn read_input_from_in_memory_stdin() {
 }
 
 #[test]
+fn read_input_handles_invalid_utf8() {
+    // Stray \xFF\xFE bytes between valid UTF-8 lines — grep tolerates these;
+    // we now do too. Each invalid byte becomes U+FFFD.
+    let data: &[u8] = b"valid\n\xFF\xFEinvalid\nok\n";
+    let got = read_input(None, Cursor::new(data)).unwrap();
+    assert_eq!(got.len(), 3);
+    assert_eq!(got[0], "valid");
+    assert!(
+        got[1].contains('\u{FFFD}'),
+        "middle line should have replacement char, got {:?}",
+        got[1]
+    );
+    assert!(got[1].ends_with("invalid"));
+    assert_eq!(got[2], "ok");
+}
+
+#[test]
 fn read_input_from_file() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("input.txt");

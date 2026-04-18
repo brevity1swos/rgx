@@ -95,14 +95,30 @@ pub fn emit_count(writer: &mut dyn Write, matched_count: usize) -> io::Result<()
 /// Read all lines from either a file path or the provided reader (typically stdin).
 /// Trailing `\n`/`\r\n` is stripped per line. A trailing empty line (from a
 /// terminating newline) is dropped.
+///
+/// Invalid UTF-8 bytes are replaced with `U+FFFD REPLACEMENT CHARACTER` rather
+/// than aborting the read — this matches `grep`'s behavior and keeps the filter
+/// usable against binary-ish logs (e.g. files with stray latin-1 bytes).
 pub fn read_input(file: Option<&Path>, fallback: impl Read) -> io::Result<Vec<String>> {
-    let reader: Box<dyn BufRead> = match file {
+    let mut reader: Box<dyn BufRead> = match file {
         Some(path) => Box::new(BufReader::new(std::fs::File::open(path)?)),
         None => Box::new(BufReader::new(fallback)),
     };
     let mut out = Vec::new();
-    for line in reader.lines() {
-        out.push(line?);
+    let mut buf = Vec::new();
+    loop {
+        buf.clear();
+        let n = reader.read_until(b'\n', &mut buf)?;
+        if n == 0 {
+            break;
+        }
+        // Strip trailing \n and optional \r.
+        let end = buf
+            .iter()
+            .rposition(|b| *b != b'\n' && *b != b'\r')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        out.push(String::from_utf8_lossy(&buf[..end]).into_owned());
     }
     Ok(out)
 }
