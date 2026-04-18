@@ -25,9 +25,8 @@ Ship grex integration as the farewell feature. Optionally round out with shareab
 - User-saved pattern library — user patterns alongside the built-in recipes
 
 **Deliberately out of scope (and staying out of scope):**
-- Interactive grep mode (the abandoned Road B)
 - Multi-file search/replace with preview
-- Any further major features after v0.11.0
+- Any further major features after v0.11.0 (beyond the `rgx filter` sub-mode noted below)
 
 ## Post-v0.11.0 — maintenance mode
 
@@ -39,6 +38,7 @@ Ship grex integration as the farewell feature. Optionally round out with shareab
 
 ## Recently Shipped
 
+- **`rgx filter`** — interactive grep mode with stdin/file input, live regex refinement, `--invert`/`--count`/`--line-number` flags, and non-TTY piping. Synergizes with agx and sift pipelines. Shipped 2026-04-18.
 - **v0.10.2** — PCRE2 zero-length match offset fix, runtime PCRE2 version detection, syntax highlight token caching, `OverlayState` extraction, action dispatch moved into `App::handle_action()`.
 - **Step-Through Debugger (Ctrl+D)** — PCRE2 callout-based step-through debugger with dual-cursor visualization, backtrack markers, heatmap mode, and debug-from-selected-match. No other terminal regex tool has this.
 - **Code Generation (Ctrl+G)** — Generate code in 8 languages (Rust, Python, JS, Go, Java, C#, PHP, Ruby). Closes the biggest feature gap vs regex101.
