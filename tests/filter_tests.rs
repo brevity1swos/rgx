@@ -2,7 +2,9 @@ use std::io::Cursor;
 
 use clap::Parser;
 use rgx::config::cli::{Cli, Command};
-use rgx::filter::{emit_count, emit_matches, filter_lines, read_input, FilterOptions};
+use rgx::filter::{
+    emit_count, emit_matches, filter_lines, read_input, FilterApp, FilterOptions, Outcome,
+};
 
 fn to_lines(strs: &[&str]) -> Vec<String> {
     strs.iter().map(|s| s.to_string()).collect()
@@ -162,6 +164,60 @@ fn count_mode_returns_expected_count() {
     let mut buf = Vec::new();
     emit_count(&mut buf, matched.len()).unwrap();
     assert_eq!(String::from_utf8(buf).unwrap(), "3\n");
+}
+
+#[test]
+fn filter_app_empty_pattern_shows_all_lines() {
+    let lines = to_lines(&["one", "two", "three"]);
+    let app = FilterApp::new(lines, "", FilterOptions::default());
+    assert_eq!(app.matched, vec![0, 1, 2]);
+    assert_eq!(app.outcome, Outcome::Pending);
+    assert!(app.error.is_none());
+}
+
+#[test]
+fn filter_app_applies_initial_pattern() {
+    let lines = to_lines(&["error 1", "ok", "error 2"]);
+    let app = FilterApp::new(lines, "error", FilterOptions::default());
+    assert_eq!(app.matched, vec![0, 2]);
+}
+
+#[test]
+fn filter_app_invalid_pattern_sets_error() {
+    let lines = to_lines(&["a"]);
+    let app = FilterApp::new(lines, "(unclosed", FilterOptions::default());
+    assert!(app.error.is_some());
+    assert!(app.matched.is_empty());
+}
+
+#[test]
+fn filter_app_toggle_invert_flips_match_set() {
+    let lines = to_lines(&["error 1", "ok", "error 2"]);
+    let mut app = FilterApp::new(lines, "error", FilterOptions::default());
+    assert_eq!(app.matched, vec![0, 2]);
+    app.toggle_invert();
+    assert_eq!(app.matched, vec![1]);
+}
+
+#[test]
+fn filter_app_toggle_case_insensitive_recomputes() {
+    let lines = to_lines(&["ERROR one", "ok", "error two"]);
+    let mut app = FilterApp::new(lines.clone(), "error", FilterOptions::default());
+    assert_eq!(app.matched, vec![2]);
+    app.toggle_case_insensitive();
+    assert_eq!(app.matched, vec![0, 2]);
+}
+
+#[test]
+fn filter_app_selection_clamps_on_pattern_change() {
+    let lines = to_lines(&["a", "b", "c", "d"]);
+    let mut app = FilterApp::new(lines, "", FilterOptions::default());
+    app.selected = 3;
+    // Change pattern — now only one line matches.
+    app.pattern_editor = rgx::input::editor::Editor::with_content("a".to_string());
+    app.recompute();
+    assert_eq!(app.matched, vec![0]);
+    assert_eq!(app.selected, 0);
 }
 
 mod cli_e2e {

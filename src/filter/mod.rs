@@ -6,6 +6,9 @@ use std::path::Path;
 use crate::config::cli::FilterArgs;
 use crate::engine::{self, EngineFlags, EngineKind};
 
+pub mod app;
+pub use app::{FilterApp, Outcome};
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FilterOptions {
     pub invert: bool,
