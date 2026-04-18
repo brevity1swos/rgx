@@ -136,6 +136,12 @@ pub struct FilterArgs {
     /// Case-insensitive matching (equivalent to Alt+i inside the TUI).
     #[arg(short = 'i', long)]
     pub case_insensitive: bool,
+
+    /// Cap input at N lines to prevent OOM on multi-GB piped streams.
+    /// Defaults to 100000. Pass a larger value (or 0 for no cap — see below)
+    /// if you know your input fits in memory.
+    #[arg(long, default_value_t = 100_000, value_name = "N")]
+    pub max_lines: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]

@@ -118,8 +118,9 @@ fn invalid_pattern_returns_err() {
 #[test]
 fn read_input_from_in_memory_stdin() {
     let data = "foo\nbar\nbaz\n";
-    let got = read_input(None, Cursor::new(data)).unwrap();
+    let (got, truncated) = read_input(None, Cursor::new(data), 100_000).unwrap();
     assert_eq!(got, vec!["foo", "bar", "baz"]);
+    assert!(!truncated);
 }
 
 #[test]
@@ -127,7 +128,8 @@ fn read_input_handles_invalid_utf8() {
     // Stray \xFF\xFE bytes between valid UTF-8 lines — grep tolerates these;
     // we now do too. Each invalid byte becomes U+FFFD.
     let data: &[u8] = b"valid\n\xFF\xFEinvalid\nok\n";
-    let got = read_input(None, Cursor::new(data)).unwrap();
+    let (got, truncated) = read_input(None, Cursor::new(data), 100_000).unwrap();
+    assert!(!truncated);
     assert_eq!(got.len(), 3);
     assert_eq!(got[0], "valid");
     assert!(
@@ -144,8 +146,39 @@ fn read_input_from_file() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("input.txt");
     std::fs::write(&path, "alpha\nbeta\n").unwrap();
-    let got = read_input(Some(&path), Cursor::new("ignored")).unwrap();
+    let (got, truncated) = read_input(Some(&path), Cursor::new("ignored"), 100_000).unwrap();
     assert_eq!(got, vec!["alpha", "beta"]);
+    assert!(!truncated);
+}
+
+#[test]
+fn read_input_caps_at_max_lines() {
+    // Feed 1000 lines with a cap of 5 — expect exactly 5 lines back and
+    // truncated == true.
+    let data: String = (0..1000).map(|i| format!("line-{i}\n")).collect();
+    let (got, truncated) = read_input(None, Cursor::new(data), 5).unwrap();
+    assert_eq!(got.len(), 5);
+    assert_eq!(got[0], "line-0");
+    assert_eq!(got[4], "line-4");
+    assert!(truncated, "cap was hit mid-stream; should be flagged");
+}
+
+#[test]
+fn read_input_exact_fit_not_truncated() {
+    // When the input fits exactly within max_lines, no truncation warning.
+    let data = "a\nb\nc\n";
+    let (got, truncated) = read_input(None, Cursor::new(data), 3).unwrap();
+    assert_eq!(got, vec!["a", "b", "c"]);
+    assert!(!truncated);
+}
+
+#[test]
+fn read_input_zero_means_no_cap() {
+    // max_lines = 0 disables the cap entirely.
+    let data: String = (0..50).map(|i| format!("l{i}\n")).collect();
+    let (got, truncated) = read_input(None, Cursor::new(data), 0).unwrap();
+    assert_eq!(got.len(), 50);
+    assert!(!truncated);
 }
 
 #[test]

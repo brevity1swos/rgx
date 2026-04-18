@@ -99,14 +99,34 @@ pub fn emit_count(writer: &mut dyn Write, matched_count: usize) -> io::Result<()
 /// Invalid UTF-8 bytes are replaced with `U+FFFD REPLACEMENT CHARACTER` rather
 /// than aborting the read — this matches `grep`'s behavior and keeps the filter
 /// usable against binary-ish logs (e.g. files with stray latin-1 bytes).
-pub fn read_input(file: Option<&Path>, fallback: impl Read) -> io::Result<Vec<String>> {
+///
+/// `max_lines` caps the number of lines read to prevent OOM on unbounded
+/// streams. Pass `0` to disable the cap. Returns `(lines, truncated)` where
+/// `truncated` is `true` if the cap was reached before end-of-input.
+pub fn read_input(
+    file: Option<&Path>,
+    fallback: impl Read,
+    max_lines: usize,
+) -> io::Result<(Vec<String>, bool)> {
     let mut reader: Box<dyn BufRead> = match file {
         Some(path) => Box::new(BufReader::new(std::fs::File::open(path)?)),
         None => Box::new(BufReader::new(fallback)),
     };
     let mut out = Vec::new();
     let mut buf = Vec::new();
+    let mut truncated = false;
     loop {
+        if max_lines != 0 && out.len() >= max_lines {
+            // Peek: is there any more data after the cap? Only then do we
+            // flag truncation, so callers don't warn about files that just
+            // happen to have exactly `max_lines` lines.
+            buf.clear();
+            let n = reader.read_until(b'\n', &mut buf)?;
+            if n > 0 {
+                truncated = true;
+            }
+            break;
+        }
         buf.clear();
         let n = reader.read_until(b'\n', &mut buf)?;
         if n == 0 {
@@ -120,7 +140,7 @@ pub fn read_input(file: Option<&Path>, fallback: impl Read) -> io::Result<Vec<St
             .unwrap_or(0);
         out.push(String::from_utf8_lossy(&buf[..end]).into_owned());
     }
-    Ok(out)
+    Ok((out, truncated))
 }
 
 /// CLI entry point for `rgx filter`. Reads input, decides between non-interactive
@@ -136,8 +156,14 @@ pub fn entry(args: FilterArgs) -> i32 {
 }
 
 fn run_entry(args: FilterArgs) -> Result<i32, String> {
-    let lines =
-        read_input(args.file.as_deref(), io::stdin()).map_err(|e| format!("reading input: {e}"))?;
+    let (lines, truncated) = read_input(args.file.as_deref(), io::stdin(), args.max_lines)
+        .map_err(|e| format!("reading input: {e}"))?;
+    if truncated {
+        eprintln!(
+            "rgx filter: input truncated at {} lines (use --max-lines to override)",
+            args.max_lines
+        );
+    }
 
     let options = FilterOptions {
         invert: args.invert,
