@@ -527,6 +527,70 @@ fn filter_ui_highlights_match_spans_with_match_bg() {
 }
 
 #[test]
+fn filter_ui_renders_json_extracted_with_arrow_prefix() {
+    // In --json mode the results pane renders two visual lines per row:
+    // the raw JSON on top, then `↳ <extracted>` below with match highlighting.
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 10)).unwrap();
+    let lines = to_lines(&[r#"{"level":"error","msg":"boom"}"#]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    let app = FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default());
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+    let buf = terminal.backend().buffer().clone();
+    let rendered: String = buf
+        .content()
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<Vec<_>>()
+        .join("");
+    assert!(
+        rendered.contains("\u{21b3}"),
+        "expected the ↳ arrow prefix, got: {rendered:?}"
+    );
+    assert!(
+        rendered.contains("boom"),
+        "expected extracted value 'boom' in render"
+    );
+    assert!(
+        rendered.contains("{\"level\":\"error\""),
+        "raw JSON line should still be shown for context"
+    );
+}
+
+#[test]
+fn filter_ui_json_narrow_falls_back_to_single_line() {
+    // Under 60 cols we drop the raw-line context and render only the
+    // extracted value — still with highlighting.
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let mut terminal = Terminal::new(TestBackend::new(50, 10)).unwrap();
+    let lines = to_lines(&[r#"{"msg":"boom"}"#]);
+    let extracted = extract_strings(&lines, ".msg").unwrap();
+    let app = FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default());
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+    let buf = terminal.backend().buffer().clone();
+    let rendered: String = buf
+        .content()
+        .iter()
+        .map(|c| c.symbol())
+        .collect::<Vec<_>>()
+        .join("");
+    assert!(rendered.contains("boom"));
+    // Narrow fallback: no arrow, no raw-JSON context.
+    assert!(
+        !rendered.contains("\u{21b3}"),
+        "narrow fallback should not show the arrow prefix"
+    );
+}
+
+#[test]
 fn filter_ui_render_does_not_panic() {
     use ratatui::backend::TestBackend;
     use ratatui::Terminal;

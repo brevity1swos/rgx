@@ -58,15 +58,22 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
     }
 
     let inner_height = area.height.saturating_sub(2) as usize;
+    // --json mode renders two lines per row (raw JSON + extracted value).
+    // Narrow terminals (< 60 cols) fall back to single-line rendering to keep
+    // the display legible.
+    let two_line = app.json_extracted.is_some() && area.width >= 60;
+    let rows_per_entry = if two_line { 2 } else { 1 };
+    let max_rows = inner_height / rows_per_entry.max(1);
+
     // Derive the scroll offset so the selected row is always visible. `app.scroll`
     // is retained as a hint for future page-up/down, but the effective start is
     // whatever keeps `selected` in view.
-    let start = if inner_height == 0 || app.matched.is_empty() {
+    let start = if max_rows == 0 || app.matched.is_empty() {
         0
     } else {
-        (app.selected + 1).saturating_sub(inner_height)
+        (app.selected + 1).saturating_sub(max_rows)
     };
-    let end = (start + inner_height).min(app.matched.len());
+    let end = (start + max_rows).min(app.matched.len());
     let visible = if start < end {
         &app.matched[start..end]
     } else {
@@ -75,7 +82,7 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
     let items: Vec<ListItem> = visible
         .iter()
         .enumerate()
-        .map(|(visible_idx, &line_idx)| {
+        .flat_map(|(visible_idx, &line_idx)| {
             let absolute = start + visible_idx;
             let is_selected = absolute == app.selected;
             // Empty Vec if invert mode or empty pattern.
@@ -84,7 +91,7 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
                 .get(absolute)
                 .map(|v| v.as_slice())
                 .unwrap_or(&[]);
-            build_line_spans(&app.lines[line_idx], line_idx, spans_for_line, is_selected)
+            build_row(app, line_idx, spans_for_line, is_selected, two_line)
         })
         .collect();
     let block = Block::default().borders(Borders::ALL).title(Span::styled(
@@ -92,6 +99,113 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
         Style::default().fg(theme::BLUE),
     ));
     frame.render_widget(List::new(items).block(block), area);
+}
+
+/// Build one or two `ListItem`s for a single matched line.
+///
+/// Returns two items when `two_line` is `true` (--json mode on a wide enough
+/// terminal): first the raw JSON line dimmed, then `↳ <extracted>` with the
+/// match spans highlighted. Otherwise returns a single item whose content
+/// depends on whether --json is active: either the raw line with spans, or
+/// the extracted value with spans (narrow --json fallback).
+fn build_row<'a>(
+    app: &'a FilterApp,
+    line_idx: usize,
+    spans: &[std::ops::Range<usize>],
+    is_selected: bool,
+    two_line: bool,
+) -> Vec<ListItem<'a>> {
+    let raw = &app.lines[line_idx];
+    let extracted = app
+        .json_extracted
+        .as_ref()
+        .and_then(|v| v.get(line_idx).and_then(|o| o.as_deref()));
+
+    match (extracted, two_line) {
+        (Some(ext), true) => {
+            // Two-line row: raw JSON (dim, no span highlights) + extracted with spans.
+            let raw_item = build_raw_context(raw, line_idx, is_selected);
+            let ext_item = build_extracted(ext, spans, is_selected);
+            vec![raw_item, ext_item]
+        }
+        (Some(ext), false) => {
+            // Narrow fallback: render only the extracted value with spans.
+            // We still prefix with the line number so selection/orientation is clear.
+            vec![build_line_spans(ext, line_idx, spans, is_selected)]
+        }
+        (None, _) => {
+            // No --json: render the raw line with match spans (existing behavior).
+            vec![build_line_spans(raw, line_idx, spans, is_selected)]
+        }
+    }
+}
+
+fn build_raw_context(line: &str, line_idx: usize, is_selected: bool) -> ListItem<'_> {
+    let modifier = if is_selected {
+        Modifier::REVERSED | Modifier::DIM
+    } else {
+        Modifier::DIM
+    };
+    let style = Style::default().fg(theme::SUBTEXT).add_modifier(modifier);
+    let prefix = Span::styled(format!("{:>5}  ", line_idx + 1), style);
+    let body = Span::styled(line, style);
+    ListItem::new(Line::from(vec![prefix, body]))
+}
+
+fn build_extracted<'a>(
+    extracted: &'a str,
+    spans: &[std::ops::Range<usize>],
+    is_selected: bool,
+) -> ListItem<'a> {
+    let base_style = Style::default().fg(theme::TEXT);
+    let modifier = if is_selected {
+        Modifier::REVERSED
+    } else {
+        Modifier::empty()
+    };
+
+    let mut out: Vec<Span<'a>> = Vec::new();
+    // 7-char indent to align with the line-number prefix width above (5) + 2 spaces.
+    out.push(Span::styled(
+        "     \u{21b3} ",
+        Style::default().fg(theme::BLUE).add_modifier(modifier),
+    ));
+
+    if spans.is_empty() {
+        out.push(Span::styled(extracted, base_style.add_modifier(modifier)));
+        return ListItem::new(Line::from(out));
+    }
+
+    let mut pos = 0;
+    for (i, range) in spans.iter().enumerate() {
+        let start = range.start.min(extracted.len());
+        let end = range.end.min(extracted.len());
+        if start < end {
+            if start > pos {
+                out.push(Span::styled(
+                    &extracted[pos..start],
+                    base_style.add_modifier(modifier),
+                ));
+            }
+            let bg = theme::match_bg(i);
+            out.push(Span::styled(
+                &extracted[start..end],
+                base_style
+                    .bg(bg)
+                    .add_modifier(Modifier::BOLD)
+                    .add_modifier(modifier),
+            ));
+            pos = end;
+        }
+    }
+    if pos < extracted.len() {
+        out.push(Span::styled(
+            &extracted[pos..],
+            base_style.add_modifier(modifier),
+        ));
+    }
+
+    ListItem::new(Line::from(out))
 }
 
 /// Build a styled `ListItem` for a single line, alternating match-span backgrounds
