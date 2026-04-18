@@ -254,45 +254,40 @@ cat access.log | rgx filter -v '200 '
 rgx filter -f server.log -n 'Exception'
 ```
 
-### With [agx](https://github.com/brevity1swos/agx)
+### JSONL field extraction (`--json`)
 
-agx emits AI agent session timelines as Markdown or JSON. Pipe the export
-through `rgx filter` to iterate on a regex over the whole session without
-re-running agx:
+When your input is JSONL (one JSON object per line), the default behavior
+matches the pattern against the full raw line — which often means you hit
+timestamps, IDs, or other structured metadata by accident. Use `--json <PATH>`
+to filter on a specific field instead:
 
 ```bash
-# Find all steps where a tool call mentions a file path
-agx session.jsonl --export md | rgx filter '\btool_use\b.*\.rs'
+# Match only the `msg` field of each JSONL record, not the raw line
+cat app.jsonl | rgx filter --json '.msg' '(?i)error'
 
-# Count how many error responses showed up in a session
-agx session.jsonl --export md | rgx filter --count '(?i)error'
-
-# Match only the `text` field of each JSONL record, not the raw line.
-# Useful when structured metadata (ids, timestamps) would give false positives.
-agx session.jsonl --export json | rgx filter --json '.text' '(?i)error'
+# Count records whose nested text field starts with "boom"
+cat events.jsonl | rgx filter --json '.payload.text' --count '^boom'
 ```
 
-The `--json <PATH>` flag accepts a minimal dotted/indexed path (e.g.
-`.msg`, `.steps[0].text`). Each line is parsed as JSON and the extracted
-field's string value is what the pattern matches against. Non-string
-values, missing paths, and malformed JSON lines are skipped silently.
-Raw JSON lines are still what gets emitted when a match is found.
+The path language is minimal on purpose: `.field` for object keys, `[N]`
+for array indices, nesting as `.a.b[0].c`. Each line is parsed as JSON,
+the extracted field's string value is what the pattern matches against,
+and non-string values / missing paths / malformed JSON lines are skipped
+silently. Raw JSON lines are still what gets emitted when a match hits —
+so downstream tools receive the full record, not just the extracted field.
 
-### With [sift](https://github.com/brevity1swos/sift)
-
-sift shows diffs of AI-generated file writes. Use `rgx filter` to prototype
-detection rules against real diffs before encoding them into a sift policy:
+### Filtering diffs
 
 ```bash
 # See every diff line that adds a console.log call
-sift diff | rgx filter '^\+.*console\.log'
+git diff | rgx filter '^\+.*console\.log'
 
-# Test whether a policy regex catches what you expect
-sift diff --session current | rgx filter --count '^\+.*TODO'
+# Count TODO markers added in the working tree
+git diff HEAD | rgx filter --count '^\+.*TODO'
 ```
 
-Once a pattern matches what you want in `rgx filter`, copy-paste it into the
-appropriate `.sift/policy.yml` rule.
+Once a pattern matches what you want interactively, you can copy-paste it
+into any policy or CI check.
 
 ## Engines
 
