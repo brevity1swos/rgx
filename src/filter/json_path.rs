@@ -1,9 +1,12 @@
 //! Minimal dotted/indexed path language for JSONL field extraction.
 //!
 //! Grammar:
-//!   path    := segment+
-//!   segment := ('.' ident) | ('[' digits ']')
-//!   ident   := [A-Za-z_][A-Za-z0-9_]*
+//!
+//! ```text
+//! path    := segment+
+//! segment := ('.' ident) | ('[' digits ']')
+//! ident   := [A-Za-z_][A-Za-z0-9_]*
+//! ```
 //!
 //! The grammar is deliberately small — no wildcards, no filters, no quoted
 //! keys. It is just enough to address a field inside a typical JSONL record
