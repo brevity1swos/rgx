@@ -45,6 +45,32 @@ fn filter_subcommand_with_flags_parses() {
 }
 
 #[test]
+fn match_haystack_contract() {
+    // Direct coverage for the shared helper — all three filter paths
+    // (filter_lines, filter_lines_with_extracted, FilterApp::collect_matches)
+    // rely on it, so its contract deserves explicit tests.
+    use rgx::engine::{self, EngineFlags, EngineKind};
+    let engine = engine::create_engine(EngineKind::RustRegex);
+    let compiled = engine.compile(r"\d+", &EngineFlags::default()).unwrap();
+
+    // Hit, not inverted → Some(spans) with the match ranges.
+    let got = rgx::filter::match_haystack(&*compiled, "a1b22", false);
+    assert_eq!(got, Some(vec![1..2, 3..5]));
+
+    // No hit, not inverted → None.
+    let got = rgx::filter::match_haystack(&*compiled, "none", false);
+    assert_eq!(got, None);
+
+    // Hit, inverted → None (the line matched, so invert excludes it).
+    let got = rgx::filter::match_haystack(&*compiled, "a1", true);
+    assert_eq!(got, None);
+
+    // No hit, inverted → Some(empty) (emit line, no spans to highlight).
+    let got = rgx::filter::match_haystack(&*compiled, "no-digits", true);
+    assert_eq!(got, Some(Vec::new()));
+}
+
+#[test]
 fn filter_subcommand_with_json_flag_parses() {
     let cli = Cli::try_parse_from(["rgx", "filter", "--json", ".msg", "boom"]).unwrap();
     match cli.command {
@@ -303,6 +329,33 @@ fn read_input_exact_fit_not_truncated() {
 }
 
 #[test]
+fn read_input_truncates_oversized_line() {
+    // A single line larger than MAX_LINE_BYTES must be truncated — otherwise
+    // a hostile unterminated stream could OOM before the line cap kicks in.
+    // We use a small reader built by concatenating > MAX_LINE_BYTES of bytes
+    // followed by a newline and a short second line. The first line should
+    // come back at exactly MAX_LINE_BYTES and truncated == true, and the
+    // second line should still be readable intact.
+    let cap = rgx::filter::MAX_LINE_BYTES;
+    let big: Vec<u8> = std::iter::repeat(b'x').take(cap + 1024).collect();
+    let mut data = big.clone();
+    data.push(b'\n');
+    data.extend_from_slice(b"next\n");
+    let (got, truncated) = read_input(None, Cursor::new(data), 100_000).unwrap();
+    assert_eq!(got.len(), 2, "expected two lines back");
+    assert_eq!(
+        got[0].len(),
+        cap,
+        "first line should be truncated to the cap"
+    );
+    assert_eq!(got[1], "next", "reader should resync after oversize line");
+    assert!(
+        truncated,
+        "truncated flag must be set when a line is capped"
+    );
+}
+
+#[test]
 fn read_input_zero_means_no_cap() {
     // max_lines = 0 disables the cap entirely.
     let data: String = (0..50).map(|i| format!("l{i}\n")).collect();
@@ -418,7 +471,8 @@ fn filter_app_with_json_matches_extracted_field() {
         r#"{"level":"info","msg":"goodbye"}"#,
     ]);
     let extracted = extract_strings(&lines, ".msg").unwrap();
-    let app = FilterApp::with_json_extracted(lines, extracted, "boom", FilterOptions::default());
+    let app =
+        FilterApp::with_json_extracted(lines, extracted, "boom", FilterOptions::default()).unwrap();
     // Only the second line has a msg that matches `boom`.
     assert_eq!(app.matched, vec![1]);
 }
@@ -433,7 +487,8 @@ fn filter_app_with_json_skips_parse_failures() {
     let extracted = extract_strings(&lines, ".msg").unwrap();
     // Pattern `.` would match any non-empty string — the bad line must be
     // excluded because its extracted value is None.
-    let app = FilterApp::with_json_extracted(lines, extracted, ".", FilterOptions::default());
+    let app =
+        FilterApp::with_json_extracted(lines, extracted, ".", FilterOptions::default()).unwrap();
     assert_eq!(app.matched, vec![0, 2]);
 }
 
@@ -443,7 +498,8 @@ fn filter_app_match_spans_refer_to_extracted_string() {
     // computed within the extracted string "boom" — so `oo` lives at 1..3.
     let lines = to_lines(&[r#"{"level":"error","msg":"boom"}"#]);
     let extracted = extract_strings(&lines, ".msg").unwrap();
-    let app = FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default());
+    let app =
+        FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default()).unwrap();
     assert_eq!(app.matched, vec![0]);
     assert_eq!(app.match_spans, vec![vec![1..3]]);
 }
@@ -452,7 +508,8 @@ fn filter_app_match_spans_refer_to_extracted_string() {
 fn filter_app_with_json_empty_pattern_shows_only_parseable_lines() {
     let lines = to_lines(&[r#"{"msg":"ok"}"#, "nope", r#"{"msg":"also"}"#]);
     let extracted = extract_strings(&lines, ".msg").unwrap();
-    let app = FilterApp::with_json_extracted(lines, extracted, "", FilterOptions::default());
+    let app =
+        FilterApp::with_json_extracted(lines, extracted, "", FilterOptions::default()).unwrap();
     assert_eq!(app.matched, vec![0, 2]);
 }
 
@@ -468,10 +525,45 @@ fn filter_app_with_json_invert_skips_none() {
             invert: true,
             case_insensitive: false,
         },
-    );
+    )
+    .unwrap();
     // Only line 2 qualifies: its extracted value exists AND doesn't match.
     // The "not json" line is still excluded even in invert mode.
     assert_eq!(app.matched, vec![2]);
+}
+
+#[test]
+fn filter_ui_render_survives_mid_char_boundary_spans() {
+    // Regex-crate-produced spans are always char-aligned, but the public
+    // `match_spans` field is writable. A defensively-hardened render path
+    // must not panic when fed byte offsets that split a multibyte char.
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    let mut terminal = Terminal::new(TestBackend::new(80, 10)).unwrap();
+    // "é" is 0xC3 0xA9 — byte 1 is mid-char.
+    let lines = to_lines(&["café"]);
+    let mut app = FilterApp::new(lines, "", FilterOptions::default());
+    // Force a span that crosses a char boundary. 3..5 spans 'f' plus the
+    // first byte of 'é' — invalid as a str slice, must not panic.
+    app.match_spans = vec![vec![3..5]];
+    terminal
+        .draw(|frame| rgx::filter::ui::render(frame, &app))
+        .unwrap();
+}
+
+#[test]
+fn filter_app_with_json_extracted_length_mismatch_returns_err() {
+    // The constructor is a library entry point — length mismatch used to
+    // panic via assert_eq!; now it surfaces as a Result<Err, _> so callers
+    // can handle it instead of crashing the TUI.
+    let lines = to_lines(&[r#"{"msg":"a"}"#, r#"{"msg":"b"}"#]);
+    let extracted = vec![Some("a".to_string())]; // wrong length on purpose
+    let result = FilterApp::with_json_extracted(lines, extracted, "", FilterOptions::default());
+    match result {
+        Ok(_) => panic!("length mismatch should Err"),
+        Err(err) => assert!(err.contains("length"), "error should mention length: {err}"),
+    }
 }
 
 #[test]
@@ -495,7 +587,6 @@ fn filter_ui_highlights_match_spans_with_match_bg() {
     // A pattern that matches — verify at least one cell in the match list
     // has the MATCH_BG background color applied.
     use ratatui::backend::TestBackend;
-    use ratatui::style::Color;
     use ratatui::Terminal;
 
     let mut terminal = Terminal::new(TestBackend::new(80, 10)).unwrap();
@@ -506,7 +597,9 @@ fn filter_ui_highlights_match_spans_with_match_bg() {
         .unwrap();
     let buf = terminal.backend().buffer().clone();
 
-    let match_bg = Color::Rgb(69, 71, 90); // theme::MATCH_BG
+    // Pull the color from the theme module rather than hardcoding RGB —
+    // otherwise a cosmetic theme change silently breaks this test.
+    let match_bg = rgx::ui::theme::MATCH_BG;
     let mut found_highlighted = false;
     for y in 0..buf.area.height {
         for x in 0..buf.area.width {
@@ -536,7 +629,8 @@ fn filter_ui_renders_json_extracted_with_arrow_prefix() {
     let mut terminal = Terminal::new(TestBackend::new(80, 10)).unwrap();
     let lines = to_lines(&[r#"{"level":"error","msg":"boom"}"#]);
     let extracted = extract_strings(&lines, ".msg").unwrap();
-    let app = FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default());
+    let app =
+        FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default()).unwrap();
     terminal
         .draw(|frame| rgx::filter::ui::render(frame, &app))
         .unwrap();
@@ -571,7 +665,8 @@ fn filter_ui_json_narrow_falls_back_to_single_line() {
     let mut terminal = Terminal::new(TestBackend::new(50, 10)).unwrap();
     let lines = to_lines(&[r#"{"msg":"boom"}"#]);
     let extracted = extract_strings(&lines, ".msg").unwrap();
-    let app = FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default());
+    let app =
+        FilterApp::with_json_extracted(lines, extracted, "oo", FilterOptions::default()).unwrap();
     terminal
         .draw(|frame| rgx::filter::ui::render(frame, &app))
         .unwrap();
@@ -911,6 +1006,95 @@ mod json_path_tests {
         });
         let path = parse_path(".steps[1].text").unwrap();
         assert_eq!(extract(&v, &path), Some(&json!("world")));
+    }
+
+    // --- bracketed string key tests ---
+
+    #[test]
+    fn parse_path_bracketed_key_with_hyphen() {
+        assert_eq!(
+            parse_path(r#"["user-id"]"#).unwrap(),
+            vec![Segment::Key("user-id".into())]
+        );
+    }
+
+    #[test]
+    fn parse_path_bracketed_key_with_unicode() {
+        assert_eq!(
+            parse_path(r#"["日本語"]"#).unwrap(),
+            vec![Segment::Key("日本語".into())]
+        );
+    }
+
+    #[test]
+    fn parse_path_bracketed_key_with_spaces_and_dots() {
+        assert_eq!(
+            parse_path(r#"["weird key.with.dots"]"#).unwrap(),
+            vec![Segment::Key("weird key.with.dots".into())]
+        );
+    }
+
+    #[test]
+    fn parse_path_bracketed_key_escapes() {
+        // \" becomes ", \\ becomes \
+        assert_eq!(
+            parse_path(r#"["a\"b\\c"]"#).unwrap(),
+            vec![Segment::Key(r#"a"b\c"#.into())]
+        );
+    }
+
+    #[test]
+    fn parse_path_mixed_dotted_and_bracketed() {
+        assert_eq!(
+            parse_path(r#".steps[0]["user-id"]"#).unwrap(),
+            vec![
+                Segment::Key("steps".into()),
+                Segment::Index(0),
+                Segment::Key("user-id".into()),
+            ]
+        );
+    }
+
+    #[test]
+    fn parse_path_unterminated_quoted_key_errors() {
+        assert!(parse_path(r#"["nope"#).is_err());
+    }
+
+    #[test]
+    fn parse_path_unicode_char_at_top_level_reports_actual_char() {
+        // A unicode char at position 0 must be reported as the real char, not
+        // as its first UTF-8 byte re-cast as char (which used to look like 'æ'
+        // for 日).
+        let err = parse_path("日").unwrap_err();
+        assert!(
+            err.contains("'日'") || err.contains("\"日\""),
+            "error should name the real char, got: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_path_unicode_after_dot_reports_actual_char() {
+        // Same for the identifier-start branch.
+        let err = parse_path(".日").unwrap_err();
+        assert!(
+            err.contains("'日'") || err.contains("\"日\""),
+            "error should name the real char, got: {err}"
+        );
+    }
+
+    #[test]
+    fn parse_path_unknown_escape_in_quoted_key_errors() {
+        // \n is not recognized — only \" and \\ pass.
+        assert!(parse_path(r#"["a\nb"]"#).is_err());
+    }
+
+    #[test]
+    fn extract_bracketed_key_on_realistic_value() {
+        let v = json!({"user-id": "abc", "nested": {"key.with.dots": "deep"}});
+        let p1 = parse_path(r#"["user-id"]"#).unwrap();
+        assert_eq!(extract(&v, &p1), Some(&json!("abc")));
+        let p2 = parse_path(r#".nested["key.with.dots"]"#).unwrap();
+        assert_eq!(extract(&v, &p2), Some(&json!("deep")));
     }
 }
 

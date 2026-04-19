@@ -4,7 +4,7 @@ use std::io::{self, BufRead, BufReader, IsTerminal, Read, Write};
 use std::path::Path;
 
 use crate::config::cli::FilterArgs;
-use crate::engine::{self, EngineFlags, EngineKind};
+use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind};
 
 pub mod app;
 pub mod json_path;
@@ -25,6 +25,29 @@ impl FilterOptions {
             ..EngineFlags::default()
         }
     }
+}
+
+/// Match one haystack against a compiled pattern and apply the `invert` flag.
+/// Returns `Some(spans)` if the line should be emitted — an empty `Vec` in
+/// invert mode (since we don't highlight "did-not-match" lines), or the actual
+/// match byte ranges otherwise. Returns `None` if the line should be filtered
+/// out. Centralizing this keeps `filter_lines`, `filter_lines_with_extracted`,
+/// and the TUI `collect_matches` paths from drifting.
+pub fn match_haystack(
+    compiled: &dyn CompiledRegex,
+    haystack: &str,
+    invert: bool,
+) -> Option<Vec<std::ops::Range<usize>>> {
+    let found = compiled.find_matches(haystack).unwrap_or_default();
+    let hit = !found.is_empty();
+    if hit == invert {
+        return None;
+    }
+    Some(if invert {
+        Vec::new()
+    } else {
+        found.into_iter().map(|m| m.start..m.end).collect()
+    })
 }
 
 /// Apply the pattern to each line. Returns the 0-indexed line numbers of every
@@ -54,11 +77,7 @@ pub fn filter_lines(
 
     let mut indices = Vec::with_capacity(lines.len());
     for (idx, line) in lines.iter().enumerate() {
-        let matched = compiled
-            .find_matches(line)
-            .map(|v| !v.is_empty())
-            .unwrap_or(false);
-        if matched != options.invert {
+        if match_haystack(&*compiled, line, options.invert).is_some() {
             indices.push(idx);
         }
     }
@@ -78,18 +97,16 @@ pub fn filter_lines_with_extracted(
     options: FilterOptions,
 ) -> Result<Vec<usize>, String> {
     if pattern.is_empty() {
-        // Empty pattern: every line with a present extracted value passes
-        // (iff not inverted). A None extracted value is excluded either way.
+        // Empty pattern matches every present extracted value. In invert mode
+        // that set becomes empty (an always-match pattern inverts to nothing).
+        // None entries are excluded either way.
+        if options.invert {
+            return Ok(Vec::new());
+        }
         return Ok(extracted
             .iter()
             .enumerate()
-            .filter_map(|(idx, v)| {
-                if v.is_some() && !options.invert {
-                    Some(idx)
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(idx, v)| v.as_ref().map(|_| idx))
             .collect());
     }
 
@@ -104,11 +121,7 @@ pub fn filter_lines_with_extracted(
             // Missing field or parse failure — never emit.
             continue;
         };
-        let matched = compiled
-            .find_matches(s)
-            .map(|v| !v.is_empty())
-            .unwrap_or(false);
-        if matched != options.invert {
+        if match_haystack(&*compiled, s, options.invert).is_some() {
             indices.push(idx);
         }
     }
@@ -136,6 +149,12 @@ pub fn extract_strings(lines: &[String], path_expr: &str) -> Result<Vec<Option<S
 pub const EXIT_MATCH: i32 = 0;
 pub const EXIT_NO_MATCH: i32 = 1;
 pub const EXIT_ERROR: i32 = 2;
+
+/// Per-line byte cap. A single line above this size is truncated — prevents
+/// one unterminated multi-gigabyte line from OOMing before `max_lines` helps.
+/// 10 MiB comfortably covers the largest real-world log lines (long stack
+/// traces, flattened JSON payloads) without letting a hostile stream run away.
+pub const MAX_LINE_BYTES: usize = 10 * 1024 * 1024;
 
 /// Emit matching lines to `writer`. If `line_number` is true, each line is
 /// prefixed with its 1-indexed line number and a colon.
@@ -169,8 +188,13 @@ pub fn emit_count(writer: &mut dyn Write, matched_count: usize) -> io::Result<()
 /// usable against binary-ish logs (e.g. files with stray latin-1 bytes).
 ///
 /// `max_lines` caps the number of lines read to prevent OOM on unbounded
-/// streams. Pass `0` to disable the cap. Returns `(lines, truncated)` where
-/// `truncated` is `true` if the cap was reached before end-of-input.
+/// streams. Pass `0` to disable the cap. Individual lines above
+/// `MAX_LINE_BYTES` are truncated (the rest of that line is discarded) so a
+/// single unterminated multi-gigabyte line cannot OOM the process before the
+/// line cap kicks in.
+///
+/// Returns `(lines, truncated)` where `truncated` is `true` if the line cap
+/// was reached before end-of-input OR any individual line was byte-truncated.
 pub fn read_input(
     file: Option<&Path>,
     fallback: impl Read,
@@ -183,22 +207,39 @@ pub fn read_input(
     let mut out = Vec::new();
     let mut buf = Vec::new();
     let mut truncated = false;
+    // +1 so `read_until` will still consume the terminating newline when the
+    // line is exactly `MAX_LINE_BYTES` bytes of content.
+    let line_limit = MAX_LINE_BYTES as u64 + 1;
     loop {
         if max_lines != 0 && out.len() >= max_lines {
-            // Peek: is there any more data after the cap? Only then do we
-            // flag truncation, so callers don't warn about files that just
-            // happen to have exactly `max_lines` lines.
-            buf.clear();
-            let n = reader.read_until(b'\n', &mut buf)?;
-            if n > 0 {
+            // Peek one byte: is there any more data after the cap? Only then
+            // do we flag truncation, so callers don't warn about files that
+            // just happen to have exactly `max_lines` lines. A single byte is
+            // enough to decide, and caps the peek so a giant post-cap line
+            // can't OOM us.
+            let mut one = [0u8; 1];
+            if reader.read(&mut one)? > 0 {
                 truncated = true;
             }
             break;
         }
         buf.clear();
-        let n = reader.read_until(b'\n', &mut buf)?;
+        let n = (&mut reader).take(line_limit).read_until(b'\n', &mut buf)?;
         if n == 0 {
             break;
+        }
+        // If we filled the limited reader without seeing `\n`, this line
+        // exceeds MAX_LINE_BYTES. Drain the remainder on the unlimited
+        // reader so the next iteration starts at the true next line, and
+        // truncate `buf` down to the cap (the extra byte came from the `+1`
+        // we allowed so ordinary MAX_LINE_BYTES-long lines still capture
+        // their terminating newline).
+        let line_overflowed = buf.last() != Some(&b'\n') && n as u64 == line_limit;
+        if line_overflowed {
+            truncated = true;
+            buf.truncate(MAX_LINE_BYTES);
+            let mut discard = Vec::new();
+            reader.read_until(b'\n', &mut discard)?;
         }
         // Strip trailing \n and optional \r.
         let end = buf
@@ -282,6 +323,7 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
     let app = match json_extracted {
         Some(extracted) => {
             FilterApp::with_json_extracted(lines, extracted, &initial_pattern, options)
+                .map_err(|e| format!("--json: {e}"))?
         }
         None => FilterApp::new(lines, &initial_pattern, options),
     };

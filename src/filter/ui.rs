@@ -9,6 +9,14 @@ use ratatui::Frame;
 use crate::filter::FilterApp;
 use crate::ui::theme;
 
+/// Slice a string by a byte range, returning `""` on any invalid or
+/// char-boundary-crossing range. The `regex` crate always returns char-aligned
+/// offsets in practice, so this only matters for defensively-handled spans
+/// constructed by callers — we never want to panic the TUI on an odd input.
+fn safe_slice(s: &str, start: usize, end: usize) -> &str {
+    s.get(start..end).unwrap_or("")
+}
+
 pub fn render(frame: &mut Frame, app: &FilterApp) {
     let area = frame.area();
     let chunks = Layout::default()
@@ -63,7 +71,7 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
     // the display legible.
     let two_line = app.json_extracted.is_some() && area.width >= 60;
     let rows_per_entry = if two_line { 2 } else { 1 };
-    let max_rows = inner_height / rows_per_entry.max(1);
+    let max_rows = inner_height / rows_per_entry;
 
     // Derive the scroll offset so the selected row is always visible. `app.scroll`
     // is retained as a hint for future page-up/down, but the effective start is
@@ -182,27 +190,30 @@ fn build_extracted<'a>(
         let end = range.end.min(extracted.len());
         if start < end {
             if start > pos {
-                out.push(Span::styled(
-                    &extracted[pos..start],
-                    base_style.add_modifier(modifier),
-                ));
+                let chunk = safe_slice(extracted, pos, start);
+                if !chunk.is_empty() {
+                    out.push(Span::styled(chunk, base_style.add_modifier(modifier)));
+                }
             }
             let bg = theme::match_bg(i);
-            out.push(Span::styled(
-                &extracted[start..end],
-                base_style
-                    .bg(bg)
-                    .add_modifier(Modifier::BOLD)
-                    .add_modifier(modifier),
-            ));
+            let chunk = safe_slice(extracted, start, end);
+            if !chunk.is_empty() {
+                out.push(Span::styled(
+                    chunk,
+                    base_style
+                        .bg(bg)
+                        .add_modifier(Modifier::BOLD)
+                        .add_modifier(modifier),
+                ));
+            }
             pos = end;
         }
     }
     if pos < extracted.len() {
-        out.push(Span::styled(
-            &extracted[pos..],
-            base_style.add_modifier(modifier),
-        ));
+        let chunk = safe_slice(extracted, pos, extracted.len());
+        if !chunk.is_empty() {
+            out.push(Span::styled(chunk, base_style.add_modifier(modifier)));
+        }
     }
 
     ListItem::new(Line::from(out))
@@ -238,32 +249,38 @@ fn build_line_spans<'a>(
 
     let mut pos = 0;
     for (i, range) in spans.iter().enumerate() {
-        // Clamp to line length defensively; a malformed range would panic the slice.
+        // Clamp to line length so `pos = end` below stays inside the string —
+        // otherwise the trailing "emit remainder" branch would skip content
+        // when `end > line.len()`. `safe_slice` already handles the slice
+        // itself.
         let start = range.start.min(line.len());
         let end = range.end.min(line.len());
         if start < end {
             if start > pos {
-                out.push(Span::styled(
-                    &line[pos..start],
-                    base_style.add_modifier(modifier),
-                ));
+                let chunk = safe_slice(line, pos, start);
+                if !chunk.is_empty() {
+                    out.push(Span::styled(chunk, base_style.add_modifier(modifier)));
+                }
             }
             let bg = theme::match_bg(i);
-            out.push(Span::styled(
-                &line[start..end],
-                base_style
-                    .bg(bg)
-                    .add_modifier(Modifier::BOLD)
-                    .add_modifier(modifier),
-            ));
+            let chunk = safe_slice(line, start, end);
+            if !chunk.is_empty() {
+                out.push(Span::styled(
+                    chunk,
+                    base_style
+                        .bg(bg)
+                        .add_modifier(Modifier::BOLD)
+                        .add_modifier(modifier),
+                ));
+            }
             pos = end;
         }
     }
     if pos < line.len() {
-        out.push(Span::styled(
-            &line[pos..],
-            base_style.add_modifier(modifier),
-        ));
+        let chunk = safe_slice(line, pos, line.len());
+        if !chunk.is_empty() {
+            out.push(Span::styled(chunk, base_style.add_modifier(modifier)));
+        }
     }
 
     ListItem::new(Line::from(out))

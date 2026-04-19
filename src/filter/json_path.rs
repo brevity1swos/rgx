@@ -4,14 +4,17 @@
 //!
 //! ```text
 //! path    := segment+
-//! segment := ('.' ident) | ('[' digits ']')
+//! segment := ('.' ident) | ('[' digits ']') | ('[' quoted ']')
 //! ident   := [A-Za-z_][A-Za-z0-9_]*
+//! quoted  := '"' ( [^"\\] | '\\' ( '"' | '\\' ) )* '"'
 //! ```
 //!
-//! The grammar is deliberately small — no wildcards, no filters, no quoted
-//! keys. It is just enough to address a field inside a typical JSONL record
-//! (e.g. `.msg`, `.steps[0].text`). Anything more expressive than this is out
-//! of scope for the v1 `--json` flag.
+//! Dotted identifiers cover the common JSONL shape (`.msg`, `.steps[0].text`).
+//! For keys that can't be expressed as a bare identifier — hyphens, dots,
+//! spaces, unicode — use the bracketed-string form: `.["user-id"]`,
+//! `["weird key"]`, or `.["日本語"]`. Only `\"` and `\\` are recognized as
+//! escapes inside the quoted form; anything else is still on the no-wildcards,
+//! no-filters side of scope for `--json`.
 
 use serde_json::Value;
 
@@ -45,7 +48,7 @@ pub fn parse_path(s: &str) -> Result<Vec<Segment>, String> {
                 if !is_ident_start(bytes[i]) {
                     return Err(format!(
                         "expected identifier start at position {i}, found {:?}",
-                        bytes[i] as char
+                        peek_char(s, i)
                     ));
                 }
                 i += 1;
@@ -58,27 +61,41 @@ pub fn parse_path(s: &str) -> Result<Vec<Segment>, String> {
             }
             b'[' => {
                 i += 1;
-                let start = i;
-                while i < bytes.len() && bytes[i].is_ascii_digit() {
-                    i += 1;
+                if i >= bytes.len() {
+                    return Err(format!("expected digits or quoted key at position {i}"));
                 }
-                if start == i {
-                    return Err(format!("expected digits at position {start}"));
+                if bytes[i] == b'"' {
+                    // Quoted string key — supports hyphens, dots, spaces, unicode.
+                    let (key, consumed) = parse_quoted_key(&bytes[i..], i)?;
+                    i += consumed;
+                    if i >= bytes.len() || bytes[i] != b']' {
+                        return Err(format!("expected ']' at position {i}"));
+                    }
+                    i += 1; // consume ']'
+                    segments.push(Segment::Key(key));
+                } else {
+                    let start = i;
+                    while i < bytes.len() && bytes[i].is_ascii_digit() {
+                        i += 1;
+                    }
+                    if start == i {
+                        return Err(format!("expected digits or quoted key at position {start}"));
+                    }
+                    let digits = &s[start..i];
+                    if i >= bytes.len() || bytes[i] != b']' {
+                        return Err(format!("expected ']' at position {i}"));
+                    }
+                    let index: usize = digits
+                        .parse()
+                        .map_err(|e| format!("invalid index {digits:?}: {e}"))?;
+                    i += 1; // consume ']'
+                    segments.push(Segment::Index(index));
                 }
-                let digits = &s[start..i];
-                if i >= bytes.len() || bytes[i] != b']' {
-                    return Err(format!("expected ']' at position {i}"));
-                }
-                let index: usize = digits
-                    .parse()
-                    .map_err(|e| format!("invalid index {digits:?}: {e}"))?;
-                i += 1; // consume ']'
-                segments.push(Segment::Index(index));
             }
-            other => {
+            _ => {
                 return Err(format!(
                     "expected '.' or '[' at position {i}, found {:?}",
-                    other as char
+                    peek_char(s, i)
                 ));
             }
         }
@@ -109,4 +126,57 @@ fn is_ident_start(b: u8) -> bool {
 
 fn is_ident_continue(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'_'
+}
+
+/// Read the first char at `byte_offset`, or `'?'` if the offset is past the
+/// end (should never happen where we call this — only there to satisfy the
+/// Option). Using `chars().next()` avoids the "one byte looks like æ when it's
+/// really the first byte of 日" misreporting that `bytes[i] as char` produces.
+fn peek_char(s: &str, byte_offset: usize) -> char {
+    s[byte_offset..].chars().next().unwrap_or('?')
+}
+
+/// Parse a quoted key starting at the leading `"`. `offset` is the absolute
+/// position of that leading `"` in the full source (for error messages).
+/// Returns `(key, consumed_bytes)` where `consumed_bytes` includes both
+/// quotes. Recognizes `\"` and `\\`; any other backslash pair is a parse error
+/// (keeps us honest — we don't silently pass through `\n` etc.).
+fn parse_quoted_key(bytes: &[u8], offset: usize) -> Result<(String, usize), String> {
+    debug_assert!(!bytes.is_empty() && bytes[0] == b'"');
+    let mut out: Vec<u8> = Vec::new();
+    let mut j = 1; // skip opening "
+    while j < bytes.len() {
+        match bytes[j] {
+            b'"' => {
+                // String is UTF-8 because the original `s` was &str.
+                let key = String::from_utf8(out)
+                    .map_err(|e| format!("invalid utf-8 in quoted key at {offset}: {e}"))?;
+                return Ok((key, j + 1));
+            }
+            b'\\' => {
+                if j + 1 >= bytes.len() {
+                    return Err(format!("unterminated escape at position {}", offset + j));
+                }
+                match bytes[j + 1] {
+                    b'"' => out.push(b'"'),
+                    b'\\' => out.push(b'\\'),
+                    other => {
+                        return Err(format!(
+                            "unknown escape '\\{}' at position {}",
+                            other as char,
+                            offset + j
+                        ));
+                    }
+                }
+                j += 2;
+            }
+            b => {
+                out.push(b);
+                j += 1;
+            }
+        }
+    }
+    Err(format!(
+        "unterminated quoted key starting at position {offset}"
+    ))
 }

@@ -1,7 +1,7 @@
 //! TUI-mode state for `rgx filter`.
 
 use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
-use crate::filter::FilterOptions;
+use crate::filter::{match_haystack, FilterOptions};
 use crate::input::editor::Editor;
 
 pub struct FilterApp {
@@ -48,18 +48,28 @@ impl FilterApp {
     /// Construct a filter app whose matching runs against pre-extracted JSON
     /// field values (from the `--json` flag). `extracted[i]` is `Some(s)` when
     /// line `i` parsed and yielded a string value; `None` otherwise.
+    ///
+    /// Returns `Err` when `extracted.len() != lines.len()` — callers must build
+    /// the extracted vector from the same `lines` slice (see `extract_strings`).
     pub fn with_json_extracted(
         lines: Vec<String>,
         extracted: Vec<Option<String>>,
         initial_pattern: &str,
         options: FilterOptions,
-    ) -> Self {
-        assert_eq!(
-            lines.len(),
-            extracted.len(),
-            "extracted length must match lines length"
-        );
-        Self::build(lines, Some(extracted), initial_pattern, options)
+    ) -> Result<Self, String> {
+        if lines.len() != extracted.len() {
+            return Err(format!(
+                "extracted length ({}) must match lines length ({})",
+                extracted.len(),
+                lines.len()
+            ));
+        }
+        Ok(Self::build(
+            lines,
+            Some(extracted),
+            initial_pattern,
+            options,
+        ))
     }
 
     fn build(
@@ -101,23 +111,17 @@ impl FilterApp {
         self.error = None;
         let pattern = self.pattern().to_string();
         if pattern.is_empty() {
-            // Empty pattern: every line with a "present" input passes (iff not
-            // inverted). In --json mode, lines whose extracted value is None
-            // are excluded regardless of invert.
-            self.matched = if let Some(extracted) = self.json_extracted.as_ref() {
+            // Empty pattern matches every input: in invert mode that set is
+            // always empty. Otherwise in --json mode only the lines whose
+            // extracted value is Some; in raw mode every line.
+            self.matched = if self.options.invert {
+                Vec::new()
+            } else if let Some(extracted) = self.json_extracted.as_ref() {
                 extracted
                     .iter()
                     .enumerate()
-                    .filter_map(|(idx, v)| {
-                        if v.is_some() && !self.options.invert {
-                            Some(idx)
-                        } else {
-                            None
-                        }
-                    })
+                    .filter_map(|(idx, v)| v.as_ref().map(|_| idx))
                     .collect()
-            } else if self.options.invert {
-                Vec::new()
             } else {
                 (0..self.lines.len()).collect()
             };
@@ -161,17 +165,9 @@ impl FilterApp {
             } else {
                 &self.lines[idx]
             };
-            let line_matches = compiled.find_matches(haystack).unwrap_or_default();
-            let hit = !line_matches.is_empty();
-            if hit != self.options.invert {
+            if let Some(spans) = match_haystack(compiled, haystack, self.options.invert) {
                 indices.push(idx);
-                // In invert mode we emit lines that did NOT match — no spans
-                // to highlight per the task spec.
-                if self.options.invert {
-                    all_spans.push(Vec::new());
-                } else {
-                    all_spans.push(line_matches.into_iter().map(|m| m.start..m.end).collect());
-                }
+                all_spans.push(spans);
             }
         }
         (indices, all_spans)
