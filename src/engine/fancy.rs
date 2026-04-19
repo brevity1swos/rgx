@@ -108,4 +108,40 @@ mod tests {
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].text, "example");
     }
+
+    /// Regression: the CLI path wraps patterns with `flags.unicode = true`
+    /// coming from the default config, and pre-fix `wrap_pattern` emitted
+    /// `(?u)` — which, in our build, made fancy-regex route `(?u)` + a
+    /// lookaround to the non-fancy backend, which then rejected the
+    /// lookaround. Exercising this at the engine layer keeps the bug
+    /// covered whether or not the CLI is the caller.
+    #[test]
+    fn test_lookahead_with_unicode_flag() {
+        let engine = FancyRegexEngine;
+        let flags = EngineFlags {
+            unicode: true,
+            ..EngineFlags::default()
+        };
+        let compiled = engine
+            .compile(r"\w+(?=@)", &flags)
+            .expect("lookahead must compile with unicode flag on");
+        let matches = compiled.find_matches("user@example.com").unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].text, "user");
+    }
+
+    #[test]
+    fn test_lookbehind_with_unicode_flag() {
+        let engine = FancyRegexEngine;
+        let flags = EngineFlags {
+            unicode: true,
+            ..EngineFlags::default()
+        };
+        let compiled = engine
+            .compile(r"(?<=@)\w+", &flags)
+            .expect("lookbehind must compile with unicode flag on");
+        let matches = compiled.find_matches("user@example.com").unwrap();
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].text, "example");
+    }
 }

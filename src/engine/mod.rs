@@ -50,7 +50,7 @@ impl fmt::Display for EngineKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct EngineFlags {
     pub case_insensitive: bool,
     pub multi_line: bool,
@@ -59,7 +59,29 @@ pub struct EngineFlags {
     pub extended: bool,
 }
 
+impl Default for EngineFlags {
+    /// Unicode defaults to `true` to match the `regex` crate and
+    /// `fancy-regex` engine behavior and the runtime `Settings` default.
+    /// Using `#[derive(Default)]` would produce `unicode: false`, which
+    /// (combined with `to_regex_inline_prefix` emitting `(?-u)` for
+    /// byte-mode) would cause fancy-regex to reject the pattern with
+    /// "Disabling Unicode not supported".
+    fn default() -> Self {
+        Self {
+            case_insensitive: false,
+            multi_line: false,
+            dot_matches_newline: false,
+            unicode: true,
+            extended: false,
+        }
+    }
+}
+
 impl EngineFlags {
+    /// PHP-style positive flag set — each flag enabled is a single letter.
+    /// Used by the PHP codegen block where `u` enables unicode (opposite
+    /// convention from the `regex` crate, which has unicode on by default).
+    #[allow(clippy::wrong_self_convention)] // kept as &self for API stability; self is Copy so the borrow is free
     pub fn to_inline_prefix(&self) -> String {
         let mut s = String::new();
         if self.case_insensitive {
@@ -80,8 +102,39 @@ impl EngineFlags {
         s
     }
 
+    /// `regex`-crate-style inline prefix. Unicode is **default-on** in both
+    /// the `regex` crate and `fancy-regex`, so we only emit it in its
+    /// disable form (`-u`) when the user has explicitly turned unicode off.
+    /// Emitting `(?u)` on a pattern that also uses a fancy-only feature
+    /// (lookaround / backrefs) has been observed to force fancy-regex to
+    /// delegate to the non-fancy backend, which then errors — so keeping
+    /// the prefix minimal is also a correctness fix, not just cleanup.
+    #[allow(clippy::wrong_self_convention)] // symmetric with to_inline_prefix; self is Copy so the borrow is free
+    fn to_regex_inline_prefix(&self) -> String {
+        let mut enable = String::new();
+        if self.case_insensitive {
+            enable.push('i');
+        }
+        if self.multi_line {
+            enable.push('m');
+        }
+        if self.dot_matches_newline {
+            enable.push('s');
+        }
+        if self.extended {
+            enable.push('x');
+        }
+        let disable_unicode = !self.unicode;
+        match (enable.is_empty(), disable_unicode) {
+            (true, false) => String::new(),
+            (false, false) => enable,
+            (true, true) => "-u".to_string(),
+            (false, true) => format!("{enable}-u"),
+        }
+    }
+
     pub fn wrap_pattern(&self, pattern: &str) -> String {
-        let prefix = self.to_inline_prefix();
+        let prefix = self.to_regex_inline_prefix();
         if prefix.is_empty() {
             pattern.to_string()
         } else {
@@ -610,6 +663,59 @@ mod tests {
             EngineKind::FancyRegex,
             EngineKind::FancyRegex,
         ));
+    }
+
+    #[test]
+    fn wrap_pattern_omits_prefix_when_flags_are_defaults() {
+        // All flags at default (unicode on, everything else off) → no prefix.
+        let flags = EngineFlags::default();
+        assert_eq!(flags.wrap_pattern("abc"), "abc");
+    }
+
+    #[test]
+    fn wrap_pattern_emits_minus_u_when_unicode_disabled() {
+        let flags = EngineFlags {
+            unicode: false,
+            ..EngineFlags::default()
+        };
+        assert_eq!(flags.wrap_pattern("abc"), "(?-u)abc");
+    }
+
+    #[test]
+    fn wrap_pattern_combines_enable_and_disable_unicode() {
+        let flags = EngineFlags {
+            case_insensitive: true,
+            unicode: false,
+            ..EngineFlags::default()
+        };
+        assert_eq!(flags.wrap_pattern("abc"), "(?i-u)abc");
+    }
+
+    #[test]
+    fn wrap_pattern_does_not_emit_u_when_unicode_on() {
+        // Regression guard: emitting `(?u)` trips fancy-regex's backend
+        // routing on lookaround patterns in our build. Unicode being
+        // on-by-default means the prefix adds nothing but risk.
+        let flags = EngineFlags {
+            case_insensitive: true,
+            unicode: true,
+            ..EngineFlags::default()
+        };
+        assert_eq!(flags.wrap_pattern("abc"), "(?i)abc");
+    }
+
+    #[test]
+    fn to_inline_prefix_still_emits_positive_u_for_php() {
+        // The PHP codegen uses `to_inline_prefix` — PHP's `/pattern/u`
+        // delimiter enables unicode, opposite of the regex-crate
+        // convention. This test locks in the split between the two
+        // prefix methods.
+        let flags = EngineFlags {
+            case_insensitive: true,
+            unicode: true,
+            ..EngineFlags::default()
+        };
+        assert_eq!(flags.to_inline_prefix(), "iu");
     }
 
     #[cfg(feature = "pcre2-engine")]
