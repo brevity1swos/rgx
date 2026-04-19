@@ -287,16 +287,33 @@ impl App {
         // Rebuild syntax highlight tokens (pattern changed)
         self.syntax_tokens = crate::ui::syntax_highlight::highlight(&pattern);
 
-        // Explain (uses regex-syntax, independent of engine)
+        // Explain (uses regex-syntax, independent of engine). regex-syntax
+        // can't parse fancy-regex-only or PCRE2-only features (lookaround,
+        // backrefs, recursion, etc.), so failure here is common and expected
+        // for patterns the engine compiled successfully. Only surface the
+        // explain error when the engine itself failed to compile — otherwise
+        // just leave the explanation pane blank. Previously this path wrote
+        // the regex-syntax error into `self.error` even on a successful
+        // compile, which propagated into `-p` batch mode and made it reject
+        // every valid lookaround pattern with a misleading "not supported"
+        // message.
         match explain::explain(&pattern) {
             Ok(nodes) => self.explanation = nodes,
             Err((msg, offset)) => {
                 self.explanation.clear();
-                if self.error_offset.is_none() {
-                    self.error_offset = offset;
-                }
-                if self.error.is_none() {
-                    self.error = Some(msg);
+                if self.error.is_some() {
+                    // Engine also failed: keep its error but also capture
+                    // the explain offset for the UI pattern-highlight pointer.
+                    if self.error_offset.is_none() {
+                        self.error_offset = offset;
+                    }
+                } else {
+                    // Engine compiled fine; regex-syntax just can't explain
+                    // this pattern's extended features. Record the reason
+                    // for future UI surfacing but don't treat it as a
+                    // compile error.
+                    let _ = msg;
+                    let _ = offset;
                 }
             }
         }

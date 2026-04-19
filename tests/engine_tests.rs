@@ -386,3 +386,131 @@ fn fancy_regex_empty_pattern() {
 fn fancy_regex_empty_test_string() {
     test_engine_empty_test_string(EngineKind::FancyRegex);
 }
+
+/// End-to-end test for the `-p --engine fancy` + lookaround path.
+///
+/// Regression guard for a bug where the `-p` batch path short-circuited on
+/// any `self.error` being set, and the `explain::explain(&pattern)` pass
+/// (which uses `regex-syntax`, which doesn't speak lookaround) would clobber
+/// the error field even after a successful compile. Before the fix, this
+/// invocation returned exit code 2 with a misleading "look-around not
+/// supported" message even though fancy-regex handled the pattern fine.
+mod cli_e2e {
+    use std::io::Write as _;
+    use std::process::{Command, Stdio};
+
+    fn rgx_bin() -> std::path::PathBuf {
+        let mut p = std::env::current_exe().unwrap();
+        p.pop();
+        if p.ends_with("deps") {
+            p.pop();
+        }
+        p.push(if cfg!(windows) { "rgx.exe" } else { "rgx" });
+        p
+    }
+
+    fn run_print(args: &[&str], stdin: &str) -> (i32, String, String) {
+        let bin = rgx_bin();
+        assert!(
+            bin.exists(),
+            "rgx binary not found at {bin:?}; run `cargo build` first"
+        );
+        let mut child = Command::new(&bin)
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        if !stdin.is_empty() {
+            child
+                .stdin
+                .as_mut()
+                .unwrap()
+                .write_all(stdin.as_bytes())
+                .unwrap();
+        }
+        let out = child.wait_with_output().unwrap();
+        (
+            out.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+        )
+    }
+
+    #[test]
+    fn fancy_lookahead_print_mode_no_explain_clobber() {
+        let (code, stdout, _stderr) = run_print(
+            &[
+                "-p",
+                "--engine",
+                "fancy",
+                "-t",
+                "alice@example.com bob@test.org",
+                r"\w+(?=@)",
+            ],
+            "",
+        );
+        assert_eq!(
+            code, 0,
+            "fancy + lookahead should exit 0 in -p mode, got stderr={_stderr}"
+        );
+        assert!(
+            stdout.contains("alice"),
+            "stdout should contain 'alice', got {stdout:?}"
+        );
+        assert!(
+            stdout.contains("bob"),
+            "stdout should contain 'bob', got {stdout:?}"
+        );
+    }
+
+    #[test]
+    fn fancy_lookbehind_print_mode_no_explain_clobber() {
+        let (code, stdout, _stderr) = run_print(
+            &[
+                "-p",
+                "--engine",
+                "fancy",
+                "-t",
+                "abc user@host def",
+                r"(?<=@)\w+",
+            ],
+            "",
+        );
+        assert_eq!(code, 0, "fancy + lookbehind should exit 0 in -p mode");
+        assert!(
+            stdout.contains("host"),
+            "stdout should contain 'host', got {stdout:?}"
+        );
+    }
+
+    #[test]
+    fn fancy_lookahead_print_mode_via_stdin() {
+        // Same test path but feed text via stdin instead of -t.
+        let (code, stdout, _stderr) = run_print(
+            &["-p", "--engine", "fancy", r"\w+(?=@)"],
+            "alice@example.com bob@test.org\n",
+        );
+        assert_eq!(code, 0);
+        assert!(stdout.contains("alice"));
+        assert!(stdout.contains("bob"));
+    }
+
+    #[test]
+    fn real_compile_error_still_surfaces_in_print_mode() {
+        // Invariant: a genuinely broken pattern must still exit 2 with the
+        // engine's compile error. The fix for the explain-clobber bug
+        // weakens the error-setting in the explain path, so this test
+        // makes sure we didn't accidentally swallow real compile errors.
+        let (code, _stdout, stderr) = run_print(
+            &["-p", "--engine", "fancy", "-t", "anything", "(unclosed"],
+            "",
+        );
+        assert_eq!(code, 2, "broken pattern should exit 2");
+        assert!(
+            stderr.to_lowercase().contains("error"),
+            "stderr should mention error, got {stderr:?}"
+        );
+    }
+}
