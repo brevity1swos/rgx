@@ -1,61 +1,160 @@
 # rgx Roadmap
 
-## Current Direction (updated 2026-04-17, post-v0.11.0)
+## Current direction (updated 2026-04-19)
 
-**v0.11.0 shipped — grex overlay AND `rgx filter` sub-mode.**
+**rgx v0.12.0 shipped; post-release hardening merged to `main`; release-plz has v0.12.1 queued.**
 
-Road A as framed on 2026-04-11 expected v0.11.0 to be the "grex and done" farewell release. In practice, `rgx filter` landed in the same cycle because it was low cost to add and opened a genuinely new use-case surface (live-filtering JSONL/log streams with a TUI). The original Road A spirit — avoid a 2–3 month ripgrep replacement fight — still holds. The filter subcommand is a bounded feature, not a grep replacement: it loads input into memory, wants a single pattern per session, and intentionally lacks the ripgrep flags that would invite feature creep.
+The previous Road A framing — "ship feature-complete, drop into pure
+maintenance, reinvest capacity in SaaS" — still holds for standalone rgx.
+What changed since that decision is the **stepwise** positioning: rgx is now
+one of three terminal-native step-through debuggers (rgx, agx, sift) that
+compose into a review stack for the AI-development workflow. That adds a
+small, bounded set of integration hooks to the plan, but does not reopen
+the "should rgx keep taking main-project capacity?" question. Stepwise
+hooks live or die on whether they make rgx materially more useful *to
+existing rgx users* — they are not a reason to expand rgx's audience or
+rewrite its core.
 
-**Status: filter polish + Scope C shipped. Back to genuine maintenance mode.**
+### What maintenance mode continues to mean
 
-Filter Scope C (`--json <path>`) and the filter polish items (match-span
-highlighting, UTF-8-lossy input, `--max-lines`) have all landed on main.
-The next-round decision gate is now:
+- Active monitoring of GitHub issues and external PRs; respond within a
+  reasonable window.
+- Dependencies kept current; CI green; MSRV honored.
+- **Editor-mode parity is non-negotiable.** Any bug that affects the
+  existing pattern-editor workflow gets fixed, even in maintenance. Users
+  adopted rgx for that workflow; regressions there are the one thing we
+  cannot ship.
+- Dogfood occasionally to catch regressions.
 
-1. **Genuine maintenance mode** — stop feature work, reinvest capacity in revenue-generating SaaS projects. Matches original Road A. **This is the current posture.**
-2. Any new feature proposal must clear the bar of "solves a real user-reported gap" and "fits inside the bounded-scope filter framing".
+### What the stepwise positioning adds
 
-**What "maintenance mode" continues to mean:**
-- Active monitoring of GitHub issues and external PRs; respond within a reasonable window
-- Dependencies kept current (`cargo update`, CI green, MSRV honored)
-- **Editor-mode parity is non-negotiable** — any bug that affects the existing pattern-editor workflow gets fixed, even in maintenance. Users adopted rgx for that workflow; regressions there are the one thing we cannot ship.
-- Dogfood occasionally to catch regressions
+A small backlog of **bounded, opt-in** integration hooks, each with an
+opportunity-cost gate before it ships. A stepwise hook earns a slot only
+if (a) a sibling tool actually shipped a code path that calls into rgx,
+and (b) the hook doesn't rewire rgx's core. Generic phrasing in public
+docs — "JSONL pipelines", "policy-file debugging", "agent-transcript
+regex inspection" — so the README and this ROADMAP stay readable to
+anyone who found rgx through Terminal Trove / awesome-ratatui / AUR and
+has no context on the sibling tools.
 
-## v0.11.0 — shipped 2026-04-18
+## Relationship to the stepwise stack
 
-**Two major features + a pre-existing-code clippy fix:**
+rgx is the **pattern-match layer** of a three-tool stack:
 
-- **grex overlay (Ctrl+X)** — user enters example strings one per line; rgx calls the `grex` crate and drops the generated pattern into the main editor. Three flag toggles (digit, anchors, case-insensitive). Debounced 150ms regeneration on `spawn_blocking` with a generation counter for stale-result suppression. Broadens the audience beyond regex experts; compounds with the existing recipe library and codegen.
-- **`rgx filter` subcommand** — live-filter stdin or a file through a regex with a grep-like TUI: pattern pane + filtered match list + flag toggles. Supports `-v/--invert`, `-c/--count`, `-n/--line-number`, `-i/--case-insensitive`, `-f/--file`, and `--json <PATH>` (dotted/indexed JSONL field extraction). Non-TTY stdout auto-skips the TUI for clean piping (e.g. `cat app.jsonl | rgx filter --json '.msg' error`). Exit codes match grep (0/1/2).
-- **`event.rs` refactor** — collapse the per-arm `if tx.send().is_err() { break }` pattern into a single translation match + one send point, to satisfy clippy 1.95's `collapsible_match` lint. Zero behavior change.
+| Tool | Step-through of… | Read/write posture |
+|------|------------------|--------------------|
+| **rgx** | regex matches, capture groups, engine behavior | read-only |
+| **[agx](https://github.com/brevity1swos/agx)** | agent-turn timelines (Claude Code / Codex / Gemini / OpenAI / LangChain / Vercel AI / OTel GenAI) | read-only |
+| **[sift](https://github.com/brevity1swos/sift)** | what the agent wrote before it hits disk | write-through gate |
 
-Deferred from v0.11.0 (documented as follow-ups, not blocking):
-- Shareable permalinks — still open as a future round-out option
-- User-saved pattern library — still open
-- Demo GIF regeneration — scheduled for next user-driven release window
+All three compose at the CLI boundary only — no shared library, no
+coordinated release train. Each ships on its own cadence. The suite site
+lives at **[stepwise](https://github.com/brevity1swos/stepwise)**. If any
+one tool stops earning its place on its own merits, it gets cut; the suite
+cannot rescue a tool that isn't working standalone.
 
 ## Recently Shipped
 
-- **Filter `--json <PATH>`** — dotted/indexed path language (`.msg`, `.steps[0].text`) extracts a field from each JSONL line; the regex matches against the extracted string, but raw JSON lines are still what gets emitted. TUI renders two-line rows (raw JSON + `↳ extracted`) for context on wide terminals, with a single-line narrow fallback. Parse failures, missing paths, and non-string values are skipped silently. Shipped 2026-04-17.
-- **`rgx filter`** — interactive grep mode with stdin/file input, live regex refinement, `--invert`/`--count`/`--line-number` flags, and non-TTY piping. Shipped 2026-04-18.
-- **v0.10.2** — PCRE2 zero-length match offset fix, runtime PCRE2 version detection, syntax highlight token caching, `OverlayState` extraction, action dispatch moved into `App::handle_action()`.
-- **Step-Through Debugger (Ctrl+D)** — PCRE2 callout-based step-through debugger with dual-cursor visualization, backtrack markers, heatmap mode, and debug-from-selected-match. No other terminal regex tool has this.
-- **Code Generation (Ctrl+G)** — Generate code in 8 languages (Rust, Python, JS, Go, Java, C#, PHP, Ruby). Closes the biggest feature gap vs regex101.
-- **Test Suite Mode (--test)** — Validate regex against should-match/should-not-match assertions in TOML files. CI-friendly exit codes.
-- **Alternating Match Colors** — Adjacent matches use distinct background colors for visual clarity.
-- **Auto Engine Selection** — Detects lookahead, backreferences, recursion and auto-upgrades to the simplest engine that supports them.
+- **v0.12.0** (2026-04-18 / release-plz) — grex overlay (Ctrl+X) and
+  `rgx filter` subcommand landed together. grex pulls in [grex](https://crates.io/crates/grex)
+  behind a debounced 150ms `spawn_blocking` task with stale-result
+  suppression; filter reads stdin/file and lets users refine a regex
+  against the stream interactively, with non-TTY stdout auto-skipping the
+  TUI for clean piping.
+- **Post-v0.12.0 hardening pass** (on `main`, v0.12.1 queued) — 10-MiB
+  per-line input cap (`MAX_LINE_BYTES`) and bounded cap-detection peek
+  prevent a hostile unterminated stream from OOMing before `--max-lines`
+  engages; JSONL path supports bracketed string keys (`["hyphen-key"]`,
+  `["日本語"]`); `match_haystack` helper is now `pub` for third-party
+  integrations; `FilterApp::with_json_extracted` returns `Result` instead
+  of panicking; UTF-8-safe slicing in the filter UI can no longer panic
+  on a malformed match span; json_path parse errors report the real
+  character for non-ASCII input.
+- **Filter `--json <PATH>`** — dotted/indexed path language
+  (`.msg`, `.steps[0].text`, `["user-id"]`) extracts a JSONL field; the
+  regex matches against the extracted string but raw JSON lines are still
+  what gets emitted. TUI renders two-line rows (raw JSON + `↳ extracted`)
+  on wide terminals, single-line narrow fallback. Parse failures / path
+  misses / non-string values are skipped silently.
+- **`rgx filter`** — interactive grep mode with stdin/file input, live
+  regex refinement, `--invert`/`--count`/`--line-number` flags, non-TTY
+  piping.
+- **Step-through debugger (Ctrl+D, PCRE2)** — dual-cursor visualization,
+  backtrack markers, heatmap mode, debug-from-selected-match.
+- **Code generation (Ctrl+G)** — 8 languages (Rust, Python, JS, Go, Java,
+  C#, PHP, Ruby).
+- **Test suite mode (`--test`)** — TOML should-match/should-not-match
+  assertions with CI-friendly exit codes.
+- **Auto engine selection** — detects lookahead, backreferences, recursion
+  and upgrades to the simplest engine that supports them.
+- **Alternating match colors**, **grex overlay**, **workspace save/load**,
+  **vim mode**, **mouse**, **regex101 URL export**.
 
-## Future Considerations
+## Open — bounded stepwise integration hooks
+
+Each item below has **two gates** before it ships:
+
+1. *Sibling prerequisite*: the sibling tool has shipped the code path that
+   invokes rgx. Until that lands on the sibling's `main`, the hook is not
+   on rgx's plan.
+2. *Opportunity-cost gate*: estimated work must fit in a single evening,
+   add no new runtime deps, and not change any existing CLI surface.
+
+| Hook | Triggered by | Work on rgx side | Gates |
+|------|--------------|------------------|-------|
+| Seed pattern + stdin text from a parent process | agent-transcript step-through tool shipping the jump-in code path | Verify current `-t` / stdin fallback already covers the shape; document the invocation in usage docs if so. No flag change expected. | Sibling prerequisite **not yet met** — tracked as "proposed" in the sibling repo. |
+| Export a refined filter pattern to a named file | AI-write-review policy file format stabilizing on regex rules | One keybind in `rgx filter` TUI (e.g. `Ctrl+O export`) that writes `^pattern$\n` to a path chosen via a filename prompt. No parser changes. | Sibling prerequisite **gated on that tool's Phase 2**. |
+| `--output-pattern` already emits the current pattern | already shipped | — | — |
+
+Neither hook is promised. Both get reassessed on the sibling tool's next
+release. If either turns out to need more than a one-evening implementation,
+it gets parked by the Road A opportunity-cost argument.
+
+## Future considerations (unchanged from prior revision)
 
 | Feature | Impact | Effort |
 |---------|--------|--------|
 | Theme customization | Medium | Low |
 | Import from regex101 URL | Low | Low |
-| More engines (JS, Python `re`) | Medium | High |
+| More engines (JavaScript `RegExp`, Python `re`) | Medium | High |
 | User-saved pattern library | Medium | Medium |
 
-## Not Planned
+These remain as low-priority parking spots. Theme customization is the
+most-requested by users who tried rgx on light-background terminals; it
+would move up the list if two or more users file the same issue.
 
-- AI/LLM integration
-- Web version
-- Community pattern sharing platform
+## Not planned
+
+- **AI / LLM integration inside rgx.** No pattern-writing assistant, no
+  "explain this match with a model", no embedded inference. The grex
+  overlay is the ceiling here — it's a deterministic tool, not an LLM.
+- **Web version.** The terminal-native property is load-bearing across
+  the whole stepwise stack; putting rgx in a browser contradicts the
+  positioning.
+- **Community pattern-sharing platform.** Hosted component; against the
+  zero-hosted principle. If a need emerges, users can share patterns via
+  `-w <workspace.toml>` files checked into their own repos.
+- **Multi-file replace / ripgrep-scope rewrite.** Explicitly abandoned in
+  the 2026-04-11 Road A decision and not reopened by the stepwise
+  positioning.
+
+## When to rethink this roadmap
+
+Triggers that should cause a revision (same discipline as the sibling
+roadmaps):
+
+1. **A stepwise sibling's release notes ship a code path that calls rgx.**
+   Move the relevant hook in "Open" above from gated to scheduled, and do
+   the one-evening implementation that release cycle.
+2. **Editor-mode regression surfaces in a release.** Non-negotiable fix,
+   out-of-cycle patch release if needed.
+3. **A dep pinned in `Cargo.toml` ships a breaking change that CI catches.**
+   Standard upgrade work; document the version floor bump in CHANGELOG.
+4. **MSRV needs to bump.** Only on a minor release, with a CHANGELOG
+   entry, driven by a concrete need (not speculative cleanup).
+5. **A user-visible bug in `rgx filter` surfaces with `--json`.** Filter
+   mode is the newest surface and the most likely place for field reports;
+   treat these with the same priority as editor-mode regressions.
+
+The roadmap is a prediction, not a contract. Revisit on every minor
+release.
