@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.2] - 2026-04-19
+
+### Documentation
+
+- Restore rgx to independent-project presentation
+Reverts the stepwise-umbrella positioning that briefly appeared in the
+  README and the ROADMAP earlier today. rgx stays presented as a
+  standalone project; sibling-tool synergy lives on the separate
+  stepwise landing page (out of this repo). Users who arrived at rgx
+  through Terminal Trove, awesome-ratatui, or AUR didn't sign up for a
+  three-tool stack pitch on their regex debugger's README — putting
+  one there muddles the value proposition.
+
+
 ## [0.12.1] - 2026-04-19
 
 ### Bug Fixes
