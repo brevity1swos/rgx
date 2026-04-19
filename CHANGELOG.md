@@ -2,6 +2,149 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.1] - 2026-04-19
+
+### Bug Fixes
+
+- *(app)* Explain failures no longer abort -p mode after successful compile
+
+### Documentation
+
+- *(readme)* Slim to quickstart + link to docs/
+README grew to 431 lines over v0.11.0 and v0.12.0 — past the point
+  where first-time readers scroll through the content they actually
+  need (install + "does it do X?"). Splits into a focused README
+  (121 lines) plus four topic pages under docs/:
+
+  - docs/usage.md         — CLI flags, batch mode, filter mode, --json
+                            JSONL recipes, workspaces, completions
+  - docs/shortcuts.md     — main TUI, vim mode, filter mode tables
+  - docs/integrations.md  — VS Code, Neovim, Zed, tmux
+  - docs/advanced.md      — test suite mode, config, engine matrix,
+                            comparison vs terminal tools + regex101
+
+  The new README keeps the header, "who is this for?", one-liner
+  install, five-line quickstart, a compressed feature list, and an
+  engines-at-a-glance table. Everything deeper is one click away.
+
+  Total content preserved; anchors and internal links verified.
+- *(readme)* Add "Pairs well with" section linking agx/sift/stepwise
+Introduces rgx as one of three terminal-native step-through debuggers
+  under the stepwise umbrella. Links the sibling tools (agx for agent
+  timelines, sift for AI-write review) and the landing-site repo. Each
+  tool is called out as independent — the section clarifies that no
+  sibling install is ever required for rgx to work on its own.
+- *(roadmap)* Reframe as maintenance + bounded stepwise hooks
+Updates the public roadmap for the post-v0.12.0 / stepwise positioning
+  state. The Road A opportunity-cost argument (rgx stays in maintenance;
+  main-project capacity reinvests in SaaS) is preserved, but the plan
+  now acknowledges a small integration backlog introduced by the
+  stepwise umbrella.
+
+  - "Current direction" rewritten: maintenance + bounded stepwise hooks,
+    not pure maintenance. Stepwise hooks live or die on whether they
+    make rgx materially more useful to existing rgx users — not a
+    reason to expand audience or rewrite the core.
+  - New "Relationship to the stepwise stack" section with a three-tool
+    table and a pointer to the landing repo. States the kill criterion:
+    each tool earns its place independently; the suite cannot rescue a
+    failing tool.
+  - "Recently Shipped" updated through v0.12.0 and the post-release
+    hardening pass (per-line byte cap, bracketed JSON keys, match_haystack
+    pub, UTF-8-safe UI slicing, Result-returning constructor, unicode-
+    aware json_path errors).
+  - New "Open — bounded stepwise integration hooks" table. Each hook has
+    two gates (sibling prerequisite + opportunity-cost fit) before it
+    ships. No hook is promised; both get reassessed on the sibling tool's
+    next release. If either turns out to need more than an evening, it
+    gets parked by the opportunity-cost argument.
+  - "Future considerations" preserved as low-priority parking spots
+    (theme customization is the most-requested).
+  - "Not planned" tightened: no AI/LLM inside rgx, no web version, no
+    hosted pattern-sharing, no ripgrep-scope rewrite.
+  - "When to rethink" aligned with the sibling roadmaps' discipline.
+
+### Features
+
+- *(filter)* Post-v0.11.0 hardening and cleanup pass
+Three new capabilities:
+
+  - 10 MiB per-line byte cap (MAX_LINE_BYTES) in read_input prevents
+    an unbounded line from OOMing before --max-lines engages.
+    Truncation is reflected in the returned `truncated` flag, and the
+    max-lines-exceeded peek is now bounded to a single byte so a giant
+    post-cap line can't OOM the peek itself.
+  - Bracketed string-key syntax in json_path: ["hyphen-key"], ["日本語"],
+    etc. Unlocks --json addressing for keys that aren't bare
+    identifiers. Recognises \" and \\ escapes; unknown escapes error.
+  - rgx::filter::match_haystack promoted to pub — the helper all three
+    match paths already use is now callable from third-party
+    integrations.
+
+### Refactoring
+
+- Clippy modernization + small simplifications across codebase
+Post-v0.12.0 sweep through every crate module. No behavior change;
+  each hunk is either a modern-idiom rewrite clippy flagged or a
+  dead-code / redundant-closure cleanup.
+
+  - main.rs: merge duplicate debug-jump-start match arms (Home and 'g'
+    both call the same handler — fold into one arm)
+  - ui/mod.rs: `border_type` doc comment now names the real parameter;
+    `render_codegen_overlay` takes `EngineFlags` by value (it is Copy)
+  - app.rs:
+    - `truncate()` collapses two `chars()` passes into one `char_indices().nth()`
+    - `history_next` uses `let...else` for the `None` early return
+    - `map(String::as_str)` and `map(ToString::to_string)` replace one-shot
+      closures that clippy::redundant_closure_for_method_calls flagged
+  - explain/formatter.rs: `format!("{}", lit.c)` → `lit.c.to_string()`
+  - engine/mod.rs: `|b| b.is_ascii_digit()` → `u8::is_ascii_digit`
+  - engine/pcre2.rs: `and_then(|n| n.clone())` → `and_then(Clone::clone)`
+  - engine/pcre2_debug.rs: `let...else` for the early `Vec::new()` return
+  - filter/mod.rs: `extract_strings` flattens its JSON decode with
+    `.ok().and_then(..)` instead of `match Ok/Err`
+  - filter/ui.rs: `map(Vec::as_slice)` replaces the redundant closure
+  - input/editor.rs: `line_end` uses `map_or`; `drain(a..b + 1)` → `drain(a..=b)`
+  - config/workspace.rs: `match Ok/Err` collapses to `Result::is_ok_and`
+  - ui/syntax_highlight.rs: `let...else` for the AST-parse early return
+
+  349 tests passing, clippy -D warnings clean, rustfmt clean.
+- *(engine)* Align EngineFlags default with runtime, add regex-style prefix
+No user-visible behavior change. Two cleanups that set up the next
+  commit's `-p` fix and guard against a latent bug the existing tests
+  weren't catching.
+
+  - `EngineFlags::default()` now has `unicode: true`. The old derived
+    default had `unicode: false` (the bool default), which diverged from
+    the runtime `Settings::default().unicode = true`. Every production
+    caller already overrode this via the `EngineFlags { ... }` literal in
+    main.rs, but tests using `EngineFlags::default()` were silently
+    testing a configuration no user ever hits.
+  - New `to_regex_inline_prefix` (private) is the `wrap_pattern` helper
+    for the `regex` and `fancy-regex` engines. Emits `(?-u)` only when
+    unicode is explicitly disabled; never emits `(?u)` because unicode
+    is default-on in both engines. This is a correctness fix: emitting
+    `(?u)` in front of a lookaround pattern has been observed to push
+    fancy-regex into its non-fancy backend in our build, which then
+    errors with "look-around not supported".
+  - Existing `to_inline_prefix` stays as-is for PHP codegen (where `u`
+    flips to mean "enable unicode", opposite of the regex crate).
+  - Both `to_*` methods take `&self` for API stability; `#[allow]` on
+    `clippy::wrong_self_convention` since `EngineFlags` is `Copy` so the
+    borrow is free.
+
+  New tests:
+  - `wrap_pattern_omits_prefix_when_flags_are_defaults` / `_emits_minus_u_when_unicode_disabled` /
+    `_combines_enable_and_disable_unicode` / `_does_not_emit_u_when_unicode_on` —
+    pin the new prefix semantics.
+  - `to_inline_prefix_still_emits_positive_u_for_php` — locks the split
+    between the two prefix methods.
+  - `test_lookahead_with_unicode_flag` / `test_lookbehind_with_unicode_flag` —
+    regression guards at the fancy-engine layer.
+
+  All 360 tests passing, clippy -D warnings clean, rustfmt clean.
+
+
 ## [0.12.0] - 2026-04-18
 
 ### Documentation
