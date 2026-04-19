@@ -2,6 +2,117 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0] - 2026-04-18
+
+### Documentation
+
+- *(roadmap)* Reflect v0.11.0 shipped state and open next-round decision gate
+v0.11.0 shipped grex overlay AND rgx filter — filter landed in-cycle because
+  it was low cost and opened agx/sift piping synergy. Road A's spirit (avoid a
+  2-3 month ripgrep fight) still holds; filter is a bounded addition, not a
+  grep replacement.
+
+  Decision gate now open:
+    1. Filter Scope C (JSONL --json <path>, ~1-2 days)
+    2. Filter polish (match highlighting, UTF-8-lossy, --max-lines, ~1 day)
+    3. Genuine maintenance mode (reinvest in SaaS projects)
+
+  Until chosen, rgx is in de-facto maintenance mode.
+- *(filter)* Document --json flag and update roadmap
+Adds the --json flag to the filter-mode feature bullet and to the
+  agx piping section with a concrete JSONL example (wildcards are out
+  of scope for v1 so the example uses a direct dotted path). Notes
+  the silent-skip behavior for parse failures, missing paths, and
+  non-string values.
+
+  Moves Filter Scope C from the roadmap decision gate to Recently
+  Shipped; the current posture is genuine maintenance mode.
+- *(filter)* Generalize filter examples and prune internal plan doc
+Replace the README's third-party-tool piping recipes with generic JSONL
+  and diff-filter examples so the docs stand on their own without naming
+  private integrations. Same goes for the ROADMAP phrasing.
+
+  Also removes the internal implementation plan doc for the filter mode;
+  it served its purpose during development, but the feature is shipped
+  and the plan adds no value to readers of the repo.
+- *(filter)* Escape brackets in json_path grammar comment
+rustdoc intra-doc link check (-D warnings) interpreted [A-Za-z0-9_] as
+  a broken doc link and failed the Docs CI job, blocking the v0.12.0
+  release PR. Escape the brackets with backslashes so rustdoc treats
+  them as literal characters.
+
+### Features
+
+- *(filter)* Highlight match spans in results pane
+Before this change the filter results pane showed matching lines but gave
+  no visual indication of WHERE in each line the pattern matched — users had
+  to rescan the line to find the hit. Main rgx has alternated match-span
+  backgrounds in ui/match_display.rs; bring the same affordance to filter.
+
+  - FilterApp now carries a parallel match_spans: Vec<Vec<Range<usize>>>
+    populated alongside matched. Invert mode stores empty per-line vecs
+    (nothing to highlight when showing non-matching lines).
+  - render_match_list splits each line on span boundaries and paints
+    matched segments with alternating theme::MATCH_BG / MATCH_BG_ALT.
+  - Selection still applies Modifier::REVERSED to the full row.
+- *(filter)* Read input as UTF-8-lossy (match grep behavior)
+- *(filter)* --max-lines cap prevents OOM on unbounded streams
+Without a cap, `rgx filter` happily slurps multi-GB piped streams into
+  a Vec<String> and crashes the process. Add --max-lines (default 100000)
+  that stops reading once the cap is hit and prints a one-line stderr
+  warning so the user knows the tail was dropped. Pass 0 to disable the
+  cap.
+
+  - FilterArgs gains `max_lines: usize` (default 100_000).
+  - read_input now takes max_lines and returns (Vec<String>, bool) where
+    the bool is true iff the cap was hit before EOF. It peeks one extra
+    read after the cap so a file that happens to have exactly max_lines
+    lines is NOT flagged as truncated.
+  - run_entry threads the flag through and emits
+    `rgx filter: input truncated at N lines (use --max-lines to override)`
+    on truncation.
+  - Existing read_input tests destructure the new tuple. New tests cover
+    the cap path, the exact-fit boundary, and the zero-means-no-cap case.
+- *(filter)* Add json_path module with dotted/indexed parser
+Introduces src/filter/json_path.rs with a minimal path language
+  (.field / .nested / .items[0] / .steps[0].text) for JSONL field
+  extraction. Pure parser only; extractor lands in the next commit.
+- *(filter)* Add extract() for json_path segments
+Walks a serde_json::Value along the parsed path, returning None on
+  any miss (wrong type, absent key, out-of-bounds index). Pure function,
+  exhaustive unit tests for single/nested/indexed/mixed paths.
+- *(filter)* Add --json CLI flag and extract_strings helper
+Adds --json <PATH> to FilterArgs and a filter::extract_strings()
+  helper that parses each JSONL line, walks the path, and returns
+  Some(string) or None per line. Parse failures, missing paths, and
+  non-string values all coerce to None so callers can treat those
+  lines as non-matches uniformly.
+- *(filter)* --json honored in non-interactive paths with CLI e2e test
+Adds filter_lines_with_extracted() which applies the pattern to a
+  per-line extracted value and returns the raw-line indices to emit.
+  Lines whose extracted value is None (parse failure, missing path,
+  non-string) are excluded unconditionally — even in invert mode.
+
+  run_entry threads the --json path through extract_strings once up
+  front, then uses the extracted vector for matching in the
+  non-interactive path. Raw JSON lines are still what get emitted.
+  TUI wiring follows in the next commit.
+- *(filter)* FilterApp honors --json path for in-TUI matching
+Adds FilterApp::with_json_extracted() and a json_extracted field.
+  When set, recompute() matches the pattern against the per-line
+  extracted string instead of the raw line, and match_spans refer to
+  offsets within the extracted string. None entries (parse failures,
+  missing paths, non-string values) are excluded in both forward and
+  invert modes. The raw JSON line is still what the UI/emit path sees.
+- *(filter)* Render extracted JSON field with arrow prefix in TUI
+In --json mode each match row renders two visual lines on wide
+  terminals: the raw JSON line (dim, for context) followed by
+  `↳ <extracted>` with match spans highlighted. Under 60 cols the
+  renderer falls back to a single line showing just the extracted
+  value with highlighting. Scroll math now accounts for the per-row
+  line count so selection still snaps into view.
+
+
 ## [0.11.0] - 2026-04-18
 
 ### Bug Fixes
