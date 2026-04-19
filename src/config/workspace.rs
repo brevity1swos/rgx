@@ -118,10 +118,9 @@ impl Workspace {
 
         let mut results = Vec::with_capacity(self.tests.len());
         for tc in &self.tests {
-            let did_match = match compiled.find_matches(&tc.input) {
-                Ok(m) => !m.is_empty(),
-                Err(_) => false,
-            };
+            let did_match = compiled
+                .find_matches(&tc.input)
+                .is_ok_and(|m| !m.is_empty());
             results.push(TestResult {
                 input: tc.input.clone(),
                 should_match: tc.should_match,

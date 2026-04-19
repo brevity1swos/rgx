@@ -97,7 +97,7 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
             let spans_for_line: &[std::ops::Range<usize>] = app
                 .match_spans
                 .get(absolute)
-                .map(|v| v.as_slice())
+                .map(Vec::as_slice)
                 .unwrap_or(&[]);
             build_row(app, line_idx, spans_for_line, is_selected, two_line)
         })

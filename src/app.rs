@@ -20,16 +20,12 @@ pub struct BenchmarkResult {
 }
 
 fn truncate(s: &str, max_chars: usize) -> String {
-    let char_count = s.chars().count();
-    if char_count <= max_chars {
-        s.to_string()
-    } else {
-        let end = s
-            .char_indices()
-            .nth(max_chars)
-            .map(|(i, _)| i)
-            .unwrap_or(s.len());
-        format!("{}...", &s[..end])
+    // Single pass: if `nth(max_chars)` yields a position, we have more than
+    // `max_chars` chars and `end` is the byte offset of the first char to
+    // drop. None means the string already fits.
+    match s.char_indices().nth(max_chars) {
+        Some((end, _)) => format!("{}...", &s[..end]),
+        None => s.to_string(),
     }
 }
 
@@ -347,7 +343,7 @@ impl App {
         if pattern.is_empty() {
             return;
         }
-        if self.history.entries.back().map(|s| s.as_str()) == Some(&pattern) {
+        if self.history.entries.back().map(String::as_str) == Some(&pattern) {
             return;
         }
         self.history.entries.push_back(pattern);
@@ -377,9 +373,8 @@ impl App {
     }
 
     pub fn history_next(&mut self) {
-        let idx = match self.history.index {
-            Some(idx) => idx,
-            None => return,
+        let Some(idx) = self.history.index else {
+            return;
         };
         if idx + 1 < self.history.entries.len() {
             let new_index = idx + 1;
@@ -988,7 +983,7 @@ impl App {
             .content()
             .lines()
             .filter(|l| !l.is_empty())
-            .map(|l| l.to_string())
+            .map(ToString::to_string)
             .collect();
         let options = overlay.options;
         let tx = self.grex_result_tx.clone();

@@ -87,10 +87,9 @@ impl Editor {
     /// Byte offset of the end of line `n` (before the newline, or end of string).
     fn line_end(&self, n: usize) -> usize {
         let start = self.line_start(n);
-        match self.content[start..].find('\n') {
-            Some(pos) => start + pos,
-            None => self.content.len(),
-        }
+        self.content[start..]
+            .find('\n')
+            .map_or(self.content.len(), |pos| start + pos)
     }
 
     /// Content of line `n`.
@@ -309,7 +308,7 @@ impl Editor {
             self.cursor = 0;
         } else if line + 1 < line_count {
             // Not the last line — delete line including trailing newline
-            self.content.drain(start..end + 1);
+            self.content.drain(start..=end);
             self.cursor = start;
         } else {
             // Last line — delete leading newline + line content

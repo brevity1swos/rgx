@@ -29,9 +29,8 @@ pub fn highlight(pattern: &str) -> Vec<SyntaxToken> {
         return vec![];
     }
 
-    let ast = match crate::explain::parse_ast(pattern) {
-        Some(ast) => ast,
-        None => return vec![],
+    let Some(ast) = crate::explain::parse_ast(pattern) else {
+        return vec![];
     };
 
     let mut tokens = Vec::new();

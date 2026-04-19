@@ -276,9 +276,8 @@ unsafe fn debug_match_ffi(
 }
 
 pub fn build_offset_map(pattern: &str) -> Vec<PatternToken> {
-    let ast = match crate::explain::parse_ast(pattern) {
-        Some(ast) => ast,
-        None => return Vec::new(),
+    let Some(ast) = crate::explain::parse_ast(pattern) else {
+        return Vec::new();
     };
     let mut tokens = Vec::new();
     collect_tokens(&ast, &mut tokens);

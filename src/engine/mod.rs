@@ -247,7 +247,7 @@ fn has_subroutine_call(pattern: &str) -> bool {
     for i in 0..bytes.len().saturating_sub(2) {
         if bytes[i] == b'('
             && bytes[i + 1] == b'?'
-            && bytes.get(i + 2).is_some_and(|b| b.is_ascii_digit())
+            && bytes.get(i + 2).is_some_and(u8::is_ascii_digit)
         {
             return true;
         }

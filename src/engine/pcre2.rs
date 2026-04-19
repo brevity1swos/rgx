@@ -124,7 +124,7 @@ impl CompiledRegex for Pcre2CompiledRegex {
                 if let Some(m) = caps.get(i) {
                     let cap_start = offset + m.start();
                     let cap_end = offset + m.end();
-                    let name = names.get(i).and_then(|n| n.clone());
+                    let name = names.get(i).and_then(Clone::clone);
                     captures.push(CaptureGroup {
                         index: i,
                         name,

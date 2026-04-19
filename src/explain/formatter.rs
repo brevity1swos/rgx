@@ -90,7 +90,7 @@ fn describe_class_set(set: &ClassSet) -> String {
 fn describe_class_set_item(item: &ClassSetItem) -> String {
     match item {
         ClassSetItem::Empty(_) => String::new(),
-        ClassSetItem::Literal(lit) => format!("{}", lit.c),
+        ClassSetItem::Literal(lit) => lit.c.to_string(),
         ClassSetItem::Range(range) => {
             format!("{}-{}", range.start.c, range.end.c)
         }

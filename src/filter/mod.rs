@@ -136,10 +136,11 @@ pub fn extract_strings(lines: &[String], path_expr: &str) -> Result<Vec<Option<S
     let path = json_path::parse_path(path_expr)?;
     let mut out = Vec::with_capacity(lines.len());
     for line in lines {
-        let extracted = match serde_json::from_str::<serde_json::Value>(line) {
-            Ok(v) => json_path::extract(&v, &path).and_then(|v| v.as_str().map(str::to_string)),
-            Err(_) => None,
-        };
+        let extracted = serde_json::from_str::<serde_json::Value>(line)
+            .ok()
+            .and_then(|v| {
+                json_path::extract(&v, &path).and_then(|v| v.as_str().map(str::to_string))
+            });
         out.push(extracted);
     }
     Ok(out)

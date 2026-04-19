@@ -288,9 +288,8 @@ async fn run() -> anyhow::Result<ExitCode> {
                         match key.code {
                             KeyCode::Right | KeyCode::Char('l') => app.debug_step_forward(),
                             KeyCode::Left | KeyCode::Char('h') => app.debug_step_back(),
-                            KeyCode::Home => app.debug_jump_start(),
+                            KeyCode::Home | KeyCode::Char('g') => app.debug_jump_start(),
                             KeyCode::End | KeyCode::Char('G') => app.debug_jump_end(),
-                            KeyCode::Char('g') => app.debug_jump_start(),
                             KeyCode::Char('m') => app.debug_next_match(),
                             KeyCode::Char('f') => app.debug_next_backtrack(),
                             KeyCode::Char('H') => app.debug_toggle_heatmap(),

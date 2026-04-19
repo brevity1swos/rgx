@@ -30,7 +30,8 @@ use replace_input::ReplaceInput;
 use status_bar::StatusBar;
 use test_input::TestInput;
 
-/// Returns the border type based on the rounded_borders flag.
+/// Returns `BorderType::Rounded` when `rounded` is true, otherwise
+/// `BorderType::Plain`.
 pub(crate) fn border_type(rounded: bool) -> BorderType {
     if rounded {
         BorderType::Rounded
@@ -108,7 +109,7 @@ pub fn render(frame: &mut Frame, app: &App) {
             size,
             app.overlay.codegen_language_index,
             app.regex_editor.content(),
-            &app.flags,
+            app.flags,
             bt,
         );
         return;
@@ -568,7 +569,7 @@ fn render_codegen_overlay(
     area: Rect,
     selected: usize,
     pattern: &str,
-    flags: &crate::engine::EngineFlags,
+    flags: crate::engine::EngineFlags,
     bt: BorderType,
 ) {
     let langs = codegen::Language::all();
@@ -576,7 +577,7 @@ fn render_codegen_overlay(
         String::from("(no pattern)")
     } else {
         let lang = &langs[selected.min(langs.len() - 1)];
-        codegen::generate_code(lang, pattern, flags)
+        codegen::generate_code(lang, pattern, &flags)
     };
 
     let preview_lines: Vec<&str> = preview.lines().collect();
