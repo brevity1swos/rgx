@@ -95,7 +95,6 @@ Full flag reference, piping recipes, and `rgx filter` + `--json` usage:
 - **[Keyboard shortcuts](docs/shortcuts.md)** — main TUI, vim mode, filter mode
 - **[Editor integrations](docs/integrations.md)** — VS Code, Neovim, Zed, tmux
 - **[Advanced](docs/advanced.md)** — test suite mode, config file, engines deep-dive, comparison matrix
-- **[Roadmap](docs/ROADMAP.md)**
 
 ## Engines at a glance
 
@@ -106,20 +105,6 @@ Full flag reference, piping recipes, and `rgx filter` + `--json` usage:
 | **PCRE2** | + possessive quantifiers, recursion, conditionals | `libpcre2` |
 
 Full matrix and comparison against other tools: [docs/advanced.md](docs/advanced.md#comparison-vs-terminal-alternatives).
-
-## Pairs well with
-
-- **[agx](https://github.com/brevity1swos/agx)** — terminal agent
-  session viewer. When an agent's tool call argument contains a
-  regex, agx will launch rgx for step-through inspection (proposed).
-- **[sift](https://github.com/brevity1swos/sift)** — AI write review
-  gate. Sift will use rgx for interactive debugging of
-  `.sift/policy.yml` regex rules (planned).
-
-All three tools are independent. Combined, they form
-**[stepwise](https://github.com/brevity1swos/stepwise)**, the
-terminal-native step-through debugger stack for the AI-development
-workflow.
 
 ## Contributing
 
