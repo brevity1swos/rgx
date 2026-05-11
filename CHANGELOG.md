@@ -7,13 +7,10 @@ All notable changes to this project will be documented in this file.
 ### Documentation
 
 - Restore rgx to independent-project presentation
-Reverts the stepwise-umbrella positioning that briefly appeared in the
-  README and the ROADMAP earlier today. rgx stays presented as a
-  standalone project; sibling-tool synergy lives on the separate
-  stepwise landing page (out of this repo). Users who arrived at rgx
-  through Terminal Trove, awesome-ratatui, or AUR didn't sign up for a
-  three-tool stack pitch on their regex debugger's README — putting
-  one there muddles the value proposition.
+Reverts README and ROADMAP changes that briefly appeared earlier today.
+  rgx is presented as a standalone tool; users who arrived through
+  Terminal Trove, awesome-ratatui, or AUR didn't sign up for an
+  unrelated stack pitch on their regex debugger's README.
 
 
 ## [0.12.1] - 2026-04-19
@@ -42,41 +39,6 @@ README grew to 431 lines over v0.11.0 and v0.12.0 — past the point
   engines-at-a-glance table. Everything deeper is one click away.
 
   Total content preserved; anchors and internal links verified.
-- *(readme)* Add "Pairs well with" section linking agx/sift/stepwise
-Introduces rgx as one of three terminal-native step-through debuggers
-  under the stepwise umbrella. Links the sibling tools (agx for agent
-  timelines, sift for AI-write review) and the landing-site repo. Each
-  tool is called out as independent — the section clarifies that no
-  sibling install is ever required for rgx to work on its own.
-- *(roadmap)* Reframe as maintenance + bounded stepwise hooks
-Updates the public roadmap for the post-v0.12.0 / stepwise positioning
-  state. The Road A opportunity-cost argument (rgx stays in maintenance;
-  main-project capacity reinvests in SaaS) is preserved, but the plan
-  now acknowledges a small integration backlog introduced by the
-  stepwise umbrella.
-
-  - "Current direction" rewritten: maintenance + bounded stepwise hooks,
-    not pure maintenance. Stepwise hooks live or die on whether they
-    make rgx materially more useful to existing rgx users — not a
-    reason to expand audience or rewrite the core.
-  - New "Relationship to the stepwise stack" section with a three-tool
-    table and a pointer to the landing repo. States the kill criterion:
-    each tool earns its place independently; the suite cannot rescue a
-    failing tool.
-  - "Recently Shipped" updated through v0.12.0 and the post-release
-    hardening pass (per-line byte cap, bracketed JSON keys, match_haystack
-    pub, UTF-8-safe UI slicing, Result-returning constructor, unicode-
-    aware json_path errors).
-  - New "Open — bounded stepwise integration hooks" table. Each hook has
-    two gates (sibling prerequisite + opportunity-cost fit) before it
-    ships. No hook is promised; both get reassessed on the sibling tool's
-    next release. If either turns out to need more than an evening, it
-    gets parked by the opportunity-cost argument.
-  - "Future considerations" preserved as low-priority parking spots
-    (theme customization is the most-requested).
-  - "Not planned" tightened: no AI/LLM inside rgx, no web version, no
-    hosted pattern-sharing, no ripgrep-scope rewrite.
-  - "When to rethink" aligned with the sibling roadmaps' discipline.
 
 ### Features
 
@@ -165,7 +127,7 @@ No user-visible behavior change. Two cleanups that set up the next
 
 - *(roadmap)* Reflect v0.11.0 shipped state and open next-round decision gate
 v0.11.0 shipped grex overlay AND rgx filter — filter landed in-cycle because
-  it was low cost and opened agx/sift piping synergy. Road A's spirit (avoid a
+  it was low cost and opened piping use cases. Road A's spirit (avoid a
   2-3 month ripgrep fight) still holds; filter is a bounded addition, not a
   grep replacement.
 
@@ -177,7 +139,7 @@ v0.11.0 shipped grex overlay AND rgx filter — filter landed in-cycle because
   Until chosen, rgx is in de-facto maintenance mode.
 - *(filter)* Document --json flag and update roadmap
 Adds the --json flag to the filter-mode feature bullet and to the
-  agx piping section with a concrete JSONL example (wildcards are out
+  filter usage section with a concrete JSONL example (wildcards are out
   of scope for v1 so the example uses a direct dotted path). Notes
   the silent-skip behavior for parse failures, missing paths, and
   non-string values.
