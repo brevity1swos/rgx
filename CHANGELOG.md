@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.3] - 2026-05-11
+
+### Documentation
+
+- *(changelog)* Scrub private project references from history entries
+Remove mentions of sibling tools and the landing-site project from
+  changelog entries across v0.12.0–v0.12.2. Inline descriptions now
+  reference only rgx-visible concepts (piping, filter mode, standalone
+  presentation) so the public changelog is self-contained.
+
+
 ## [0.12.2] - 2026-04-19
 
 ### Documentation
