@@ -19,6 +19,7 @@ Step-by-step guidance for increasing visibility for rgx.
 | LinuxLinks | **Listed** | Review published 2026-03-19 |
 | AUR | **Listed** | rgx-cli + rgx-cli-bin (community-submitted, not us) |
 | users.rust-lang.org | **Pending** | Draft in this file below — post manually |
+| dev.to | **Published** | https://dev.to/brevity1swos/building-a-regex-debugger-for-the-terminal-in-rust-977 |
 | Lobste.rs | **Blocked** | Needs invite |
 
 **Current metrics (2026-05-23):** 198 stars, 872 total downloads, 687 recent downloads
