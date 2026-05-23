@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.4] - 2026-05-23
+
+### Documentation
+
+- *(readme)* Promote step-through debugger and sharpen hero tagline
+Move the step-through debugger to the top of the features list — it is
+  rgx's only feature with no equivalent in any other terminal regex tool,
+  so it should be the first thing a visitor reads. Update the hero tagline
+  to lead with "regex debugger" and call out code generation and live
+  stream filtering explicitly.
+- *(launch)* Rewrite playbook to reflect current status (v0.12.3, 198 stars)
+Update launch status table, metrics, and next actions. Remove stale
+  v0.7.0-era blockers. Document pending awesome-rust PR #2522, TWiR PR #8117,
+  nixpkgs issue #523362, and the users.rust-lang.org draft.
+- Refresh demo GIF (v7) and add dev.to article draft
+Re-recorded against v0.12.3 binary with PCRE2. Now shows step-through
+  debugger (Ctrl+D), grex overlay (Ctrl+X), code generation (Ctrl+G),
+  and filter mode — all features that shipped after the previous recording.
+- *(launch)* Record dev.to article as published
+
+
 ## [0.12.3] - 2026-05-23
 
 ### Bug Fixes
