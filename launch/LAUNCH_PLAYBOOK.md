@@ -1,161 +1,126 @@
 # rgx Launch Playbook
 
-Step-by-step instructions to increase visibility for rgx. Follow in order — each step builds on the previous.
+Step-by-step guidance for increasing visibility for rgx.
 
 ---
 
-## Launch Status (Updated March 11, 2026)
+## Status (Updated 2026-05-23)
 
 | Channel | Status | Result |
 |---------|--------|--------|
-| Show HN | Posted | 0 comments, 11 unique visitors from HN |
-| r/rust | **Declined** | Subreddit does not accept AI-generated projects. Do not re-attempt. |
-| r/commandline | Posted (v1) | GitHub was 404 when users clicked. Re-post with v2 draft. |
-| Terminal Trove | Not yet submitted | |
-| awesome-ratatui | PR #248 submitted | Pending review |
-| awesome-rust | Not yet | Need stars > 50 or downloads > 2000 |
+| Show HN | Posted | 0 comments, 11 unique visitors |
+| r/rust | **Closed** | AI-generated projects policy. Do not re-attempt. |
+| r/commandline | **Closed** | AI disclosure rules + hostile mod climate. Draft in `r_commandline.md`. |
+| Terminal Trove | **Listed** | Top referrer |
+| awesome-ratatui | **Merged** | PR #248 merged 2026-03-12 |
+| awesome-rust | **PR #2522 open** | Submitted 2026-05-23 — pending review |
+| This Week in Rust #653 | **PR #8117 open** | Submitted 2026-05-23 — pending review |
+| nixpkgs | **Listed (v0.12.1)** | Community-maintained by Cameo007; update issue #523362 filed |
+| LinuxLinks | **Listed** | Review published 2026-03-19 |
+| AUR | **Listed** | rgx-cli + rgx-cli-bin (community-submitted, not us) |
+| users.rust-lang.org | **Pending** | Draft in this file below — post manually |
+| Lobste.rs | **Blocked** | Needs invite |
 
-**Current metrics:** 8 stars, 284 downloads, 68 unique visitors (14-day)
-
-**Blocker:** GitHub Actions is disabled for the account. Re-enable before cutting releases.
-
----
-
-## Pre-Launch Checklist
-
-Before posting anywhere, verify:
-
-- [x] Demo GIF is up to date (`assets/demo.gif`)
-- [x] Screenshot PNG for Terminal Trove (`assets/social-preview.png`)
-- [x] README comparison table is current
-- [x] README documents pipeline features (`--print`, `--output-pattern`, exit codes)
-- [x] GitHub repo description is updated
-- [x] crates.io listing is live (`cargo install rgx-cli` works)
-- [x] Homebrew formula works (`brew install brevity1swos/tap/rgx`)
-- [x] All tests pass (`cargo test --no-default-features`)
-- [x] Clippy clean (`cargo clippy --no-default-features -- -D warnings`)
-- [ ] **Re-enable GitHub Actions** — currently disabled, blocking CI and releases
-- [ ] **Cut v0.7.0 release** — 3 unreleased features on main (recipe library, benchmark mode, Neovim plugin)
-- [ ] **Verify demo GIF shows current features** — re-record with `PATH=$HOME/.cargo/bin:$PATH vhs assets/demo.tape` if needed
+**Current metrics (2026-05-23):** 198 stars, 872 total downloads, 687 recent downloads
 
 ---
 
-## Next Actions (Priority Order)
+## Immediate Next Actions
 
-### 1. Re-enable GitHub Actions
+### 1. Post to users.rust-lang.org Showcase
 
-GitHub Actions is disabled for the account. Go to:
-`https://github.com/settings/actions` → enable Actions for the repository.
+Post the draft below at: https://users.rust-lang.org/c/community/showcase/
 
-Once enabled, push any commit to main to trigger:
-- CI (tests, clippy, fmt)
-- release-plz (will create PR to bump to v0.7.0)
+**Title:** `rgx — a regex debugger for the terminal (step-through execution, 3 engines, code generation)`
 
-### 2. Cut v0.7.0 Release
+**Body:**
 
-After re-enabling Actions, release-plz will auto-create a release PR with:
-- feat: add regex recipe library with Ctrl+R picker
-- feat: add group extraction, benchmark mode, and Neovim plugin
-- refactor: deduplicate code and simplify benchmark logic
+```
+I've been working on rgx, a terminal regex debugger written in Rust
+using ratatui + crossterm. Just shipped v0.12.3.
 
-Merge the PR → dist workflow builds binaries → v0.7.0 on GitHub Releases + crates.io.
+**What makes it different from other terminal regex tools:**
 
-### 3. Re-post to r/commandline
+The main thing I haven't seen elsewhere is a step-through debugger
+(Ctrl+D, PCRE2) — it traces execution with a dual-cursor visualization
+(pattern cursor + text cursor moving together), backtracking markers,
+and a heatmap mode that shows which parts of the pattern are matched
+most often. Useful when a pattern works but you don't understand why,
+or when backtracking is making it slow.
 
-Use the updated draft in [`launch/r_commandline.md`](r_commandline.md) (v2).
+Beyond that:
+- **3 engines** — Rust `regex` (default), `fancy-regex` (lookaround /
+  backrefs), PCRE2. Auto-selects the simplest engine that supports your
+  pattern's features.
+- **Code generation** (Ctrl+G) — emits ready-to-paste code for Rust,
+  Python, JS, Go, Java, C#, PHP, Ruby
+- **Generate regex from examples** (Ctrl+X) — grex overlay
+- **Live filter mode** — `rgx filter` streams stdin/file through a regex
+  TUI; `--json <PATH>` extracts a specific JSONL field to match against
+- **Batch/pipeline mode** — `echo "log" | rgx -p '\d+'` with grep-like
+  exit codes
+- **Test suite mode** — TOML-based CI assertions (`rgx --test`)
+- VS Code, Neovim, Zed, tmux integrations
 
-**Key changes from v1:**
-- Leads with "two modes" framing (interactive TUI + batch/pipeline)
-- Concrete pipeline examples front and center
-- Mentions recipe library (new since v1)
-- Removes items that r/commandline doesn't care about (undo/redo, pattern history)
+Install:
+    cargo install rgx-cli
+    brew install brevity1swos/tap/rgx
 
-**When:** After v0.7.0 is released. Tuesday or Wednesday, morning EST.
+GitHub: https://github.com/brevity1swos/rgx
+```
 
-### 4. Submit to Terminal Trove
+### 2. Re-record demo GIF
 
-Use details from [`launch/terminal_trove.md`](terminal_trove.md). Can be done same day as r/commandline post.
+The current `assets/demo.gif` predates the step-through debugger (Ctrl+D),
+grex overlay (Ctrl+X), code generation (Ctrl+G), and filter mode. These are
+the features that differentiate rgx — the first impression is the most
+important conversion moment.
 
-### 5. Follow up on awesome-ratatui PR
+```bash
+PATH=$HOME/.cargo/bin:$PATH vhs assets/demo.tape
+```
 
-Check status of PR #248: https://github.com/ratatui/awesome-ratatui/pull/248
+Note: VHS does not support F1 key.
 
----
+### 3. Lobste.rs
 
-## Closed Channels
+Needs an invite from an existing member. Worth pursuing if you know one.
 
-### r/rust — Do Not Re-attempt
-
-r/rust declined the post. Their policy does not accept AI-generated projects.
-This channel is closed. Do not re-submit.
-
-Alternative Rust community options:
-- **This Week in Rust** — submit to https://github.com/rust-lang/this-week-in-rust (curated newsletter, not self-post)
-- **users.rust-lang.org** — Showcase category: https://users.rust-lang.org/c/community/showcase/
-- **Rust community Discord** — #showcase channel
-
----
-
-## Phase 2: Growth (After initial posts)
-
-### Monitor and Engage
-
-- **Check HN** daily for new comments — respond to all
-- **Check Reddit** daily — reply to questions and feedback
-- **Check GitHub Issues** — new users may file bugs or feature requests
-- **Track stats:**
-  ```bash
-  gh api repos/brevity1swos/rgx --jq '.stargazers_count'
-  curl -s https://crates.io/api/v1/crates/rgx-cli | jq '.crate.downloads'
-  ```
-
-### Cross-Post to Other Communities
-
-If r/commandline post gets traction:
-
-- **r/linux** — "I built a terminal regex tester as an alternative to regex101.com"
-- **Lobste.rs** — submit the GitHub URL (needs invite or existing account)
-- **users.rust-lang.org** — Showcase post
-- **This Week in Rust** — PR to the newsletter repo
-- **dev.to** — short article: "Building a regex debugger for the terminal in Rust"
-
-### awesome-rust Submission
-
-**Prerequisite:** stars > 50 OR downloads > 2000
-
-When threshold is met, follow [`launch/awesome_rust_draft.md`](awesome_rust_draft.md).
-
-### Package Manager Submissions
-
-**AUR (Arch Linux):**
-- Create a PKGBUILD
-- regex-tui is on AUR — precedent exists
-
-**Nix:**
-- Add package to nixpkgs
-- Nix users overlap heavily with target audience
-
-### Create Public GitHub Issues
-
-Create 3-5 roadmap issues to signal active development:
-- Performance comparison display mode
-- Export/share functionality
-- Theme customization
-- Shell completions (bash/zsh/fish)
-
-### Blog Post
+### 4. dev.to article
 
 **Title:** "Building a regex debugger for the terminal in Rust"
 
-Publish to dev.to, then submit to HN and users.rust-lang.org.
+Publish to dev.to, then cross-post link to:
+- This Week in Rust (another PR, linking the article instead of the release)
+- HN: Show HN
+- users.rust-lang.org (update your showcase thread)
 
 ---
 
-## Key Metrics
+## Closed / Not Planned
 
-| Metric | How to Check |
-|--------|-------------|
-| GitHub stars | `gh api repos/brevity1swos/rgx --jq '.stargazers_count'` |
-| crates.io downloads | `curl -s https://crates.io/api/v1/crates/rgx-cli \| jq '.crate.downloads'` |
-| GitHub traffic | Settings → Traffic on GitHub |
-| Referrers | `gh api repos/brevity1swos/rgx/traffic/popular/referrers` |
+| Channel | Reason |
+|---------|--------|
+| r/rust | AI-generated projects policy — closed permanently |
+| r/commandline | AI disclosure rule + hostile mod climate |
+| Hosted community platform | Against zero-hosted principle |
+| AI/LLM integration | Not planned (see ROADMAP.md) |
+
+---
+
+## Monitoring
+
+```bash
+# Stars
+gh api repos/brevity1swos/rgx --jq '.stargazers_count'
+
+# crates.io downloads
+curl -s https://crates.io/api/v1/crates/rgx-cli | jq '.crate | {downloads, recent_downloads}'
+
+# Traffic referrers (requires auth)
+gh api repos/brevity1swos/rgx/traffic/popular/referrers
+
+# Open PRs and issues
+gh pr list --repo brevity1swos/rgx
+gh issue list --repo brevity1swos/rgx
+```
