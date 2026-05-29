@@ -92,7 +92,14 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     // Overlays
     if app.overlay.help {
-        render_help_overlay(frame, size, app.engine_kind, app.overlay.help_page, bt);
+        render_help_overlay(
+            frame,
+            size,
+            app.engine_kind,
+            app.overlay.help_page,
+            bt,
+            app.help_scroll_offset,
+        );
         return;
     }
     if app.overlay.recipes {
@@ -220,6 +227,7 @@ pub fn render(frame: &mut Frame, app: &App) {
 }
 
 pub const HELP_PAGE_COUNT: usize = 3;
+pub const HELP_PAGE_LEN: [u16; 3] = [31, 20, 12];
 
 fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     let shortcut = |key: &'static str, desc: &'static str| -> Line<'static> {
@@ -380,14 +388,18 @@ pub(crate) fn centered_overlay(
     rect
 }
 
+pub const HELP_PAGE_HEIGHT: u16 = 28;
+
 fn render_help_overlay(
     frame: &mut Frame,
     area: Rect,
     engine: EngineKind,
     page: usize,
     bt: BorderType,
+    scroll_offset: u16,
 ) {
-    let help_area = centered_overlay(frame, area, 64, 28);
+    let help_area = centered_overlay(frame, area, 64, HELP_PAGE_HEIGHT);
+    let chunks = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).split(help_area);
 
     let pages = build_help_pages(engine);
     let current = page.min(pages.len() - 1);
@@ -403,30 +415,34 @@ fn render_help_overlay(
         Line::from(""),
     ];
     lines.extend(content.iter().cloned());
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!(" Page {}/{} ", current + 1, pages.len()),
-            Style::default().fg(theme::BASE).bg(theme::BLUE),
-        ),
-        Span::styled(
-            " Left/Right: page | Any other key: close ",
-            Style::default().fg(theme::SUBTEXT),
-        ),
-    ]));
 
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(bt)
         .border_style(Style::default().fg(theme::BLUE))
         .title(Span::styled(" Help ", Style::default().fg(theme::TEXT)))
+        .title(
+            Line::styled(
+                format!(" Page {}/{} ", current + 1, pages.len()),
+                Style::default().fg(theme::BASE).bg(theme::BLUE),
+            )
+            .right_aligned(),
+        )
         .style(Style::default().bg(theme::BASE));
 
     let paragraph = Paragraph::new(lines)
         .block(block)
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: false })
+        .scroll((scroll_offset, 0));
+    let paragraph2 = Paragraph::new(Line::styled(
+        "  Up(k)/Down(j): Scroll | Left/Right: Page | Any key: Close ",
+        Style::default().fg(theme::TEXT),
+    ))
+    .right_aligned()
+    .style(Style::default().bg(theme::BASE));
 
-    frame.render_widget(paragraph, help_area);
+    frame.render_widget(paragraph, chunks[0]);
+    frame.render_widget(paragraph2, chunks[1]);
 }
 
 fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize, bt: BorderType) {

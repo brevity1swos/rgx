@@ -122,6 +122,7 @@ pub struct App {
     grex_result_rx: tokio::sync::mpsc::UnboundedReceiver<(u64, String)>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
+    pub help_scroll_offset: u16,
 }
 
 impl App {
@@ -173,6 +174,7 @@ impl App {
             grex_result_rx,
             engine,
             compiled: None,
+            help_scroll_offset: u16::default(),
         }
     }
 

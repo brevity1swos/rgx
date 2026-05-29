@@ -209,14 +209,32 @@ async fn run() -> anyhow::Result<ExitCode> {
                     }
 
                     if app.overlay.help {
+                        let total_lines = ui::HELP_PAGE_LEN[app.overlay.help_page];
+                        let height = ui::HELP_PAGE_HEIGHT;
+                        let mut max_scroll = 0;
+                        if total_lines > height {
+                            max_scroll = total_lines.saturating_sub(height).saturating_add(5);
+                        }
                         use crossterm::event::KeyCode;
                         match key.code {
-                            KeyCode::Left => {
-                                app.overlay.help_page = app.overlay.help_page.saturating_sub(1);
+                            KeyCode::Down | KeyCode::Char('j') => {
+                                if app.help_scroll_offset >= max_scroll {
+                                } else {
+                                    app.help_scroll_offset =
+                                        app.help_scroll_offset.saturating_add(1);
+                                }
                             }
-                            KeyCode::Right => {
+                            KeyCode::Up | KeyCode::Char('k') => {
+                                app.help_scroll_offset = app.help_scroll_offset.saturating_sub(1);
+                            }
+                            KeyCode::Left | KeyCode::Char('h') => {
+                                app.overlay.help_page = app.overlay.help_page.saturating_sub(1);
+                                app.help_scroll_offset = 0;
+                            }
+                            KeyCode::Right | KeyCode::Char('l') => {
                                 if app.overlay.help_page + 1 < ui::HELP_PAGE_COUNT {
                                     app.overlay.help_page += 1;
+                                    app.help_scroll_offset = 0;
                                 }
                             }
                             _ => {
