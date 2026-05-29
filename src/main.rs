@@ -18,7 +18,7 @@ use rgx::config::workspace::{print_test_results, Workspace};
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
 use rgx::input::vim::vim_key_to_action;
-use rgx::input::{key_to_action, Action};
+use rgx::input::{handler, key_to_action, Action};
 use rgx::recipe::RECIPES;
 use rgx::ui;
 
@@ -209,21 +209,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                     }
 
                     if app.overlay.help {
-                        use crossterm::event::KeyCode;
-                        match key.code {
-                            KeyCode::Left => {
-                                app.overlay.help_page = app.overlay.help_page.saturating_sub(1);
-                            }
-                            KeyCode::Right => {
-                                if app.overlay.help_page + 1 < ui::HELP_PAGE_COUNT {
-                                    app.overlay.help_page += 1;
-                                }
-                            }
-                            _ => {
-                                app.overlay.help = false;
-                                app.overlay.help_page = 0;
-                            }
-                        }
+                        handler::handle_help_key(&mut app, key);
                         continue;
                     }
 
@@ -438,6 +424,6 @@ async fn run() -> anyhow::Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn contains(rect: ratatui::layout::Rect, col: u16, row: u16) -> bool {
+const fn contains(rect: ratatui::layout::Rect, col: u16, row: u16) -> bool {
     col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
 }

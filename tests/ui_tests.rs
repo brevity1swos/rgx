@@ -1,11 +1,22 @@
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers};
 use ratatui::{backend::TestBackend, Terminal};
 use rgx::app::App;
 use rgx::engine::{EngineFlags, EngineKind};
-use rgx::ui;
+use rgx::input::handler::handle_help_key;
+use rgx::ui::{self, build_lengths_of_help_pages};
 
 fn create_test_terminal() -> Terminal<TestBackend> {
     let backend = TestBackend::new(80, 24);
     Terminal::new(backend).unwrap()
+}
+
+fn press_key(code: KeyCode) -> KeyEvent {
+    KeyEvent {
+        code,
+        modifiers: KeyModifiers::empty(),
+        kind: KeyEventKind::Press,
+        state: KeyEventState::empty(),
+    }
 }
 
 #[test]
@@ -99,8 +110,7 @@ fn match_display_shows_results() {
         .collect();
     assert!(
         buffer_text.contains("Match 1"),
-        "Buffer should contain 'Match 1' but got: {}",
-        buffer_text
+        "Buffer should contain 'Match 1' but got: {buffer_text}"
     );
 }
 
@@ -443,4 +453,96 @@ fn test_replace_invalid_capture_ref() {
     // $99 is parsed as $9 then literal '9', $9 doesn't exist so nothing
     // The output should just not crash
     assert!(!result.output.is_empty() || result.output.is_empty());
+}
+
+#[test]
+fn upper_scroll_bound() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.overlay.help = true;
+    app.help_scroll_offset = 0;
+    let before = app.help_scroll_offset;
+    handle_help_key(&mut app, press_key(KeyCode::Up));
+    assert_eq!(app.help_scroll_offset, before);
+}
+
+#[test]
+fn scroll_up_decrements_offset() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.overlay.help = true;
+    app.help_scroll_offset = 5;
+    handle_help_key(&mut app, press_key(KeyCode::Up));
+    assert_eq!(app.help_scroll_offset, 4);
+}
+
+#[test]
+fn scroll_lower_bound() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+
+    app.overlay.help = true;
+    let bound_checker = |app: &mut App| {
+        let max_scroll = app.help_page_max_scroll();
+        app.help_scroll_offset = max_scroll;
+
+        // Test Lower Bound: Press 'j' at max index => should clip at max_scroll
+        // Simulate pressing 3 times beyond the max_scroll
+        for _ in 0..3 {
+            handle_help_key(app, press_key(KeyCode::Down));
+        }
+        assert_eq!(
+            app.help_scroll_offset, max_scroll,
+            "Scroll offset should be bounded by max_scroll"
+        );
+    };
+
+    // Page 0
+    bound_checker(&mut app);
+
+    // Page 1
+    handle_help_key(&mut app, press_key(KeyCode::Char('l')));
+    bound_checker(&mut app);
+
+    // Page 2
+    handle_help_key(&mut app, press_key(KeyCode::Char('l')));
+    bound_checker(&mut app);
+}
+
+#[test]
+fn scroll_offset_reset() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.help_scroll_offset = 5;
+    handle_help_key(&mut app, press_key(KeyCode::Left));
+    assert_eq!(
+        app.help_scroll_offset, 0,
+        "Scroll offset does not reset on page change"
+    );
+    app.help_scroll_offset = 5;
+    handle_help_key(&mut app, press_key(KeyCode::Esc));
+    assert_eq!(
+        app.help_scroll_offset, 0,
+        "Scroll offset does not reset on close"
+    );
+}
+
+#[test]
+fn scroll_help_pages_length_check() {
+    let length_hashmap = build_lengths_of_help_pages();
+    // For now it only checks all EngineKinds inside ::all()
+    for engine in EngineKind::all() {
+        let page_lengths_of_engine = length_hashmap.get(&engine);
+        match page_lengths_of_engine {
+            Some(vec) => {
+                assert!(
+                    vec.iter().all(|&x| x > crate::ui::HELP_PAGE_PADDING),
+                    "Page has no content for the engine {:?}",
+                    engine
+                );
+            }
+            None => {
+                panic!(
+                    "Engine {:?} was not found in the page lengths hashmap",
+                    engine
+                );
+            }
+        }
+    }
 }

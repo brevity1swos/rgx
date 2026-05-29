@@ -1,5 +1,22 @@
+# release-plz.toml
+#
+# Workspace config for release-plz. The release_commits filter limits bumps to
+# commits that materially affect end users:
+#   Include: feat / fix / perf / refactor / docs(readme)
+#   Exclude: chore, style, test, ci, build, generic docs:, docs(launch),
+#            and anything else — plumbing and internal tracking that
+#            shouldn't warrant a version bump.
+#
+# README changes are included because the README is rgx's GitHub front page;
+# launch-tracking and changelog-config commits are explicitly excluded.
+#
+# Background: v0.12.4 spawned an empty-changelog v0.12.5 PR from a chore(ci):
+# cliff.toml update because release-plz bumps on any commit by default. This
+# filter prevents recurrence. See feedback_launch_commit_prefix memory.
+
 [workspace]
 changelog_config = "cliff.toml"
 allow_dirty = true
 git_release_enable = true
 git_tag_enable = true
+release_commits = "^(feat|fix|perf|refactor|docs?\\(readme\\))[(:!]"

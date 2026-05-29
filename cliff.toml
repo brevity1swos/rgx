@@ -33,6 +33,7 @@ split_commits = false
 commit_parsers = [
     { message = "^feat", group = "Features" },
     { message = "^fix", group = "Bug Fixes" },
+    { message = "^docs?\\(launch\\)", skip = true },
     { message = "^doc", group = "Documentation" },
     { message = "^perf", group = "Performance" },
     { message = "^refactor", group = "Refactoring" },
@@ -40,6 +41,7 @@ commit_parsers = [
     { message = "^test", group = "Testing" },
     { message = "^chore\\(deps\\)", skip = true },
     { message = "^chore\\(ci\\)", skip = true },
+    { message = "^chore\\(launch\\)", skip = true },
     { message = "^chore", group = "Miscellaneous" },
 ]
 filter_commits = false

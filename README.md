@@ -83,6 +83,9 @@ Full flag reference, piping recipes, and `rgx filter` + `--json` usage:
 - **Live filter mode** — `rgx filter` streams stdin/file through a regex TUI, with `--json` JSONL-field extraction
 - **Test suite mode** — `rgx --test file.toml` validates patterns against assertions in CI
 - **Non-interactive batch mode** — `-p` with `--count`, `--group`, `--json`, `--color`, grep-like exit codes
+- **Benchmark mode** — Ctrl+B compares compile and match time across all engines
+- **regex101.com export** — Ctrl+U copies a shareable regex101 URL to clipboard
+- **Output pattern mode** — `-P` prints the final pattern after an interactive session (`eval $(rgx -P)`)
 - **Vim mode**, **mouse**, **pattern history + undo/redo**, **clipboard copy**, **whitespace visualization**
 - **Workspaces** — save/load regex state to a TOML file (`-w`) — track in git
 - **Editor integrations** — VS Code, Neovim, Zed, tmux

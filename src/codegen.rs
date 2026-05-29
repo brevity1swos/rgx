@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::Write as _;
 
 use crate::engine::EngineFlags;
 
@@ -26,7 +27,7 @@ pub const ALL_LANGUAGES: &[Language] = &[
 ];
 
 impl Language {
-    pub fn all() -> &'static [Language] {
+    pub const fn all() -> &'static [Self] {
         ALL_LANGUAGES
     }
 }
@@ -34,14 +35,14 @@ impl Language {
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Language::Rust => write!(f, "Rust"),
-            Language::Python => write!(f, "Python"),
-            Language::JavaScript => write!(f, "JavaScript"),
-            Language::Go => write!(f, "Go"),
-            Language::Java => write!(f, "Java"),
-            Language::CSharp => write!(f, "C#"),
-            Language::Php => write!(f, "PHP"),
-            Language::Ruby => write!(f, "Ruby"),
+            Self::Rust => write!(f, "Rust"),
+            Self::Python => write!(f, "Python"),
+            Self::JavaScript => write!(f, "JavaScript"),
+            Self::Go => write!(f, "Go"),
+            Self::Java => write!(f, "Java"),
+            Self::CSharp => write!(f, "C#"),
+            Self::Php => write!(f, "PHP"),
+            Self::Ruby => write!(f, "Ruby"),
         }
     }
 }
@@ -83,7 +84,7 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
 
     if has_flags {
         let mut lines = String::from("use regex::RegexBuilder;\n\n");
-        lines.push_str(&format!("let re = RegexBuilder::new(r\"{}\")\n", escaped));
+        let _ = writeln!(lines, "let re = RegexBuilder::new(r\"{escaped}\")");
         if flags.case_insensitive {
             lines.push_str("    .case_insensitive(true)\n");
         }
@@ -107,9 +108,8 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
     } else {
         format!(
             "use regex::Regex;\n\n\
-             let re = Regex::new(r\"{}\").unwrap();\n\
-             let matches: Vec<&str> = re.find_iter(text).map(|m| m.as_str()).collect();\n",
-            escaped
+             let re = Regex::new(r\"{escaped}\").unwrap();\n\
+             let matches: Vec<&str> = re.find_iter(text).map(|m| m.as_str()).collect();\n"
         )
     }
 }
@@ -127,9 +127,8 @@ fn generate_python(pattern: &str, flags: &EngineFlags) -> String {
     if flag_parts.is_empty() {
         format!(
             "import re\n\n\
-             pattern = re.compile(r\"{}\")\n\
-             matches = pattern.findall(text)\n",
-            escaped
+             pattern = re.compile(r\"{escaped}\")\n\
+             matches = pattern.findall(text)\n"
         )
     } else {
         format!(
@@ -159,9 +158,8 @@ fn generate_javascript(pattern: &str, flags: &EngineFlags) -> String {
     }
 
     format!(
-        "const regex = /{}/{js_flags};\n\
-         const matches = [...text.matchAll(regex)];\n",
-        escaped
+        "const regex = /{escaped}/{js_flags};\n\
+         const matches = [...text.matchAll(regex)];\n"
     )
 }
 
@@ -182,16 +180,15 @@ fn generate_go(pattern: &str, flags: &EngineFlags) -> String {
     }
 
     let pattern_str = if inline_flags.is_empty() {
-        format!("`{}`", escaped)
+        format!("`{escaped}`")
     } else {
-        format!("`(?{}){}`", inline_flags, escaped)
+        format!("`(?{inline_flags}){escaped}`")
     };
 
     format!(
         "import \"regexp\"\n\n\
-         re := regexp.MustCompile({})\n\
-         matches := re.FindAllString(text, -1)\n",
-        pattern_str
+         re := regexp.MustCompile({pattern_str})\n\
+         matches := re.FindAllString(text, -1)\n"
     )
 }
 
@@ -208,12 +205,11 @@ fn generate_java(pattern: &str, flags: &EngineFlags) -> String {
     if flag_parts.is_empty() {
         format!(
             "import java.util.regex.*;\n\n\
-             Pattern pattern = Pattern.compile(\"{}\");\n\
+             Pattern pattern = Pattern.compile(\"{escaped}\");\n\
              Matcher matcher = pattern.matcher(text);\n\
              while (matcher.find()) {{\n\
              \x20   System.out.println(matcher.group());\n\
-             }}\n",
-            escaped
+             }}\n"
         )
     } else {
         format!(
@@ -241,9 +237,8 @@ fn generate_csharp(pattern: &str, flags: &EngineFlags) -> String {
     if flag_parts.is_empty() {
         format!(
             "using System.Text.RegularExpressions;\n\n\
-             var regex = new Regex(@\"{}\");\n\
-             var matches = regex.Matches(text);\n",
-            escaped
+             var regex = new Regex(@\"{escaped}\");\n\
+             var matches = regex.Matches(text);\n"
         )
     } else {
         format!(
@@ -261,9 +256,8 @@ fn generate_php(pattern: &str, flags: &EngineFlags) -> String {
     let php_flags = flags.to_inline_prefix();
 
     format!(
-        "$pattern = '/{}/{}';\n\
-         preg_match_all($pattern, $text, $matches);\n",
-        escaped, php_flags
+        "$pattern = '/{escaped}/{php_flags}';\n\
+         preg_match_all($pattern, $text, $matches);\n"
     )
 }
 
@@ -281,8 +275,7 @@ fn generate_ruby(pattern: &str, flags: &EngineFlags) -> String {
     }
 
     format!(
-        "pattern = /{}/{}\n\
-         matches = text.scan(pattern)\n",
-        escaped, ruby_flags
+        "pattern = /{escaped}/{ruby_flags}\n\
+         matches = text.scan(pattern)\n"
     )
 }

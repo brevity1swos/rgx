@@ -215,8 +215,7 @@ unsafe fn debug_match_ffi(
     };
     if code.is_null() {
         return Err(EngineError::CompileError(format!(
-            "PCRE2 compile error {} at offset {}",
-            error_code, error_offset
+            "PCRE2 compile error {error_code} at offset {error_offset}"
         )));
     }
 
@@ -464,7 +463,7 @@ mod tests {
         let has_capture = trace
             .steps
             .iter()
-            .any(|s| s.captures.iter().any(|c| c.is_some()));
+            .any(|s| s.captures.iter().any(std::option::Option::is_some));
         assert!(has_capture, "should capture groups during matching");
     }
 

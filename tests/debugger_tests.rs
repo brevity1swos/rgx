@@ -24,7 +24,7 @@ fn test_catastrophic_backtracking_detection() {
         trace.steps.len()
     );
     let max_heat = trace.heatmap.iter().copied().max().unwrap_or(0);
-    assert!(max_heat > 1, "expected hot heatmap, max was {}", max_heat);
+    assert!(max_heat > 1, "expected hot heatmap, max was {max_heat}");
 }
 
 #[test]

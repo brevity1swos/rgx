@@ -413,7 +413,8 @@ mod cli_e2e {
         let bin = rgx_bin();
         assert!(
             bin.exists(),
-            "rgx binary not found at {bin:?}; run `cargo build` first"
+            "rgx binary not found at {}; run `cargo build` first",
+            bin.display()
         );
         let mut child = Command::new(&bin)
             .args(args)
