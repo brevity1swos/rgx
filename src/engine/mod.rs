@@ -26,7 +26,7 @@ impl EngineKind {
         ]
     }
 
-    pub fn next(self) -> EngineKind {
+    pub const fn next(self) -> EngineKind {
         match self {
             EngineKind::RustRegex => EngineKind::FancyRegex,
             #[cfg(feature = "pcre2-engine")]
@@ -219,7 +219,7 @@ pub fn create_engine(kind: EngineKind) -> Box<dyn RegexEngine> {
 }
 
 /// Return the "power level" of an engine (higher = more capable).
-fn engine_level(kind: EngineKind) -> u8 {
+const fn engine_level(kind: EngineKind) -> u8 {
     match kind {
         EngineKind::RustRegex => 0,
         EngineKind::FancyRegex => 1,
@@ -245,7 +245,7 @@ pub fn detect_minimum_engine(pattern: &str) -> EngineKind {
 }
 
 /// Return `true` if `suggested` is a strict upgrade over `current`.
-pub fn is_engine_upgrade(current: EngineKind, suggested: EngineKind) -> bool {
+pub const fn is_engine_upgrade(current: EngineKind, suggested: EngineKind) -> bool {
     engine_level(suggested) > engine_level(current)
 }
 

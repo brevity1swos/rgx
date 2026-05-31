@@ -35,7 +35,7 @@ pub struct TestResult {
 }
 
 impl TestResult {
-    pub fn passed(&self) -> bool {
+    pub const fn passed(&self) -> bool {
         self.did_match == self.should_match
     }
 }
@@ -50,7 +50,7 @@ impl Workspace {
         }
     }
 
-    fn flags(&self) -> EngineFlags {
+    const fn flags(&self) -> EngineFlags {
         EngineFlags {
             case_insensitive: self.case_insensitive,
             multi_line: self.multiline,

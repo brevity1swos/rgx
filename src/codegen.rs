@@ -1,4 +1,5 @@
 use std::fmt;
+use std::fmt::Write as _;
 
 use crate::engine::EngineFlags;
 
@@ -26,7 +27,7 @@ pub const ALL_LANGUAGES: &[Language] = &[
 ];
 
 impl Language {
-    pub fn all() -> &'static [Language] {
+    pub const fn all() -> &'static [Language] {
         ALL_LANGUAGES
     }
 }
@@ -83,7 +84,7 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
 
     if has_flags {
         let mut lines = String::from("use regex::RegexBuilder;\n\n");
-        lines.push_str(&format!("let re = RegexBuilder::new(r\"{escaped}\")\n"));
+        let _ = writeln!(lines, "let re = RegexBuilder::new(r\"{escaped}\")");
         if flags.case_insensitive {
             lines.push_str("    .case_insensitive(true)\n");
         }

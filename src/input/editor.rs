@@ -15,7 +15,7 @@ pub struct Editor {
 }
 
 impl Editor {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             content: String::new(),
             cursor: 0,
@@ -42,15 +42,15 @@ impl Editor {
         &self.content
     }
 
-    pub fn cursor(&self) -> usize {
+    pub const fn cursor(&self) -> usize {
         self.cursor
     }
 
-    pub fn scroll_offset(&self) -> usize {
+    pub const fn scroll_offset(&self) -> usize {
         self.scroll_offset
     }
 
-    pub fn vertical_scroll(&self) -> usize {
+    pub const fn vertical_scroll(&self) -> usize {
         self.vertical_scroll
     }
 

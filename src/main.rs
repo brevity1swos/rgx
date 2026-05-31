@@ -438,6 +438,6 @@ async fn run() -> anyhow::Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn contains(rect: ratatui::layout::Rect, col: u16, row: u16) -> bool {
+const fn contains(rect: ratatui::layout::Rect, col: u16, row: u16) -> bool {
     col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
 }

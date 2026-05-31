@@ -157,7 +157,7 @@ fn collect_tokens(ast: &Ast, tokens: &mut Vec<SyntaxToken>) {
     }
 }
 
-pub fn category_color(cat: SyntaxCategory) -> Color {
+pub const fn category_color(cat: SyntaxCategory) -> Color {
     match cat {
         SyntaxCategory::Literal => theme::TEXT,
         SyntaxCategory::Group => theme::BLUE,

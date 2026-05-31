@@ -23,7 +23,7 @@ pub struct VimState {
 }
 
 impl VimState {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             mode: VimMode::Normal,
             pending: PendingKey::None,
@@ -44,7 +44,7 @@ impl Default for VimState {
 }
 
 /// Returns true if this key should bypass vim processing.
-fn is_global_shortcut(key: &KeyEvent) -> bool {
+const fn is_global_shortcut(key: &KeyEvent) -> bool {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
 

@@ -87,7 +87,7 @@ fn grex_overlay_renders_populated_state() {
     assert!(!rendered.contains("(none yet)"), "empty placeholder leaked");
 }
 
-fn press(key: KeyCode, mods: KeyModifiers) -> KeyEvent {
+const fn press(key: KeyCode, mods: KeyModifiers) -> KeyEvent {
     KeyEvent::new(key, mods)
 }
 
