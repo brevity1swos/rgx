@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.5] - 2026-05-31
+
+### Refactoring
+
+- *(tests)* Clear pedantic clippy warnings in test code
+Five test-only clippy warnings that were left from the v0.12.4
+  maintenance sweep. None affect runtime; all were CI-silent (the project
+  enforces -D warnings without pedantic). Cleaned up so a future pedantic
+  audit starts from zero:
+
+  - tests/filter_tests.rs: replace `(0..N).map(format!).collect()` with
+    a loop using writeln! (format_collect × 2)
+  - src/ui/syntax_highlight.rs::test_dot: collapse `Vec collect + contains`
+    to `.any()` (needless_collect)
+  - src/ui/syntax_highlight.rs::test_named_group: collapse `Vec collect +
+    .len()` to `.count()` (needless_collect)
+  - tests/engine_tests.rs::run_print: switch Path Debug formatting to
+    Display via `bin.display()` (unnecessary_debug_formatting)
+
+
 ## [0.12.4] - 2026-05-31
 
 ### Documentation
