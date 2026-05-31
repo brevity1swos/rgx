@@ -27,7 +27,7 @@ pub const ALL_LANGUAGES: &[Language] = &[
 ];
 
 impl Language {
-    pub const fn all() -> &'static [Language] {
+    pub const fn all() -> &'static [Self] {
         ALL_LANGUAGES
     }
 }
@@ -35,14 +35,14 @@ impl Language {
 impl fmt::Display for Language {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Language::Rust => write!(f, "Rust"),
-            Language::Python => write!(f, "Python"),
-            Language::JavaScript => write!(f, "JavaScript"),
-            Language::Go => write!(f, "Go"),
-            Language::Java => write!(f, "Java"),
-            Language::CSharp => write!(f, "C#"),
-            Language::Php => write!(f, "PHP"),
-            Language::Ruby => write!(f, "Ruby"),
+            Self::Rust => write!(f, "Rust"),
+            Self::Python => write!(f, "Python"),
+            Self::JavaScript => write!(f, "JavaScript"),
+            Self::Go => write!(f, "Go"),
+            Self::Java => write!(f, "Java"),
+            Self::CSharp => write!(f, "C#"),
+            Self::Php => write!(f, "PHP"),
+            Self::Ruby => write!(f, "Ruby"),
         }
     }
 }

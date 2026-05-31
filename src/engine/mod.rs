@@ -17,24 +17,24 @@ pub enum EngineKind {
 }
 
 impl EngineKind {
-    pub fn all() -> Vec<EngineKind> {
+    pub fn all() -> Vec<Self> {
         vec![
-            EngineKind::RustRegex,
-            EngineKind::FancyRegex,
+            Self::RustRegex,
+            Self::FancyRegex,
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::Pcre2,
+            Self::Pcre2,
         ]
     }
 
-    pub const fn next(self) -> EngineKind {
+    pub const fn next(self) -> Self {
         match self {
-            EngineKind::RustRegex => EngineKind::FancyRegex,
+            Self::RustRegex => Self::FancyRegex,
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::FancyRegex => EngineKind::Pcre2,
+            Self::FancyRegex => Self::Pcre2,
             #[cfg(not(feature = "pcre2-engine"))]
             EngineKind::FancyRegex => EngineKind::RustRegex,
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::Pcre2 => EngineKind::RustRegex,
+            Self::Pcre2 => Self::RustRegex,
         }
     }
 }
@@ -42,10 +42,10 @@ impl EngineKind {
 impl fmt::Display for EngineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EngineKind::RustRegex => write!(f, "Rust regex"),
-            EngineKind::FancyRegex => write!(f, "fancy-regex"),
+            Self::RustRegex => write!(f, "Rust regex"),
+            Self::FancyRegex => write!(f, "fancy-regex"),
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::Pcre2 => write!(f, "PCRE2"),
+            Self::Pcre2 => write!(f, "PCRE2"),
         }
     }
 }
@@ -190,8 +190,8 @@ pub enum EngineError {
 impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EngineError::CompileError(msg) => write!(f, "Compile error: {msg}"),
-            EngineError::MatchError(msg) => write!(f, "Match error: {msg}"),
+            Self::CompileError(msg) => write!(f, "Compile error: {msg}"),
+            Self::MatchError(msg) => write!(f, "Match error: {msg}"),
         }
     }
 }
