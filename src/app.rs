@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::fmt::Write as _;
 use std::time::{Duration, Instant};
 
 use crate::ansi::{GREEN_BOLD, RED_BOLD, RESET};
@@ -1113,6 +1114,11 @@ impl App {
             overlay.debounce_deadline = Some(std::time::Instant::now() + debounce);
         }
         consumed
+    }
+
+    pub fn help_page_max_scroll(&self) -> u16 {
+        let total_lines = self.help_pages_lengths[&self.engine_kind][self.overlay.help_page];
+        total_lines.saturating_sub(ui::HELP_PAGE_HEIGHT)
     }
 }
 

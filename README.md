@@ -13,7 +13,7 @@ Test and debug regular expressions without leaving your terminal. Written in Rus
 
 ![demo](https://raw.githubusercontent.com/brevity1swos/rgx/main/assets/demo.gif?v=7)
 
-*Press F1 in the app for a multi-page cheat sheet.*
+*Press F1 or ? in the app for a multi-page cheat sheet.*
 
 </div>
 

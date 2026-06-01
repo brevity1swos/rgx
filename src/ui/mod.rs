@@ -278,7 +278,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Alt+u", "Toggle unicode mode"),
         shortcut("Alt+x", "Toggle extended mode"),
         shortcut(
-            "F1",
+            "F1 or ?",
             "Show/hide help (Left(h)/Right(l) to page, Up(k)/Down(j) to scroll)",
         ),
         shortcut("Esc", "Quit"),
@@ -388,6 +388,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     ]
 }
 
+// note: assumes terminal width >= HELP_PAGE_MAX_WIDTH + 4
 pub fn build_lengths_of_help_pages() -> HashMap<EngineKind, Vec<u16>> {
     let mut map: HashMap<EngineKind, Vec<u16>> = HashMap::new();
     let engines = EngineKind::all();

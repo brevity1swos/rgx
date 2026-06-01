@@ -1,4 +1,5 @@
 pub mod editor;
+pub mod handler;
 pub mod vim;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -104,7 +105,7 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Char('x') if key.modifiers.contains(KeyModifiers::ALT) => Action::ToggleExtended,
         KeyCode::Up if key.modifiers.contains(KeyModifiers::ALT) => Action::HistoryPrev,
         KeyCode::Down if key.modifiers.contains(KeyModifiers::ALT) => Action::HistoryNext,
-        KeyCode::F(1) => Action::ShowHelp,
+        KeyCode::F(1) | KeyCode::Char('?') => Action::ShowHelp,
         KeyCode::Char(c) => Action::InsertChar(c),
         KeyCode::Enter => Action::InsertNewline,
         KeyCode::Backspace => Action::DeleteBack,

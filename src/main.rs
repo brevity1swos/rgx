@@ -18,7 +18,7 @@ use rgx::config::workspace::{print_test_results, Workspace};
 use rgx::engine::EngineFlags;
 use rgx::event::{AppEvent, EventHandler};
 use rgx::input::vim::vim_key_to_action;
-use rgx::input::{key_to_action, Action};
+use rgx::input::{handler, key_to_action, Action};
 use rgx::recipe::RECIPES;
 use rgx::ui;
 
@@ -209,38 +209,7 @@ async fn run() -> anyhow::Result<ExitCode> {
                     }
 
                     if app.overlay.help {
-                        let total_lines =
-                            app.help_pages_lengths[&app.engine_kind][app.overlay.help_page];
-                        let height = ui::HELP_PAGE_HEIGHT;
-                        let max_scroll = total_lines.saturating_sub(height);
-                        use crossterm::event::KeyCode;
-                        match key.code {
-                            KeyCode::Down | KeyCode::Char('j') => {
-                                if app.help_scroll_offset < max_scroll {
-                                    app.help_scroll_offset =
-                                        app.help_scroll_offset.saturating_add(1);
-                                }
-                            }
-                            KeyCode::Up | KeyCode::Char('k') => {
-                                app.help_scroll_offset = app.help_scroll_offset.saturating_sub(1);
-                            }
-                            KeyCode::Left | KeyCode::Char('h') => {
-                                app.overlay.help_page = app.overlay.help_page.saturating_sub(1);
-                                app.help_scroll_offset = 0;
-                            }
-                            KeyCode::Right | KeyCode::Char('l') => {
-                                if app.overlay.help_page + 1 < ui::HELP_PAGE_COUNT {
-                                    app.overlay.help_page += 1;
-                                    app.help_scroll_offset = 0;
-                                }
-                            }
-                            _ => {
-                                app.overlay.help = false;
-                                app.overlay.help_page = 0;
-                                app.help_scroll_offset = 0;
-                            }
-                        }
-                        continue;
+                        handler::handle_help_key(&mut app, key);
                     }
 
                     if app.overlay.recipes {
