@@ -400,11 +400,7 @@ pub fn build_lengths_of_help_pages() -> HashMap<EngineKind, Vec<u16>> {
                     .map(|x| {
                         // + 2 for two vertical lines
                         let width = (x.width() + 2) as u16;
-                        if width > (HELP_PAGE_MAX_WIDTH) {
-                            2u16
-                        } else {
-                            1
-                        }
+                        width.div_ceil(HELP_PAGE_MAX_WIDTH)
                     })
                     .collect();
                 counts.iter().sum::<u16>() + HELP_PAGE_PADDING
