@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::{Duration, Instant};
 
 use crate::ansi::{GREEN_BOLD, RED_BOLD, RESET};
@@ -6,6 +6,7 @@ use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 use crate::input::Action;
+use crate::ui;
 
 const MAX_PATTERN_HISTORY: usize = 100;
 const STATUS_DISPLAY_TICKS: u32 = 40; // ~2 seconds at 50ms tick rate
@@ -123,6 +124,7 @@ pub struct App {
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
     pub help_scroll_offset: u16,
+    pub help_pages_lengths: HashMap<EngineKind, Vec<u16>>,
 }
 
 impl App {
@@ -174,7 +176,8 @@ impl App {
             grex_result_rx,
             engine,
             compiled: None,
-            help_scroll_offset: u16::default(),
+            help_scroll_offset: 0u16,
+            help_pages_lengths: ui::build_lengths_of_help_pages(),
         }
     }
 

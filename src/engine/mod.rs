@@ -8,7 +8,7 @@ pub mod rust_regex;
 use serde::Serialize;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum EngineKind {
     RustRegex,
     FancyRegex,
