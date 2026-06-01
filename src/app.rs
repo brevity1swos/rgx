@@ -268,8 +268,7 @@ impl App {
             self.engine_kind = suggested;
             self.engine = engine::create_engine(suggested);
             self.status.set(format!(
-                "Auto-switched {} \u{2192} {} for this pattern",
-                prev, suggested,
+                "Auto-switched {prev} \u{2192} {suggested} for this pattern",
             ));
         }
 
@@ -398,19 +397,17 @@ impl App {
         let Some(idx) = self.history.index else {
             return;
         };
-        if idx + 1 < self.history.entries.len() {
+        let new_content = if idx + 1 < self.history.entries.len() {
             let new_index = idx + 1;
             self.history.index = Some(new_index);
-            let pattern = self.history.entries[new_index].clone();
-            self.regex_editor = Editor::with_content(pattern);
-            self.recompute();
+            self.history.entries[new_index].clone()
         } else {
             // Past end — restore temp
             self.history.index = None;
-            let content = self.history.temp.take().unwrap_or_default();
-            self.regex_editor = Editor::with_content(content);
-            self.recompute();
-        }
+            self.history.temp.take().unwrap_or_default()
+        };
+        self.regex_editor = Editor::with_content(new_content);
+        self.recompute();
     }
 
     // --- Match selection + clipboard ---
@@ -679,7 +676,7 @@ impl App {
             return;
         }
         let code = crate::codegen::generate_code(lang, &pattern, &self.flags);
-        self.copy_to_clipboard(&code, &format!("{} code copied to clipboard", lang));
+        self.copy_to_clipboard(&code, &format!("{lang} code copied to clipboard"));
         self.overlay.codegen = false;
     }
 
@@ -782,12 +779,7 @@ impl App {
     pub fn debug_next_match(&mut self) {
         #[cfg(feature = "pcre2-engine")]
         if let Some(ref mut s) = self.debug_session {
-            let current_attempt = s
-                .trace
-                .steps
-                .get(s.step)
-                .map(|st| st.match_attempt)
-                .unwrap_or(0);
+            let current_attempt = s.trace.steps.get(s.step).map_or(0, |st| st.match_attempt);
             for (i, step) in s.trace.steps.iter().enumerate().skip(s.step + 1) {
                 if step.match_attempt > current_attempt {
                     s.step = i;
@@ -1132,7 +1124,7 @@ fn url_encode(s: &str) -> String {
                 out.push(b as char);
             }
             _ => {
-                out.push_str(&format!("%{b:02X}"));
+                let _ = write!(out, "%{b:02X}");
             }
         }
     }

@@ -256,8 +256,7 @@ pub fn read_input(
         let end = buf
             .iter()
             .rposition(|b| *b != b'\n' && *b != b'\r')
-            .map(|i| i + 1)
-            .unwrap_or(0);
+            .map_or(0, |i| i + 1);
         out.push(String::from_utf8_lossy(&buf[..end]).into_owned());
     }
     Ok((out, line_truncated, byte_truncated))
@@ -281,8 +280,7 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
             .map_err(|e| format!("reading input: {e}"))?;
     if byte_truncated {
         eprintln!(
-            "rgx filter: one or more lines exceeded {} bytes and were truncated",
-            MAX_LINE_BYTES
+            "rgx filter: one or more lines exceeded {MAX_LINE_BYTES} bytes and were truncated"
         );
     }
     if line_truncated {

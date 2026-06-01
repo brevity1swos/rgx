@@ -120,11 +120,11 @@ pub fn extract<'a>(value: &'a Value, path: &[Segment]) -> Option<&'a Value> {
     Some(cur)
 }
 
-fn is_ident_start(b: u8) -> bool {
+const fn is_ident_start(b: u8) -> bool {
     b.is_ascii_alphabetic() || b == b'_'
 }
 
-fn is_ident_continue(b: u8) -> bool {
+const fn is_ident_continue(b: u8) -> bool {
     b.is_ascii_alphanumeric() || b == b'_'
 }
 

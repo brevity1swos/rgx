@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.5] - 2026-05-31
+
+### Refactoring
+
+- *(tests)* Clear pedantic clippy warnings in test code
+Five test-only clippy warnings that were left from the v0.12.4
+  maintenance sweep. None affect runtime; all were CI-silent (the project
+  enforces -D warnings without pedantic). Cleaned up so a future pedantic
+  audit starts from zero:
+
+  - tests/filter_tests.rs: replace `(0..N).map(format!).collect()` with
+    a loop using writeln! (format_collect × 2)
+  - src/ui/syntax_highlight.rs::test_dot: collapse `Vec collect + contains`
+    to `.any()` (needless_collect)
+  - src/ui/syntax_highlight.rs::test_named_group: collapse `Vec collect +
+    .len()` to `.count()` (needless_collect)
+  - tests/engine_tests.rs::run_print: switch Path Debug formatting to
+    Display via `bin.display()` (unnecessary_debug_formatting)
+
+
+## [0.12.4] - 2026-05-31
+
+### Documentation
+
+- *(readme)* Promote step-through debugger and sharpen hero tagline
+Move the step-through debugger to the top of the features list — it is
+  rgx's only feature with no equivalent in any other terminal regex tool,
+  so it should be the first thing a visitor reads. Update the hero tagline
+  to lead with "regex debugger" and call out code generation and live
+  stream filtering explicitly.
+- Refresh demo GIF (v7)
+Re-recorded against v0.12.3 binary with PCRE2. Now shows step-through
+  debugger (Ctrl+D), grex overlay (Ctrl+X), code generation (Ctrl+G),
+  and filter mode — all features that shipped after the previous recording.
+- *(readme)* Document Ctrl+B, Ctrl+U, and -P in features list
+
+### Refactoring
+
+- Apply mechanical clippy cleanups across codebase
+Inline format args (uninlined_format_args), collapse map().unwrap_or()
+  into map_or(), drop redundant closures, elide explicit lifetimes, and
+  remove a redundant to_string(). Pure shape changes — no behavior or
+  public API change. All tests pass.
+- Hoist shared tail code in history_next and move_word_left
+Both functions had identical statements at the end of both branches
+  (branches_sharing_code lint). Pull them out so the conditional only
+  selects the value that differs.
+- Drop format!-into-String and promote eligible fns to const
+Two clippy-driven cleanups in one pass:
+
+  - Replace `String::push_str(&format!(..))` with `write!`/`writeln!` so
+    the formatted output writes directly into the buffer instead of
+    allocating an intermediate String.
+  - Mark pure, copy-only, no-trait-call functions as `const fn` (lint
+    missing_const_for_fn). Additive change — callers can now use them in
+    const contexts; behavior is unchanged.
+- Prefer Self in impl blocks and nested or-patterns in matches
+
+
 ## [0.12.3] - 2026-05-23
 
 ### Bug Fixes

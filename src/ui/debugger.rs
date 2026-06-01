@@ -272,8 +272,7 @@ fn render_captures(
         .get(step.pattern_offset)
         .filter(|&&ti| ti != usize::MAX)
         .and_then(|&ti| trace.offset_map.get(ti))
-        .map(|t| t.description.clone())
-        .unwrap_or_else(|| "—".to_string());
+        .map_or_else(|| "—".to_string(), |t| t.description.clone());
 
     lines.push(Line::from(vec![
         Span::styled("Token: ", Style::default().fg(theme::SUBTEXT)),
@@ -296,8 +295,7 @@ fn render_captures(
         for (i, start, end) in captures {
             let text = subject
                 .get(start..end)
-                .map(|s| format!("{s:?}"))
-                .unwrap_or_else(|| "(invalid range)".to_string());
+                .map_or_else(|| "(invalid range)".to_string(), |s| format!("{s:?}"));
             lines.push(Line::from(vec![
                 Span::styled(
                     format!("  Group {i}: "),

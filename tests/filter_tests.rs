@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::io::Cursor;
 
 use clap::Parser;
@@ -8,7 +9,7 @@ use rgx::filter::{
 };
 
 fn to_lines(strs: &[&str]) -> Vec<String> {
-    strs.iter().map(|s| s.to_string()).collect()
+    strs.iter().map(std::string::ToString::to_string).collect()
 }
 
 #[test]
@@ -314,7 +315,10 @@ fn read_input_from_file() {
 fn read_input_caps_at_max_lines() {
     // Feed 1000 lines with a cap of 5 — expect exactly 5 lines back and
     // truncated == true.
-    let data: String = (0..1000).map(|i| format!("line-{i}\n")).collect();
+    let mut data = String::new();
+    for i in 0..1000 {
+        let _ = writeln!(data, "line-{i}");
+    }
     let (got, line_truncated, _) = read_input(None, Cursor::new(data), 5).unwrap();
     assert_eq!(got.len(), 5);
     assert_eq!(got[0], "line-0");
@@ -341,7 +345,7 @@ fn read_input_truncates_oversized_line() {
     // second line should still be readable intact.
     let cap = rgx::filter::MAX_LINE_BYTES;
     let big: Vec<u8> = std::iter::repeat(b'x').take(cap + 1024).collect();
-    let mut data = big.clone();
+    let mut data = big;
     data.push(b'\n');
     data.extend_from_slice(b"next\n");
     let (got, _, byte_truncated) = read_input(None, Cursor::new(data), 100_000).unwrap();
@@ -361,7 +365,10 @@ fn read_input_truncates_oversized_line() {
 #[test]
 fn read_input_zero_means_no_cap() {
     // max_lines = 0 disables the cap entirely.
-    let data: String = (0..50).map(|i| format!("l{i}\n")).collect();
+    let mut data = String::new();
+    for i in 0..50 {
+        let _ = writeln!(data, "l{i}");
+    }
     let (got, line_truncated, byte_truncated) = read_input(None, Cursor::new(data), 0).unwrap();
     assert_eq!(got.len(), 50);
     assert!(!line_truncated && !byte_truncated);
@@ -438,7 +445,7 @@ fn filter_app_toggle_invert_flips_match_set() {
 #[test]
 fn filter_app_toggle_case_insensitive_recomputes() {
     let lines = to_lines(&["ERROR one", "ok", "error two"]);
-    let mut app = FilterApp::new(lines.clone(), "error", FilterOptions::default());
+    let mut app = FilterApp::new(lines, "error", FilterOptions::default());
     assert_eq!(app.matched, vec![2]);
     app.toggle_case_insensitive();
     assert_eq!(app.matched, vec![0, 2]);
@@ -641,7 +648,7 @@ fn filter_ui_renders_json_extracted_with_arrow_prefix() {
     let rendered: String = buf
         .content()
         .iter()
-        .map(|c| c.symbol())
+        .map(ratatui::buffer::Cell::symbol)
         .collect::<Vec<_>>()
         .join("");
     assert!(
@@ -677,7 +684,7 @@ fn filter_ui_json_narrow_falls_back_to_single_line() {
     let rendered: String = buf
         .content()
         .iter()
-        .map(|c| c.symbol())
+        .map(ratatui::buffer::Cell::symbol)
         .collect::<Vec<_>>()
         .join("");
     assert!(rendered.contains("boom"));
@@ -702,7 +709,7 @@ fn filter_ui_render_does_not_panic() {
     let rendered: String = buf
         .content()
         .iter()
-        .map(|c| c.symbol())
+        .map(ratatui::buffer::Cell::symbol)
         .collect::<Vec<_>>()
         .join("");
     assert!(rendered.contains("Pattern"));
@@ -839,7 +846,7 @@ fn filter_ui_render_scrolls_selection_into_view() {
     let rendered: String = buf
         .content()
         .iter()
-        .map(|c| c.symbol())
+        .map(ratatui::buffer::Cell::symbol)
         .collect::<Vec<_>>()
         .join("");
     assert!(
@@ -866,7 +873,7 @@ fn filter_ui_render_with_invalid_pattern_shows_error() {
     let rendered: String = buf
         .content()
         .iter()
-        .map(|c| c.symbol())
+        .map(ratatui::buffer::Cell::symbol)
         .collect::<Vec<_>>()
         .join("");
     assert!(rendered.contains("invalid"));

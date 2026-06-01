@@ -23,7 +23,7 @@ pub struct VimState {
 }
 
 impl VimState {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             mode: VimMode::Normal,
             pending: PendingKey::None,
@@ -44,42 +44,36 @@ impl Default for VimState {
 }
 
 /// Returns true if this key should bypass vim processing.
-fn is_global_shortcut(key: &KeyEvent) -> bool {
+const fn is_global_shortcut(key: &KeyEvent) -> bool {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     let alt = key.modifiers.contains(KeyModifiers::ALT);
 
     if ctrl {
         return matches!(
             key.code,
-            KeyCode::Char('d')
-                | KeyCode::Char('e')
-                | KeyCode::Char('z')
-                | KeyCode::Char('Z')
-                | KeyCode::Char('y')
-                | KeyCode::Char('w')
-                | KeyCode::Char('o')
-                | KeyCode::Char('s')
-                | KeyCode::Char('r')
-                | KeyCode::Char('b')
-                | KeyCode::Char('u')
-                | KeyCode::Char('g')
-                | KeyCode::Char('c')
-                | KeyCode::Char('x')
-                | KeyCode::Char('q')
-                | KeyCode::Left
+            KeyCode::Char(
+                'd' | 'e'
+                    | 'z'
+                    | 'Z'
+                    | 'y'
+                    | 'w'
+                    | 'o'
+                    | 's'
+                    | 'r'
+                    | 'b'
+                    | 'u'
+                    | 'g'
+                    | 'c'
+                    | 'x'
+                    | 'q'
+            ) | KeyCode::Left
                 | KeyCode::Right
         );
     }
     if alt {
         return matches!(
             key.code,
-            KeyCode::Char('i')
-                | KeyCode::Char('m')
-                | KeyCode::Char('s')
-                | KeyCode::Char('u')
-                | KeyCode::Char('x')
-                | KeyCode::Up
-                | KeyCode::Down
+            KeyCode::Char('i' | 'm' | 's' | 'u' | 'x') | KeyCode::Up | KeyCode::Down
         );
     }
     matches!(key.code, KeyCode::F(1) | KeyCode::Tab | KeyCode::BackTab)

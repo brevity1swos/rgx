@@ -62,7 +62,7 @@ impl Widget for StatusBar {
         if let Some(warning) = self.engine_warning {
             spans.push(Span::styled(" ", Style::default().bg(theme::SURFACE0)));
             spans.push(Span::styled(
-                format!(" \u{26a0} {} ", warning),
+                format!(" \u{26a0} {warning} "),
                 Style::default()
                     .fg(theme::BASE)
                     .bg(theme::RED)

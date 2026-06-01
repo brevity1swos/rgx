@@ -17,24 +17,24 @@ pub enum EngineKind {
 }
 
 impl EngineKind {
-    pub fn all() -> Vec<EngineKind> {
+    pub fn all() -> Vec<Self> {
         vec![
-            EngineKind::RustRegex,
-            EngineKind::FancyRegex,
+            Self::RustRegex,
+            Self::FancyRegex,
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::Pcre2,
+            Self::Pcre2,
         ]
     }
 
-    pub fn next(self) -> EngineKind {
+    pub const fn next(self) -> Self {
         match self {
-            EngineKind::RustRegex => EngineKind::FancyRegex,
+            Self::RustRegex => Self::FancyRegex,
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::FancyRegex => EngineKind::Pcre2,
+            Self::FancyRegex => Self::Pcre2,
             #[cfg(not(feature = "pcre2-engine"))]
             EngineKind::FancyRegex => EngineKind::RustRegex,
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::Pcre2 => EngineKind::RustRegex,
+            Self::Pcre2 => Self::RustRegex,
         }
     }
 }
@@ -42,10 +42,10 @@ impl EngineKind {
 impl fmt::Display for EngineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EngineKind::RustRegex => write!(f, "Rust regex"),
-            EngineKind::FancyRegex => write!(f, "fancy-regex"),
+            Self::RustRegex => write!(f, "Rust regex"),
+            Self::FancyRegex => write!(f, "fancy-regex"),
             #[cfg(feature = "pcre2-engine")]
-            EngineKind::Pcre2 => write!(f, "PCRE2"),
+            Self::Pcre2 => write!(f, "PCRE2"),
         }
     }
 }
@@ -190,8 +190,8 @@ pub enum EngineError {
 impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EngineError::CompileError(msg) => write!(f, "Compile error: {msg}"),
-            EngineError::MatchError(msg) => write!(f, "Match error: {msg}"),
+            Self::CompileError(msg) => write!(f, "Compile error: {msg}"),
+            Self::MatchError(msg) => write!(f, "Match error: {msg}"),
         }
     }
 }
@@ -219,7 +219,7 @@ pub fn create_engine(kind: EngineKind) -> Box<dyn RegexEngine> {
 }
 
 /// Return the "power level" of an engine (higher = more capable).
-fn engine_level(kind: EngineKind) -> u8 {
+const fn engine_level(kind: EngineKind) -> u8 {
     match kind {
         EngineKind::RustRegex => 0,
         EngineKind::FancyRegex => 1,
@@ -245,7 +245,7 @@ pub fn detect_minimum_engine(pattern: &str) -> EngineKind {
 }
 
 /// Return `true` if `suggested` is a strict upgrade over `current`.
-pub fn is_engine_upgrade(current: EngineKind, suggested: EngineKind) -> bool {
+pub const fn is_engine_upgrade(current: EngineKind, suggested: EngineKind) -> bool {
     engine_level(suggested) > engine_level(current)
 }
 
@@ -347,7 +347,7 @@ fn expand_replacement(template: &str, m: &Match) -> String {
                 }
                 Some(&(_, '{')) => {
                     chars.next(); // consume '{'
-                    let brace_start = chars.peek().map(|&(idx, _)| idx).unwrap_or(template.len());
+                    let brace_start = chars.peek().map_or(template.len(), |&(idx, _)| idx);
                     if let Some(close) = template[brace_start..].find('}') {
                         let ref_name = &template[brace_start..brace_start + close];
                         if let Some(text) = lookup_capture(m, ref_name) {
@@ -479,7 +479,7 @@ mod tests {
     ) -> CaptureGroup {
         CaptureGroup {
             index,
-            name: name.map(|s| s.to_string()),
+            name: name.map(std::string::ToString::to_string),
             start,
             end,
             text: text.to_string(),

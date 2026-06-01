@@ -99,8 +99,7 @@ fn match_display_shows_results() {
         .collect();
     assert!(
         buffer_text.contains("Match 1"),
-        "Buffer should contain 'Match 1' but got: {}",
-        buffer_text
+        "Buffer should contain 'Match 1' but got: {buffer_text}"
     );
 }
 

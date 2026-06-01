@@ -129,7 +129,7 @@ pub fn format_repetition(rep: &Repetition) -> String {
 pub fn format_group(group: &Group) -> String {
     match &group.kind {
         GroupKind::CaptureIndex(idx) => {
-            format!("Capture group #{}", idx)
+            format!("Capture group #{idx}")
         }
         GroupKind::CaptureName { name, .. } => {
             format!("Named capture group '{}'", name.name)

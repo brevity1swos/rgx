@@ -18,7 +18,7 @@ pub const CAPTURE_COLORS: &[Color] = &[
 pub const MATCH_BG: Color = Color::Rgb(69, 71, 90);
 pub const MATCH_BG_ALT: Color = Color::Rgb(88, 91, 112);
 
-pub fn match_bg(index: usize) -> Color {
+pub const fn match_bg(index: usize) -> Color {
     if index % 2 == 0 {
         MATCH_BG
     } else {

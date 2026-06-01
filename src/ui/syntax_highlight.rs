@@ -157,7 +157,7 @@ fn collect_tokens(ast: &Ast, tokens: &mut Vec<SyntaxToken>) {
     }
 }
 
-pub fn category_color(cat: SyntaxCategory) -> Color {
+pub const fn category_color(cat: SyntaxCategory) -> Color {
     match cat {
         SyntaxCategory::Literal => theme::TEXT,
         SyntaxCategory::Group => theme::BLUE,
@@ -273,8 +273,7 @@ mod tests {
     #[test]
     fn test_dot() {
         let tokens = highlight("a.b");
-        let categories: Vec<_> = tokens.iter().map(|t| t.category).collect();
-        assert!(categories.contains(&SyntaxCategory::Anchor));
+        assert!(tokens.iter().any(|t| t.category == SyntaxCategory::Anchor));
     }
 
     #[test]
@@ -309,11 +308,13 @@ mod tests {
     #[test]
     fn test_named_group() {
         let tokens = highlight(r"(?P<name>\w+)");
-        let groups: Vec<_> = tokens
-            .iter()
-            .filter(|t| t.category == SyntaxCategory::Group)
-            .collect();
         // Opening `(?P<name>` and closing `)`
-        assert_eq!(groups.len(), 2);
+        assert_eq!(
+            tokens
+                .iter()
+                .filter(|t| t.category == SyntaxCategory::Group)
+                .count(),
+            2
+        );
     }
 }

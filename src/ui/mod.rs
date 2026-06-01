@@ -34,7 +34,7 @@ use test_input::TestInput;
 
 /// Returns `BorderType::Rounded` when `rounded` is true, otherwise
 /// `BorderType::Plain`.
-pub(crate) fn border_type(rounded: bool) -> BorderType {
+pub(crate) const fn border_type(rounded: bool) -> BorderType {
     if rounded {
         BorderType::Rounded
     } else {
