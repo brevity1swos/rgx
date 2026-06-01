@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::fmt::Write as _;
 use std::time::{Duration, Instant};
 
@@ -7,6 +7,7 @@ use crate::engine::{self, CompiledRegex, EngineFlags, EngineKind, RegexEngine};
 use crate::explain::{self, ExplainNode};
 use crate::input::editor::Editor;
 use crate::input::Action;
+use crate::ui;
 
 const MAX_PATTERN_HISTORY: usize = 100;
 const STATUS_DISPLAY_TICKS: u32 = 40; // ~2 seconds at 50ms tick rate
@@ -123,6 +124,8 @@ pub struct App {
     grex_result_rx: tokio::sync::mpsc::UnboundedReceiver<(u64, String)>,
     engine: Box<dyn RegexEngine>,
     compiled: Option<Box<dyn CompiledRegex>>,
+    pub help_scroll_offset: u16,
+    pub help_pages_lengths: HashMap<EngineKind, Vec<u16>>,
 }
 
 impl App {
@@ -174,6 +177,8 @@ impl App {
             grex_result_rx,
             engine,
             compiled: None,
+            help_scroll_offset: 0u16,
+            help_pages_lengths: ui::build_lengths_of_help_pages(),
         }
     }
 
@@ -1109,6 +1114,11 @@ impl App {
             overlay.debounce_deadline = Some(std::time::Instant::now() + debounce);
         }
         consumed
+    }
+
+    pub fn help_page_max_scroll(&self) -> u16 {
+        let total_lines = self.help_pages_lengths[&self.engine_kind][self.overlay.help_page];
+        total_lines.saturating_sub(ui::HELP_PAGE_HEIGHT)
     }
 }
 

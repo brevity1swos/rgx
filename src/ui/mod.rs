@@ -11,6 +11,8 @@ pub mod theme;
 #[cfg(feature = "pcre2-engine")]
 pub mod debugger;
 
+use std::collections::HashMap;
+
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Modifier, Style},
@@ -92,7 +94,14 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     // Overlays
     if app.overlay.help {
-        render_help_overlay(frame, size, app.engine_kind, app.overlay.help_page, bt);
+        render_help_overlay(
+            frame,
+            size,
+            app.engine_kind,
+            app.overlay.help_page,
+            bt,
+            app.help_scroll_offset,
+        );
         return;
     }
     if app.overlay.recipes {
@@ -221,10 +230,21 @@ pub fn render(frame: &mut Frame, app: &App) {
 
 pub const HELP_PAGE_COUNT: usize = 3;
 
+/*
+Below accounts for additional lines from header and footer.
+title(1) + bottom border(1) + navigation help line(1) = 3
++ additional single padding(1) = total_padding(4)
+*/
+pub const HELP_PAGE_PADDING: u16 = 4;
+
+pub const HELP_PAGE_COL_0_WIDTH: usize = 16;
 fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     let shortcut = |key: &'static str, desc: &'static str| -> Line<'static> {
         Line::from(vec![
-            Span::styled(format!("{key:<14}"), Style::default().fg(theme::GREEN)),
+            Span::styled(
+                format!("{key:<width$}", width = HELP_PAGE_COL_0_WIDTH),
+                Style::default().fg(theme::GREEN),
+            ),
             Span::styled(desc, Style::default().fg(theme::TEXT)),
         ])
     };
@@ -257,7 +277,10 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
         shortcut("Alt+s", "Toggle dot-matches-newline"),
         shortcut("Alt+u", "Toggle unicode mode"),
         shortcut("Alt+x", "Toggle extended mode"),
-        shortcut("F1", "Show/hide help (Left/Right to page)"),
+        shortcut(
+            "F1 or ?",
+            "Show/hide help (Left(h)/Right(l) to page, Up(k)/Down(j) to scroll)",
+        ),
         shortcut("Esc", "Quit"),
         Line::from(""),
         Line::from(Span::styled(
@@ -365,6 +388,30 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     ]
 }
 
+// note: assumes terminal width >= HELP_PAGE_MAX_WIDTH + 4
+pub fn build_lengths_of_help_pages() -> HashMap<EngineKind, Vec<u16>> {
+    let mut map: HashMap<EngineKind, Vec<u16>> = HashMap::new();
+    let engines = EngineKind::all();
+    for engine in engines {
+        let pages_len = (0..HELP_PAGE_COUNT)
+            .map(|page| {
+                let (lines, _) = generate_help_page_content(engine, page);
+                let counts: Vec<u16> = lines
+                    .iter()
+                    .map(|x| {
+                        // + 2 for two vertical lines
+                        let width = (x.width() + 2) as u16;
+                        width.div_ceil(HELP_PAGE_MAX_WIDTH)
+                    })
+                    .collect();
+                counts.iter().sum::<u16>() + HELP_PAGE_PADDING
+            })
+            .collect();
+        map.insert(engine, pages_len);
+    }
+    map
+}
+
 pub(crate) fn centered_overlay(
     frame: &mut Frame,
     area: Rect,
@@ -380,15 +427,13 @@ pub(crate) fn centered_overlay(
     rect
 }
 
-fn render_help_overlay(
-    frame: &mut Frame,
-    area: Rect,
+pub const HELP_PAGE_HEIGHT: u16 = 28;
+pub const HELP_PAGE_MAX_WIDTH: u16 = 64;
+
+fn generate_help_page_content(
     engine: EngineKind,
     page: usize,
-    bt: BorderType,
-) {
-    let help_area = centered_overlay(frame, area, 64, 28);
-
+) -> (std::vec::Vec<ratatui::prelude::Line<'static>>, usize) {
     let pages = build_help_pages(engine);
     let current = page.min(pages.len() - 1);
     let (title, content) = &pages[current];
@@ -403,30 +448,50 @@ fn render_help_overlay(
         Line::from(""),
     ];
     lines.extend(content.iter().cloned());
-    lines.push(Line::from(""));
-    lines.push(Line::from(vec![
-        Span::styled(
-            format!(" Page {}/{} ", current + 1, pages.len()),
-            Style::default().fg(theme::BASE).bg(theme::BLUE),
-        ),
-        Span::styled(
-            " Left/Right: page | Any other key: close ",
-            Style::default().fg(theme::SUBTEXT),
-        ),
-    ]));
+    (lines, current)
+}
+
+fn render_help_overlay(
+    frame: &mut Frame,
+    area: Rect,
+    engine: EngineKind,
+    page: usize,
+    bt: BorderType,
+    scroll_offset: u16,
+) {
+    let help_area = centered_overlay(frame, area, HELP_PAGE_MAX_WIDTH, HELP_PAGE_HEIGHT);
+
+    let chunks = Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).split(help_area);
+
+    let (lines, current) = generate_help_page_content(engine, page);
 
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(bt)
         .border_style(Style::default().fg(theme::BLUE))
         .title(Span::styled(" Help ", Style::default().fg(theme::TEXT)))
+        .title(
+            Line::styled(
+                format!(" Page {}/{} ", current + 1, HELP_PAGE_COUNT),
+                Style::default().fg(theme::BASE).bg(theme::BLUE),
+            )
+            .right_aligned(),
+        )
         .style(Style::default().bg(theme::BASE));
 
     let paragraph = Paragraph::new(lines)
         .block(block)
-        .wrap(Wrap { trim: false });
+        .wrap(Wrap { trim: false })
+        .scroll((scroll_offset, 0));
+    let nav_ui = Paragraph::new(Line::styled(
+        "  Up(k)/Down(j): Scroll | Left(h)/Right(l): Page | Any other key: Close ",
+        Style::default().fg(theme::TEXT),
+    ))
+    .right_aligned()
+    .style(Style::default().bg(theme::BASE));
 
-    frame.render_widget(paragraph, help_area);
+    frame.render_widget(paragraph, chunks[0]);
+    frame.render_widget(nav_ui, chunks[1]);
 }
 
 fn render_recipe_overlay(frame: &mut Frame, area: Rect, selected: usize, bt: BorderType) {

@@ -8,7 +8,8 @@ pub mod rust_regex;
 use serde::Serialize;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// keep all() impl in sync with new variants
 pub enum EngineKind {
     RustRegex,
     FancyRegex,
