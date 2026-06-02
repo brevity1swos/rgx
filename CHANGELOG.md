@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.6] - 2026-06-02
+
+### Features
+
+- *(ui)* Add scrollability and hjkl navigation to help overlay ([#73](https://github.com/brevity1swos/rgx/pull/73))
+
+
 ## [0.12.5] - 2026-05-31
 
 ### Refactoring
