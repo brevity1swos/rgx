@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2026-06-06
+
+### Bug Fixes
+
+- *(ui)* Show transient status messages in the bottom status bar ([#78](https://github.com/brevity1swos/rgx/pull/78))
+
+
 ## [0.12.7] - 2026-06-06
 
 ### Bug Fixes
