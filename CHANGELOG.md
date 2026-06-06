@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.8] - 2026-06-06
+
+### Bug Fixes
+
+- *(ui)* Show "Copied …" status message in the bottom status bar after Ctrl+Y ([#78](https://github.com/brevity1swos/rgx/pull/78))
+The clipboard success message was being set on `app.status` but only
+  rendered inside the matches panel. Now drawn as an overlay over the
+  status bar's right edge for ~2 seconds, visible from any focused
+  panel.
+
+
 ## [0.12.7] - 2026-06-06
 
 ### Bug Fixes
