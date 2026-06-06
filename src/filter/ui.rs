@@ -94,11 +94,8 @@ fn render_match_list(frame: &mut Frame, area: Rect, app: &FilterApp) {
             let absolute = start + visible_idx;
             let is_selected = absolute == app.selected;
             // Empty Vec if invert mode or empty pattern.
-            let spans_for_line: &[std::ops::Range<usize>] = app
-                .match_spans
-                .get(absolute)
-                .map(Vec::as_slice)
-                .unwrap_or(&[]);
+            let spans_for_line: &[std::ops::Range<usize>] =
+                app.match_spans.get(absolute).map_or(&[], Vec::as_slice);
             build_row(app, line_idx, spans_for_line, is_selected, two_line)
         })
         .collect();

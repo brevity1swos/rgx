@@ -10,7 +10,7 @@ fn create_test_terminal() -> Terminal<TestBackend> {
     Terminal::new(backend).unwrap()
 }
 
-fn press_key(code: KeyCode) -> KeyEvent {
+const fn press_key(code: KeyCode) -> KeyEvent {
     KeyEvent {
         code,
         modifiers: KeyModifiers::empty(),
@@ -533,15 +533,11 @@ fn scroll_help_pages_length_check() {
             Some(vec) => {
                 assert!(
                     vec.iter().all(|&x| x > crate::ui::HELP_PAGE_PADDING),
-                    "Page has no content for the engine {:?}",
-                    engine
+                    "Page has no content for the engine {engine:?}"
                 );
             }
             None => {
-                panic!(
-                    "Engine {:?} was not found in the page lengths hashmap",
-                    engine
-                );
+                panic!("Engine {engine:?} was not found in the page lengths hashmap");
             }
         }
     }

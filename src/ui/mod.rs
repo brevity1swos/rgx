@@ -271,7 +271,7 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     let shortcut = |key: &'static str, desc: &'static str| -> Line<'static> {
         Line::from(vec![
             Span::styled(
-                format!("{key:<width$}", width = HELP_PAGE_COL_0_WIDTH),
+                format!("{key:<HELP_PAGE_COL_0_WIDTH$}"),
                 Style::default().fg(theme::GREEN),
             ),
             Span::styled(desc, Style::default().fg(theme::TEXT)),
