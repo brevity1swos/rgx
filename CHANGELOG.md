@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.13.0] - 2026-06-07
+
+### Features
+
+- *(ui)* Add F3-toggled Quick Reference side panel ([#83](https://github.com/brevity1swos/rgx/pull/83))
+Adds an opt-in Quick Reference panel that the user can toggle on the
+  right side of the screen with F3. Reuses the existing F1 help-page-1
+  content (sequences / classes & groups / quantifiers / replacement)
+  so the side panel and the help overlay never drift out of sync.
+
+  UX choices:
+  - Off by default — respects screen estate (per #83's "alternative
+    considered"); user toggles in when they want quick lookup without
+    losing the editor view.
+  - 38 cols wide; panel is suppressed when the terminal is too narrow
+    to keep the main results area (Matches + Explanation) usable
+    (< 60 cols left). Toggle still flips the App state; panel rendering
+    is gated on width so the user can widen the terminal and see it
+    appear without re-toggling.
+  - F-key family (F1 = help overlay, F2 = recipes, F3 = quickref) keeps
+    the discoverability story consistent. ? was deliberately avoided
+    per the lesson from #78 — it collides with regex syntax in the
+    editor.
+
+
 ## [0.12.9] - 2026-06-06
 
 ### Refactoring
