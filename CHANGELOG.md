@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.1] - 2026-06-08
+
+### Bug Fixes
+
+- *(ui)* Remove broken Quick Reference scroll clamp ([#83](https://github.com/brevity1swos/rgx/pull/83))
+clearins1ght reported scroll being inert across Alacritty, Kitty, and
+  st at every zoom level — including the ones where the bottom of the
+  Quick Reference content was visibly clipped. The clamp at
+  `src/ui/mod.rs::render` capped `scroll` at
+  `lines.len() - (panel_height - 2)`, intended to keep the user from
+  scrolling into blank space. But `lines.len()` is the **source** line
+  count (~25); `Paragraph::wrap(Wrap { trim: false })` then renders
+  long headers and shortcut lines as 2 rendered rows each, so the real
+  content occupies ~35 rendered rows on a 36-column text area. The
+  clamp underestimates this and pinned `scroll` to 0 on the very
+  viewports where scrolling was meant to help.
+
+  Pass `app.quickref_scroll` directly into `Paragraph::scroll`. The
+  ratatui paragraph happily renders blank rows past the end of content
+  when over-scrolled, so the worst case on a too-tall terminal is the
+  user pressing PgDn into emptiness — PgUp brings them back. Strictly
+  better than the previous "always pinned to 0" behavior.
+
+  Diagnosis path is documented in #83's comment thread.
+
+
 ## [0.14.0] - 2026-06-07
 
 ### Bug Fixes
