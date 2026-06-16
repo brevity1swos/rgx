@@ -1,15 +1,26 @@
 # rgx Roadmap
 
-## Current direction (updated 2026-05-23)
+## Current direction (updated 2026-06-14)
 
-**rgx v0.12.2 shipped.** The project is in maintenance mode. The regex-
+**rgx v0.14.1 shipped.** The core CLI is in maintenance mode. The regex-
 debugging audience has been served: step-through debugger, grex overlay,
 code generation, test suite mode, workspace save/load, vim mode, filter
-mode with `--json` JSONL-field extraction, and regex101 URL export have
-all shipped. There is no meaningful gap left to close in the core
-editor-mode workflow.
+mode with `--json` JSONL-field extraction, the F3 Quick Reference side
+panel, and regex101 URL export have all shipped. There is no meaningful
+gap left to close in the core editor-mode workflow.
 
-### What maintenance mode means
+**One deliberate exception to maintenance: editor distribution.** rgx now
+ships thin editor integrations under `plugin/` — a VS Code extension
+(`plugin/vscode`, v0.5.0, packaged `.vsix`), a Neovim Lua module
+(`plugin/nvim`), and a Zed `tasks.json` (`plugin/zed`). These are **CLI
+launchers, not reimplementations**: every plugin shells out to the
+existing `rgx` binary in an integrated terminal, so they add zero
+core-engine surface and inherit every feature for free. This is a
+distribution play (meet users in their editor) that respects the
+CLI-as-substrate discipline. The plugins are the only place active
+development continues; the binary itself is feature-frozen.
+
+### What maintenance mode means (core CLI)
 
 - Active monitoring of GitHub issues and external PRs; respond within a
   reasonable window.
@@ -25,16 +36,29 @@ editor-mode workflow.
 
 ### What maintenance mode does **not** mean
 
-- No active feature development. New feature requests get labeled and
-  parked.
+- No active core-engine feature development. New feature requests get
+  labeled and parked.
 - No marketing push, no community-pattern-sharing platform, no hosted
   components.
 - No scope expansion into adjacent tool categories (grep replacement,
   multi-file editor, etc.).
+- **It does not freeze the editor plugins.** The `plugin/` integrations
+  are an explicit, ongoing distribution surface (see Current direction).
+  They may evolve — new editors, packaging, marketplace listing — as
+  long as they stay thin CLI launchers and never fork core behavior.
 
 ## Recently shipped
 
-- **v0.12.3 (main, unreleased)** — context-aware `Ctrl+Y`: copies the
+- **Editor plugins** — VS Code extension (`plugin/vscode` v0.5.0,
+  packaged `.vsix`; launches rgx in the integrated terminal with
+  real-time matching and explanations), Neovim Lua module
+  (`plugin/nvim`), and Zed `tasks.json` (`plugin/zed`). All thin
+  launchers around the `rgx` binary.
+- **v0.13.0–v0.14.1** (2026-06-07 → 06-08) — F3-toggled Quick Reference
+  side panel (full-height, PageUp/PageDown scrolling); `Action` enum
+  marked `#[non_exhaustive]` for forward-compatible semver; scroll-clamp
+  bug fix on the Quick Reference panel.
+- **v0.12.3–v0.12.9** (2026-05-23 → 06-06) — context-aware `Ctrl+Y`: copies the
   pattern when the regex panel is focused, copies the selected match
   when the matches panel is focused. F1 page 2 renamed "Quick
   Reference" and reorganized into three labeled sections (Sequences,
