@@ -46,6 +46,12 @@ development continues; the binary itself is feature-frozen.
   are an explicit, ongoing distribution surface (see Current direction).
   They may evolve — new editors, packaging, marketplace listing — as
   long as they stay thin CLI launchers and never fork core behavior.
+- **The optional `redos` feature is an additive, default-off exception.**
+  Built with `--features redos`, `Ctrl+A` analyzes the current pattern for
+  catastrophic backtracking (via the standalone `rxray` crate) and loads a
+  verified attack string to step through in the debugger. It pulls no
+  dependency and changes nothing unless explicitly enabled, so the default
+  binary, build, and publish remain frozen.
 
 ## Recently shipped
 

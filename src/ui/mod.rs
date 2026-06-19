@@ -352,7 +352,8 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
     };
 
     // Page 0: Keyboard shortcuts
-    let page0 = vec![
+    #[cfg_attr(not(feature = "redos"), allow(unused_mut))]
+    let mut page0 = vec![
         shortcut("Tab/Shift+Tab", "Cycle focus forward/backward"),
         shortcut("Up/Down", "Scroll panel / move cursor / select match"),
         shortcut("Enter", "Insert newline (test string)"),
@@ -396,6 +397,12 @@ fn build_help_pages(engine: EngineKind) -> Vec<(String, Vec<Line<'static>>)> {
             Style::default().fg(theme::SUBTEXT),
         )),
     ];
+    // Ctrl+A exists only when built with the optional `redos` feature.
+    #[cfg(feature = "redos")]
+    page0.insert(
+        12,
+        shortcut("Ctrl+A", "Analyze pattern for ReDoS (load attack)"),
+    );
 
     let header = |text: &'static str| -> Line<'static> {
         Line::from(Span::styled(text, Style::default().fg(theme::OVERLAY)))
