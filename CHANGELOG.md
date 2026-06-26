@@ -2,6 +2,90 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.2] - 2026-06-26
+
+### Documentation
+
+- *(roadmap)* Reconcile posture with shipped editor plugins
+The roadmap claimed pure maintenance mode while v0.12.3-v0.14.1 and the
+  vscode/nvim/zed plugins shipped. Document the editor integrations as an
+  explicit distribution surface (thin CLI launchers, zero core-engine
+  surface) and refresh the recently-shipped list.
+- *(redos)* Document Ctrl+A in F1 help (feature-gated) and ROADMAP
+The Ctrl+A help line appears only when built with --features redos, so the
+  default-build help is unchanged. ROADMAP notes the optional, default-off
+  feature as an additive exception to core-freeze.
+- *(readme)* Document the optional redos feature (Ctrl+A)
+- *(readme)* Surface ReDoS analysis in headline, fix license badge crate
+License badge pointed at the unrelated `rgx` crate (2023 graphics lib) instead
+  of `rgx-cli`. Also lead the tagline with the ReDoS feature.
+
+### Features
+
+- *(redos)* Optional ReDoS analysis via rxray (Ctrl+A)
+Add an optional, default-off `redos` feature that depends on the rxray crate.
+  Ctrl+A analyzes the current pattern for catastrophic backtracking; when
+  vulnerable it reports the verdict (linear/polynomial/exponential) and loads a
+  verified attack string into the test panel to step through in the debugger
+  (Ctrl+D). The attack is loaded WITHOUT a live rematch so the UI never hangs on
+  the DoS input.
+
+  Default build/binary/publish are unchanged (rxray is an optional crates.io
+  dependency, not pulled unless `--features redos`), so Road A holds for the
+  core CLI. Ctrl+A also registered as a vim global shortcut. Feature-gated tests
+  verify the wiring; clippy --all-features and fmt clean.
+
+### Miscellaneous
+
+- *(vscode)* Bump to v0.5.0 — add filter command, refresh docs, harden Windows quoting
+- New command `rgx.filterFile` — runs `rgx filter [PATTERN] --file <path>`
+    using the selection as the pattern and the current file's path as the
+    input. Unsaved buffers fall through to stdin so the user can pipe.
+  - README: features list now covers step-through debugger (Ctrl+D), live
+    filter mode, grex overlay (Ctrl+X), benchmark (Ctrl+B), workspaces
+    (Ctrl+S), and the F3 Quick Reference side panel + PgUp/PgDn scroll.
+    Shortcuts table gains 8 missing bindings; Ctrl+Y description updated
+    to reflect the context-aware copy that shipped in v0.12.3.
+  - shellEscape: detect cmd.exe via `vscode.env.shell` and emit double-quote
+    wrapping with `""` doubling for it; PowerShell (VS Code's default since
+    v1.65) keeps the existing single-quote `''` doubling. Closes a latent
+    failure mode where users with cmd.exe as their default integrated shell
+    would have the quote chars leak into the rgx argv.
+- *(vscode)* Harden .vscodeignore against local-publish leaks
+Add explicit excludes for `.omc/`, `.claude/`, `.git/`, `.gitignore`,
+  `.vscodeignore`, `*.vsix`, `package-lock.json`, `*.ts`, `*.tsbuildinfo`
+  so a local `vsce package` or `vsce publish` from a working tree that
+  contains untracked agent/session state (e.g. oh-my-claudecode's
+  `.omc/sessions/` traces) doesn't accidentally include them in the
+  shipped `.vsix`.
+
+  The CI workflow at `.github/workflows/vscode-ext.yml` already produces
+  a clean package because `actions/checkout@v6` only materializes
+  tracked files — so the published v0.5.0 on Marketplace is unaffected.
+  This is defensive hygiene for any future local publish path.
+- *(vscode)* Bump to v0.5.1 — drop Other category, add rust keyword
+Align the manifest with the live Marketplace listing ahead of a 0.5.1
+  publish: restore the rust keyword (currently live, would otherwise be
+  dropped on republish) and remove the low-signal Other category. No
+  behavior change.
+
+### Refactoring
+
+- *(redos)* Collapse the two vulnerable verdict arms in analyze_redos
+Polynomial and Exponential arms duplicated the load_attack + status-set pattern,
+  differing only in the label. Compute the label once, load the attack once, and
+  build the message uniformly. No behavior change; redos tests + clippy/fmt clean.
+
+### Ci
+
+- Harden release-plz — SHA-pin actions, no credential persistence
+Pin actions/checkout (v6), dtolnay/rust-toolchain (stable), and
+  MarcoIeni/release-plz-action (v0.5) to commit SHAs so a hijacked moving tag
+  cannot run with access to RELEASE_PLZ_TOKEN / CARGO_REGISTRY_TOKEN, and set
+  persist-credentials: false. release-plz pushes via its env token, so PRs
+  keep triggering CI.
+
+
 ## [0.14.1] - 2026-06-08
 
 ### Bug Fixes
