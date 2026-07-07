@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.2] - 2026-07-07
+
+### Documentation
+
+- *(roadmap)* Reconcile posture with shipped editor plugins
+- *(redos)* Document Ctrl+A in F1 help (feature-gated) and ROADMAP
+- *(readme)* Document the optional redos feature (Ctrl+A)
+- *(readme)* Surface ReDoS analysis in headline, fix license badge crate
+
+### Features
+
+- *(redos)* Optional ReDoS analysis via rxray (Ctrl+A)
+
+### Miscellaneous
+
+- *(vscode)* Bump to v0.5.0 — add filter command, refresh docs, harden Windows quoting
+- *(vscode)* Harden .vscodeignore against local-publish leaks
+- *(vscode)* Bump to v0.5.1 — drop Other category, add rust keyword
+
+### Refactoring
+
+- *(redos)* Collapse the two vulnerable verdict arms in analyze_redos
+
+### Ci
+
+- Harden release-plz — SHA-pin actions, no credential persistence
+
+
 ## [0.14.1] - 2026-06-08
 
 ### Bug Fixes
