@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! path    := segment+
-//! segment := ('.' ident) | ('[' digits ']') | ('[' quoted ']')
+//! segment := ('.' ident) | '.'? ('[' digits ']') | '.'? ('[' quoted ']')
 //! ident   := [A-Za-z_][A-Za-z0-9_]*
 //! quoted  := '"' ( [^"\\] | '\\' ( '"' | '\\' ) )* '"'
 //! ```
@@ -43,6 +43,10 @@ pub fn parse_path(s: &str) -> Result<Vec<Segment>, String> {
                 let start = i;
                 if i >= bytes.len() {
                     return Err(format!("expected identifier at position {i}"));
+                }
+                // jq-style `.["key"]` / `.[0]`: the bracket segment follows.
+                if bytes[i] == b'[' {
+                    continue;
                 }
                 // First char of identifier must be [A-Za-z_].
                 if !is_ident_start(bytes[i]) {

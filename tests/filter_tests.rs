@@ -884,6 +884,24 @@ mod json_path_tests {
     use rgx::filter::json_path::{parse_path, Segment};
 
     #[test]
+    fn parse_path_dot_before_bracket() {
+        assert_eq!(
+            parse_path(r#".["user-id"]"#).unwrap(),
+            vec![Segment::Key("user-id".into())]
+        );
+        assert_eq!(
+            parse_path(r#".a.["日本語"].[0]"#).unwrap(),
+            vec![
+                Segment::Key("a".into()),
+                Segment::Key("日本語".into()),
+                Segment::Index(0),
+            ]
+        );
+        assert!(parse_path("..a").is_err());
+        assert!(parse_path(".").is_err());
+    }
+
+    #[test]
     fn parse_path_single_key() {
         assert_eq!(
             parse_path(".msg").unwrap(),
