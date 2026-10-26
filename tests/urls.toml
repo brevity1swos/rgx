@@ -5,7 +5,7 @@ engine = "rust"
 case_insensitive = false
 multiline = false
 dotall = false
-unicode = false
+unicode = true
 extended = false
 show_whitespace = false
 
