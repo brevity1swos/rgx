@@ -58,26 +58,36 @@ impl Default for Settings {
 
 impl Settings {
     pub fn load() -> Self {
-        let path = config_path();
-        if let Some(path) = path {
-            if path.exists() {
-                if let Ok(content) = std::fs::read_to_string(&path) {
-                    if let Ok(settings) = toml::from_str(&content) {
-                        return settings;
-                    }
-                }
-            }
-        }
-        Self::default()
+        Self::load_with_warning().0
     }
 
-    pub fn parse_engine(&self) -> EngineKind {
-        match self.default_engine.as_str() {
-            "fancy" => EngineKind::FancyRegex,
-            #[cfg(feature = "pcre2-engine")]
-            "pcre2" => EngineKind::Pcre2,
-            _ => EngineKind::RustRegex,
+    /// Load the config file, falling back to defaults. The warning explains a
+    /// config that exists but could not be used, so it is never ignored silently.
+    pub fn load_with_warning() -> (Self, Option<String>) {
+        let Some(path) = config_path().filter(|p| p.exists()) else {
+            return (Self::default(), None);
+        };
+        let parsed = std::fs::read_to_string(&path)
+            .map_err(|e| e.to_string())
+            .and_then(|content| toml::from_str::<Self>(&content).map_err(|e| e.to_string()));
+        match parsed {
+            Ok(settings) => {
+                let warning = EngineKind::from_name(&settings.default_engine)
+                    .err()
+                    .map(|e| format!("{}: default_engine: {e}; using rust", path.display()));
+                (settings, warning)
+            }
+            Err(e) => (
+                Self::default(),
+                Some(format!("{}: {e}; using defaults", path.display())),
+            ),
         }
+    }
+
+    /// The configured default engine, falling back to the Rust engine when the
+    /// name is unknown or unavailable (see [`Settings::load_with_warning`]).
+    pub fn parse_engine(&self) -> EngineKind {
+        EngineKind::from_name(&self.default_engine).unwrap_or(EngineKind::RustRegex)
     }
 }
 

@@ -42,15 +42,13 @@ async fn run() -> anyhow::Result<ExitCode> {
         return Ok(ExitCode::from(code as u8));
     }
 
-    let settings = Settings::load();
+    let (settings, settings_warning) = Settings::load_with_warning();
+    if let Some(ref warning) = settings_warning {
+        eprintln!("rgx: warning: {warning}");
+    }
 
     let engine_kind = match cli.engine {
-        Some(ref e) => match e.as_str() {
-            "fancy" => rgx::engine::EngineKind::FancyRegex,
-            #[cfg(feature = "pcre2-engine")]
-            "pcre2" => rgx::engine::EngineKind::Pcre2,
-            _ => rgx::engine::EngineKind::RustRegex,
-        },
+        Some(ref e) => rgx::engine::EngineKind::from_name(e).map_err(anyhow::Error::msg)?,
         None => settings.parse_engine(),
     };
     let flags = EngineFlags {
@@ -62,6 +60,9 @@ async fn run() -> anyhow::Result<ExitCode> {
     };
 
     let mut app = App::new(engine_kind, flags);
+    if let Some(warning) = settings_warning {
+        app.status.set(format!("config: {warning}"));
+    }
     if settings.show_whitespace {
         app.show_whitespace = true;
     }
@@ -75,13 +76,13 @@ async fn run() -> anyhow::Result<ExitCode> {
     // Load workspace if --load or --workspace is set
     if let Some(ref load_path) = cli.load {
         let ws = Workspace::load(std::path::Path::new(load_path))?;
-        ws.apply(&mut app);
+        ws.apply(&mut app)?;
         app.workspace_path = Some(load_path.clone());
     } else if let Some(ref ws_path) = cli.workspace {
         let path = std::path::Path::new(ws_path);
         if path.exists() {
             let ws = Workspace::load(path)?;
-            ws.apply(&mut app);
+            ws.apply(&mut app)?;
         }
         app.workspace_path = Some(ws_path.clone());
     }

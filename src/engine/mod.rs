@@ -18,6 +18,25 @@ pub enum EngineKind {
 }
 
 impl EngineKind {
+    /// Parse an engine name as used by `--engine`, config, and workspaces.
+    /// Errors on unknown names and on `pcre2` in builds without PCRE2.
+    pub fn from_name(name: &str) -> Result<Self, String> {
+        match name {
+            "rust" => Ok(Self::RustRegex),
+            "fancy" => Ok(Self::FancyRegex),
+            #[cfg(feature = "pcre2-engine")]
+            "pcre2" => Ok(Self::Pcre2),
+            #[cfg(not(feature = "pcre2-engine"))]
+            "pcre2" => Err(
+                "engine 'pcre2' is not available in this build (rebuild with --features pcre2-engine)"
+                    .to_string(),
+            ),
+            other => Err(format!(
+                "unknown engine '{other}' (expected rust, fancy, or pcre2)"
+            )),
+        }
+    }
+
     pub fn all() -> Vec<Self> {
         vec![
             Self::RustRegex,
