@@ -2,7 +2,7 @@
 
 use std::io;
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 use crate::filter::{FilterApp, Outcome};
 use crate::tui::{TerminalGuard, TuiTerminal};
@@ -25,7 +25,8 @@ fn event_loop(terminal: &mut TuiTerminal, app: &mut FilterApp) -> io::Result<()>
     while !app.should_quit {
         terminal.draw(|frame| crate::filter::ui::render(frame, app))?;
         match crossterm::event::read()? {
-            Event::Key(key) => handle_key(app, key),
+            // Windows also reports key releases; act on presses only.
+            Event::Key(key) if key.kind == KeyEventKind::Press => handle_key(app, key),
             Event::Resize(_, _) => {}
             _ => {}
         }
@@ -59,11 +60,19 @@ pub fn handle_key(app: &mut FilterApp, key: KeyEvent) {
             app.pattern_editor.delete_back();
             app.recompute();
         }
+        KeyCode::Delete => {
+            app.pattern_editor.delete_forward();
+            app.recompute();
+        }
         KeyCode::Left => app.pattern_editor.move_left(),
         KeyCode::Right => app.pattern_editor.move_right(),
         KeyCode::Home => app.pattern_editor.move_home(),
         KeyCode::End => app.pattern_editor.move_end(),
-        KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
+        KeyCode::Char(c)
+            if !key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+        {
             app.pattern_editor.insert_char(c);
             app.recompute();
         }

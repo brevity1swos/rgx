@@ -1261,3 +1261,25 @@ mod cli_e2e {
         );
     }
 }
+
+#[test]
+fn handle_key_delete_removes_char_under_cursor() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let mut app = FilterApp::new(to_lines(&["x"]), "ab", FilterOptions::default());
+    handle_key(&mut app, KeyEvent::new(KeyCode::Home, KeyModifiers::NONE));
+    handle_key(&mut app, KeyEvent::new(KeyCode::Delete, KeyModifiers::NONE));
+    assert_eq!(app.pattern_editor.content(), "b");
+}
+
+#[test]
+fn handle_key_alt_chord_does_not_insert() {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use rgx::filter::run::handle_key;
+    let mut app = FilterApp::new(to_lines(&["x"]), "a", FilterOptions::default());
+    handle_key(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('z'), KeyModifiers::ALT),
+    );
+    assert_eq!(app.pattern_editor.content(), "a");
+}
