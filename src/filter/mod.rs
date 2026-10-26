@@ -264,6 +264,15 @@ pub fn read_input(
 
 /// CLI entry point for `rgx filter`. Reads input, decides between non-interactive
 /// and TUI modes, and returns an exit code.
+/// A reader that stops early (`rgx filter x | head -1`) is not an error.
+fn ignore_broken_pipe(e: io::Error) -> Result<(), String> {
+    if e.kind() == io::ErrorKind::BrokenPipe {
+        Ok(())
+    } else {
+        Err(format!("writing output: {e}"))
+    }
+}
+
 pub fn entry(args: FilterArgs) -> i32 {
     match run_entry(args) {
         Ok(code) => code,
@@ -320,12 +329,12 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
 
         let mut stdout = io::stdout().lock();
         if args.count {
-            emit_count(&mut stdout, matched.len()).map_err(|e| format!("writing output: {e}"))?;
+            emit_count(&mut stdout, matched.len()).or_else(ignore_broken_pipe)?;
         } else {
             // Emit the raw lines regardless of --json — users still get the
             // full JSON records back, not just the extracted fields.
             emit_matches(&mut stdout, &lines, &matched, args.line_number)
-                .map_err(|e| format!("writing output: {e}"))?;
+                .or_else(ignore_broken_pipe)?;
         }
         return Ok(if matched.is_empty() {
             EXIT_NO_MATCH
@@ -349,7 +358,7 @@ fn run_entry(args: FilterArgs) -> Result<i32, String> {
         Outcome::Emit => {
             let mut stdout = io::stdout().lock();
             emit_matches(&mut stdout, &final_app.lines, &final_app.matched, false)
-                .map_err(|e| format!("writing output: {e}"))?;
+                .or_else(ignore_broken_pipe)?;
             Ok(if final_app.matched.is_empty() {
                 EXIT_NO_MATCH
             } else {

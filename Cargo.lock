@@ -1879,6 +1879,7 @@ dependencies = [
  "fancy-regex 0.17.0",
  "grex",
  "insta",
+ "libc",
  "pcre2",
  "pcre2-sys",
  "ratatui",
