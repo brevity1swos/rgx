@@ -133,9 +133,10 @@ impl FilterApp {
         self.engine = engine::create_engine(engine::detect_minimum_engine(&pattern));
         match self.engine.compile(&pattern, &self.engine_flags) {
             Ok(compiled) => {
-                let (indices, spans) = self.collect_matches(&*compiled);
+                let (indices, spans, match_error) = self.collect_matches(&*compiled);
                 self.matched = indices;
                 self.match_spans = spans;
+                self.error = match_error;
                 self.clamp_selection();
             }
             Err(err) => {
@@ -148,12 +149,15 @@ impl FilterApp {
         }
     }
 
+    /// Matching lines and their spans, plus the first match-time error (lines
+    /// that error are left out of the result rather than treated as misses).
     fn collect_matches(
         &self,
         compiled: &dyn CompiledRegex,
-    ) -> (Vec<usize>, Vec<Vec<std::ops::Range<usize>>>) {
+    ) -> (Vec<usize>, Vec<Vec<std::ops::Range<usize>>>, Option<String>) {
         let mut indices = Vec::with_capacity(self.lines.len());
         let mut all_spans = Vec::with_capacity(self.lines.len());
+        let mut first_error = None;
         for idx in 0..self.lines.len() {
             // In --json mode we match against the extracted field, not the
             // raw line. None extracted values never match (and are excluded
@@ -166,12 +170,18 @@ impl FilterApp {
             } else {
                 &self.lines[idx]
             };
-            if let Some(spans) = match_haystack(compiled, haystack, self.options.invert) {
-                indices.push(idx);
-                all_spans.push(spans);
+            match match_haystack(compiled, haystack, self.options.invert) {
+                Ok(Some(spans)) => {
+                    indices.push(idx);
+                    all_spans.push(spans);
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    first_error.get_or_insert_with(|| format!("line {}: {e}", idx + 1));
+                }
             }
         }
-        (indices, all_spans)
+        (indices, all_spans, first_error)
     }
 
     fn clamp_selection(&mut self) {

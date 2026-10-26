@@ -56,19 +56,19 @@ fn match_haystack_contract() {
 
     // Hit, not inverted → Some(spans) with the match ranges.
     let got = rgx::filter::match_haystack(&*compiled, "a1b22", false);
-    assert_eq!(got, Some(vec![1..2, 3..5]));
+    assert_eq!(got, Ok(Some(vec![1..2, 3..5])));
 
     // No hit, not inverted → None.
     let got = rgx::filter::match_haystack(&*compiled, "none", false);
-    assert_eq!(got, None);
+    assert_eq!(got, Ok(None));
 
     // Hit, inverted → None (the line matched, so invert excludes it).
     let got = rgx::filter::match_haystack(&*compiled, "a1", true);
-    assert_eq!(got, None);
+    assert_eq!(got, Ok(None));
 
     // No hit, inverted → Some(empty) (emit line, no spans to highlight).
     let got = rgx::filter::match_haystack(&*compiled, "no-digits", true);
-    assert_eq!(got, Some(Vec::new()));
+    assert_eq!(got, Ok(Some(Vec::new())));
 }
 
 #[test]
@@ -1300,4 +1300,23 @@ fn handle_key_alt_chord_does_not_insert() {
         KeyEvent::new(KeyCode::Char('z'), KeyModifiers::ALT),
     );
     assert_eq!(app.pattern_editor.content(), "a");
+}
+
+#[test]
+fn match_time_error_is_reported_not_inverted_into_output() {
+    // fancy-regex's backtrack limit trips on the long line only.
+    let lines = to_lines(&["aac", &format!("{}b", "a".repeat(40))]);
+    let options = FilterOptions {
+        invert: true,
+        ..FilterOptions::default()
+    };
+    let err = filter_lines(&lines, "(a|a)+(?!x)c", options).unwrap_err();
+    assert!(err.starts_with("line 2:"), "{err}");
+
+    let app = FilterApp::new(lines, "(a|a)+(?!x)c", FilterOptions::default());
+    assert_eq!(app.matched, vec![0]);
+    assert!(app
+        .error
+        .as_deref()
+        .is_some_and(|e| e.starts_with("line 2:")));
 }
