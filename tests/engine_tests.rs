@@ -598,4 +598,10 @@ mod cli_e2e {
         assert_eq!(status.code(), Some(0));
         let _ = child.stdin.take().map(|mut s| s.flush());
     }
+
+    #[test]
+    fn print_with_empty_input_is_no_match_not_error() {
+        let (code, stderr) = run(&["-p", "--text", "", "a"]);
+        assert_eq!(code, Some(1), "stderr: {stderr}");
+    }
 }

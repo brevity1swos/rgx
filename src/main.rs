@@ -124,6 +124,7 @@ async fn run() -> anyhow::Result<ExitCode> {
     }
 
     // Load test string: --text and --file take priority over stdin
+    let input_given = cli.text.is_some() || cli.file.is_some() || !io::stdin().is_terminal();
     if let Some(text) = &cli.text {
         app.set_test_string(text);
     } else if let Some(path) = &cli.file {
@@ -149,7 +150,7 @@ async fn run() -> anyhow::Result<ExitCode> {
             eprintln!("rgx: --print requires a pattern");
             return Ok(ExitCode::from(2));
         }
-        if app.test_editor.content().is_empty() {
+        if !input_given && app.test_editor.content().is_empty() {
             eprintln!("rgx: --print requires input (stdin, --file, or --text)");
             return Ok(ExitCode::from(2));
         }
