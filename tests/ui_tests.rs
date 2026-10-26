@@ -619,3 +619,16 @@ fn long_test_string_scrolls_to_cursor_line() {
     assert!(app.test_editor.vertical_scroll() > 0);
     assert!(screen_text(&terminal).contains("line39"));
 }
+
+#[test]
+fn match_time_error_clears_after_text_edit() {
+    let mut app = App::new(EngineKind::FancyRegex, EngineFlags::default());
+    // The lookaround keeps this on fancy-regex's backtracking VM.
+    app.set_pattern("(a|a)+(?!x)c");
+    // Exceeds fancy-regex's backtrack limit -> match-time error.
+    app.set_test_string(&format!("{}b", "a".repeat(40)));
+    assert!(app.error.is_some(), "expected a backtrack-limit error");
+    app.set_test_string("aac");
+    assert!(app.error.is_none(), "stale error: {:?}", app.error);
+    assert_eq!(app.matches.len(), 1);
+}

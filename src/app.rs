@@ -436,6 +436,8 @@ impl App {
                 self.matches.clear();
                 self.replace_result = None;
                 self.match_time = None;
+                // The pattern compiled, so any error is a stale match error.
+                self.error = None;
                 return;
             }
             let match_start = Instant::now();
@@ -443,6 +445,8 @@ impl App {
                 Ok(m) => {
                     self.match_time = Some(match_start.elapsed());
                     self.matches = m;
+                    // The pattern compiled, so any error is a stale match error.
+                    self.error = None;
                 }
                 Err(e) => {
                     self.match_time = Some(match_start.elapsed());
