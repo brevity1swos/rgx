@@ -72,7 +72,7 @@ impl<'a> Widget for MatchDisplay<'a> {
                     Style::default().fg(theme::SUBTEXT).bg(bg),
                 ),
                 Span::styled(
-                    format!("\"{}\"", &m.text),
+                    format!("\"{}\"", m.text),
                     Style::default().fg(theme::GREEN).bg(bg),
                 ),
             ]));
@@ -104,7 +104,7 @@ impl<'a> Widget for MatchDisplay<'a> {
                         Style::default().fg(theme::SUBTEXT).bg(bg),
                     ),
                     Span::styled(
-                        format!("\"{}\"", &cap.text),
+                        format!("\"{}\"", cap.text),
                         Style::default().fg(color).bg(bg),
                     ),
                 ]));
