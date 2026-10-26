@@ -1131,14 +1131,9 @@ mod cli_e2e {
     use std::process::{Command, Stdio};
 
     fn rgx_bin() -> std::path::PathBuf {
-        // Cargo puts integration test binaries next to the main binary under target/debug.
-        let mut p = std::env::current_exe().unwrap();
-        p.pop(); // test binary name
-        if p.ends_with("deps") {
-            p.pop();
-        }
-        p.push(if cfg!(windows) { "rgx.exe" } else { "rgx" });
-        p
+        // Cargo builds the binary and exports its path to integration tests;
+        // the test executable's own location is not stable across releases.
+        std::path::PathBuf::from(env!("CARGO_BIN_EXE_rgx"))
     }
 
     #[test]
