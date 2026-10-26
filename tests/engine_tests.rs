@@ -12,6 +12,25 @@ fn test_engine_basic_matching(kind: EngineKind) {
     assert_eq!(matches[1].text, "456");
 }
 
+fn match_texts(kind: EngineKind, pattern: &str, text: &str) -> Vec<String> {
+    let engine = create_engine(kind);
+    let compiled = engine.compile(pattern, &EngineFlags::default()).unwrap();
+    let matches = compiled.find_matches(text).unwrap();
+    matches.into_iter().map(|m| m.text).collect()
+}
+
+/// Later matches must still see the text before them (anchors, word
+/// boundaries, lookbehind), and empty matches must step over multibyte chars.
+fn test_engine_left_context_and_empty_matches(kind: EngineKind) {
+    assert_eq!(match_texts(kind, "^a", "aaa"), ["a"]);
+    assert_eq!(match_texts(kind, r"\bfoo", "xfoo-foo"), ["foo"]);
+    if kind != EngineKind::RustRegex {
+        assert_eq!(match_texts(kind, r"(?<=@)\w+", "@ab@cd"), ["ab", "cd"]);
+    }
+    assert_eq!(match_texts(kind, "x*", "é1"), ["", "", ""]);
+    assert_eq!(match_texts(kind, "a|", "ab"), ["a", ""]);
+}
+
 fn test_engine_capture_groups(kind: EngineKind) {
     let engine = create_engine(kind);
     let flags = EngineFlags::default();
@@ -89,6 +108,11 @@ fn rust_regex_named_captures() {
 }
 
 #[test]
+fn rust_regex_left_context_and_empty_matches() {
+    test_engine_left_context_and_empty_matches(EngineKind::RustRegex);
+}
+
+#[test]
 fn rust_regex_compile_error() {
     test_engine_compile_error(EngineKind::RustRegex);
 }
@@ -116,6 +140,11 @@ fn fancy_regex_case_insensitive() {
 #[test]
 fn fancy_regex_named_captures() {
     test_engine_named_captures(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_left_context_and_empty_matches() {
+    test_engine_left_context_and_empty_matches(EngineKind::FancyRegex);
 }
 
 #[test]
@@ -150,6 +179,11 @@ mod pcre2_tests {
     #[test]
     fn pcre2_named_captures() {
         test_engine_named_captures(EngineKind::Pcre2);
+    }
+
+    #[test]
+    fn pcre2_left_context_and_empty_matches() {
+        test_engine_left_context_and_empty_matches(EngineKind::Pcre2);
     }
 
     #[test]

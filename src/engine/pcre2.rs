@@ -100,30 +100,37 @@ impl CompiledRegex for Pcre2CompiledRegex {
     fn find_matches(&self, text: &str) -> EngineResult<Vec<Match>> {
         let mut matches = Vec::new();
         let bytes = text.as_bytes();
+        let names = self.re.capture_names();
+        let mut locs = self.re.capture_locations();
 
+        // Always search the full subject with a start offset (never a sliced
+        // subject) so `^`, `\b`, `\G` and lookbehind see the real left context.
         let mut offset = 0;
+        let mut last_match_end = None;
         while offset <= bytes.len() {
-            let caps = match self.re.captures(&bytes[offset..]) {
-                Ok(Some(caps)) => caps,
+            let overall = match self.re.captures_read_at(&mut locs, bytes, offset) {
+                Ok(Some(m)) => m,
                 Ok(None) => break,
                 Err(e) => return Err(EngineError::MatchError(e.to_string())),
             };
+            let (abs_start, abs_end) = (overall.start(), overall.end());
 
-            let overall = caps.get(0).expect("capture group 0 must exist");
-            if overall.start() == overall.end() && overall.start() == 0 && offset > 0 {
-                offset += 1;
-                continue;
+            if abs_start == abs_end {
+                // Step past an empty match by a whole char: a mid-char offset is
+                // rejected by PCRE2 in UTF mode.
+                offset = abs_end + next_char_len(text, abs_end);
+                // Skip an empty match directly after the previous match.
+                if last_match_end == Some(abs_end) {
+                    continue;
+                }
+            } else {
+                offset = abs_end;
             }
-
-            let abs_start = offset + overall.start();
-            let abs_end = offset + overall.end();
+            last_match_end = Some(abs_end);
 
             let mut captures = Vec::new();
-            let names = self.re.capture_names();
-            for i in 1..caps.len() {
-                if let Some(m) = caps.get(i) {
-                    let cap_start = offset + m.start();
-                    let cap_end = offset + m.end();
+            for i in 1..locs.len() {
+                if let Some((cap_start, cap_end)) = locs.get(i) {
                     let name = names.get(i).and_then(Clone::clone);
                     captures.push(CaptureGroup {
                         index: i,
@@ -141,16 +148,15 @@ impl CompiledRegex for Pcre2CompiledRegex {
                 text: text[abs_start..abs_end].to_string(),
                 captures,
             });
-
-            if overall.start() == overall.end() {
-                offset = abs_end + 1;
-            } else {
-                offset = abs_end;
-            }
         }
 
         Ok(matches)
     }
+}
+
+/// Byte length of the char starting at `pos`, or 1 at end of text.
+fn next_char_len(text: &str, pos: usize) -> usize {
+    text[pos..].chars().next().map_or(1, char::len_utf8)
 }
 
 #[cfg(test)]
