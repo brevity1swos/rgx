@@ -99,11 +99,22 @@ fn python_string(pattern: &str) -> String {
     format!("\"{}\"", escape_double_quoted(pattern))
 }
 
-/// Escape `/` for a `/.../` regex literal, leaving already-escaped chars intact.
-/// With `escape_newlines`, raw line breaks become `\n`/`\r` (illegal in JS literals).
-fn escape_slash_delimiter(pattern: &str, escape_newlines: bool) -> String {
+/// Host syntax of a `/.../` regex literal.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SlashLiteral {
+    /// Raw line breaks are illegal inside a JS regex literal.
+    JavaScript,
+    /// Ruby interpolates `#{}`, `#@var` and `#$var` inside regex literals.
+    Ruby,
+    /// The PHP delimiter sits inside a single-quoted string (escaped separately).
+    Php,
+}
+
+/// Escape `/` for a `/.../` regex literal, leaving already-escaped chars intact,
+/// plus whatever else `host` would otherwise interpret.
+fn escape_slash_delimiter(pattern: &str, host: SlashLiteral) -> String {
     let mut out = String::with_capacity(pattern.len());
-    let mut chars = pattern.chars();
+    let mut chars = pattern.chars().peekable();
     while let Some(c) = chars.next() {
         match c {
             '\\' => {
@@ -113,8 +124,12 @@ fn escape_slash_delimiter(pattern: &str, escape_newlines: bool) -> String {
                 }
             }
             '/' => out.push_str("\\/"),
-            '\n' if escape_newlines => out.push_str("\\n"),
-            '\r' if escape_newlines => out.push_str("\\r"),
+            '\n' if host == SlashLiteral::JavaScript => out.push_str("\\n"),
+            '\r' if host == SlashLiteral::JavaScript => out.push_str("\\r"),
+            // `\#` is a literal `#` in a Ruby regex and blocks interpolation.
+            '#' if host == SlashLiteral::Ruby && matches!(chars.peek(), Some('{' | '@' | '$')) => {
+                out.push_str("\\#");
+            }
             _ => out.push(c),
         }
     }
@@ -198,7 +213,7 @@ fn generate_python(pattern: &str, flags: &EngineFlags) -> String {
 }
 
 fn generate_javascript(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = escape_slash_delimiter(pattern, true);
+    let escaped = escape_slash_delimiter(pattern, SlashLiteral::JavaScript);
     let mut js_flags = String::from("g");
     if flags.case_insensitive {
         js_flags.push('i');
@@ -308,7 +323,7 @@ fn generate_csharp(pattern: &str, flags: &EngineFlags) -> String {
 fn generate_php(pattern: &str, flags: &EngineFlags) -> String {
     // Single-quoted PHP string: only `\\` and `\'` are escapes, so double every
     // backslash to keep the pattern byte-for-byte.
-    let escaped = escape_slash_delimiter(pattern, false)
+    let escaped = escape_slash_delimiter(pattern, SlashLiteral::Php)
         .replace('\\', "\\\\")
         .replace('\'', "\\'");
     let php_flags = flags.to_inline_prefix();
@@ -320,7 +335,7 @@ fn generate_php(pattern: &str, flags: &EngineFlags) -> String {
 }
 
 fn generate_ruby(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = escape_slash_delimiter(pattern, false);
+    let escaped = escape_slash_delimiter(pattern, SlashLiteral::Ruby);
     let mut ruby_flags = String::new();
     if flags.case_insensitive {
         ruby_flags.push('i');
