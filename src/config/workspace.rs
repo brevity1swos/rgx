@@ -41,13 +41,8 @@ impl TestResult {
 }
 
 impl Workspace {
-    fn engine_kind(&self) -> EngineKind {
-        match self.engine.as_str() {
-            "fancy" => EngineKind::FancyRegex,
-            #[cfg(feature = "pcre2-engine")]
-            "pcre2" => EngineKind::Pcre2,
-            _ => EngineKind::RustRegex,
-        }
+    fn engine_kind(&self) -> anyhow::Result<EngineKind> {
+        EngineKind::from_name(&self.engine).map_err(anyhow::Error::msg)
     }
 
     const fn flags(&self) -> EngineFlags {
@@ -82,8 +77,8 @@ impl Workspace {
         }
     }
 
-    pub fn apply(&self, app: &mut App) {
-        let engine_kind = self.engine_kind();
+    pub fn apply(&self, app: &mut App) -> anyhow::Result<()> {
+        let engine_kind = self.engine_kind()?;
         if app.engine_kind != engine_kind {
             app.engine_kind = engine_kind;
             app.switch_engine_to(engine_kind);
@@ -95,6 +90,7 @@ impl Workspace {
             app.set_replacement(&self.replacement);
         }
         app.set_pattern(&self.pattern);
+        Ok(())
     }
 
     pub fn save(&self, path: &Path) -> anyhow::Result<()> {
@@ -111,16 +107,17 @@ impl Workspace {
 
     /// Run test assertions and return results.
     pub fn run_tests(&self) -> anyhow::Result<Vec<TestResult>> {
-        let eng = engine::create_engine(self.engine_kind());
+        let eng = engine::create_engine(self.engine_kind()?);
         let compiled = eng
             .compile(&self.pattern, &self.flags())
             .map_err(|e| anyhow::anyhow!("{e}"))?;
 
         let mut results = Vec::with_capacity(self.tests.len());
         for tc in &self.tests {
-            let did_match = compiled
+            let did_match = !compiled
                 .find_matches(&tc.input)
-                .is_ok_and(|m| !m.is_empty());
+                .map_err(|e| anyhow::anyhow!("input {:?}: {e}", tc.input))?
+                .is_empty();
             results.push(TestResult {
                 input: tc.input.clone(),
                 should_match: tc.should_match,

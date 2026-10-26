@@ -127,7 +127,7 @@ extended = false
 show_whitespace = true
 "#;
     let ws: Workspace = toml::from_str(toml_str).unwrap();
-    ws.apply(&mut app);
+    ws.apply(&mut app).unwrap();
 
     assert_eq!(app.regex_editor.content(), "hello+");
     assert_eq!(app.test_editor.content(), "hellooo world");

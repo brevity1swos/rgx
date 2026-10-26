@@ -548,4 +548,23 @@ mod cli_e2e {
             "stderr should mention error, got {stderr:?}"
         );
     }
+
+    fn run(args: &[&str]) -> (Option<i32>, String) {
+        let out = Command::new(rgx_bin())
+            .args(args)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        (
+            out.status.code(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+        )
+    }
+
+    #[test]
+    fn unknown_engine_is_an_error() {
+        let (code, stderr) = run(&["-p", "-e", "bogus", "--text", "a", "a"]);
+        assert_eq!(code, Some(2));
+        assert!(stderr.contains("unknown engine 'bogus'"), "{stderr}");
+    }
 }
