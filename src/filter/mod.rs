@@ -33,21 +33,25 @@ impl FilterOptions {
 /// match byte ranges otherwise. Returns `None` if the line should be filtered
 /// out. Centralizing this keeps `filter_lines`, `filter_lines_with_extracted`,
 /// and the TUI `collect_matches` paths from drifting.
+///
+/// Returns `Err` when the engine fails while matching (e.g. a backtrack
+/// limit): such a line is neither a match nor a non-match, so it must not be
+/// silently emitted by `--invert` or dropped.
 pub fn match_haystack(
     compiled: &dyn CompiledRegex,
     haystack: &str,
     invert: bool,
-) -> Option<Vec<std::ops::Range<usize>>> {
-    let found = compiled.find_matches(haystack).unwrap_or_default();
+) -> Result<Option<Vec<std::ops::Range<usize>>>, String> {
+    let found = compiled.find_matches(haystack).map_err(|e| e.to_string())?;
     let hit = !found.is_empty();
     if hit == invert {
-        return None;
+        return Ok(None);
     }
-    Some(if invert {
+    Ok(Some(if invert {
         Vec::new()
     } else {
         found.into_iter().map(|m| m.start..m.end).collect()
-    })
+    }))
 }
 
 /// Apply the pattern to each line. Returns the 0-indexed line numbers of every
@@ -77,7 +81,9 @@ pub fn filter_lines(
 
     let mut indices = Vec::with_capacity(lines.len());
     for (idx, line) in lines.iter().enumerate() {
-        if match_haystack(&*compiled, line, options.invert).is_some() {
+        let hit = match_haystack(&*compiled, line, options.invert)
+            .map_err(|e| format!("line {}: {e}", idx + 1))?;
+        if hit.is_some() {
             indices.push(idx);
         }
     }
@@ -121,7 +127,9 @@ pub fn filter_lines_with_extracted(
             // Missing field or parse failure — never emit.
             continue;
         };
-        if match_haystack(&*compiled, s, options.invert).is_some() {
+        let hit = match_haystack(&*compiled, s, options.invert)
+            .map_err(|e| format!("line {}: {e}", idx + 1))?;
+        if hit.is_some() {
             indices.push(idx);
         }
     }
