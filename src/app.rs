@@ -226,11 +226,19 @@ impl App {
         #[cfg(feature = "redos")]
         {
             use rxray::{analyze, attack, ComplexityClass, Engine};
-            let pattern = self.regex_editor.content().to_string();
-            if pattern.is_empty() {
+            let raw = self.regex_editor.content();
+            if raw.is_empty() {
                 self.status.set("ReDoS: empty pattern".to_string());
                 return;
             }
+            // rxray takes no flags, so analyze the pattern with i/m/s/x applied
+            // inline. Unicode is left at its default: `(?-u)` is not portable
+            // across engines and does not change backtracking structure.
+            let pattern = EngineFlags {
+                unicode: true,
+                ..self.flags
+            }
+            .wrap_pattern(raw);
             let engine = match self.engine_kind {
                 EngineKind::RustRegex => Engine::RustRegex,
                 EngineKind::FancyRegex => Engine::FancyRegex,
@@ -246,6 +254,14 @@ impl App {
                         // the live engine would freeze the UI. It is meant to be
                         // stepped through in the debugger (Ctrl+D), which is bounded.
                         app.test_editor = Editor::with_content(a.value);
+                        // Drop results computed against the old text: their
+                        // offsets would slice out of bounds of the attack.
+                        app.matches.clear();
+                        app.replace_result = None;
+                        app.match_time = None;
+                        app.selection.match_index = 0;
+                        app.selection.capture_index = None;
+                        app.scroll.match_scroll = 0;
                         true
                     }
                     None => false,
@@ -1294,6 +1310,35 @@ mod redos_tests {
         let msg = app.status.text.clone().unwrap_or_default();
         assert!(msg.contains("EXPONENTIAL"), "got: {msg}");
         assert!(!app.test_editor.content().is_empty(), "attack not loaded");
+    }
+
+    #[test]
+    fn ctrl_a_clears_stale_matches_when_loading_attack() {
+        let mut app = App::new(EngineKind::FancyRegex, EngineFlags::default());
+        app.set_test_string(&"é".repeat(200));
+        app.set_pattern("(é+)+$");
+        assert!(!app.matches.is_empty());
+        app.analyze_redos();
+        assert!(
+            app.matches.is_empty(),
+            "stale matches kept after attack load"
+        );
+    }
+
+    #[test]
+    fn ctrl_a_applies_flags() {
+        let mut app = App::new(
+            EngineKind::FancyRegex,
+            EngineFlags {
+                extended: true,
+                ..EngineFlags::default()
+            },
+        );
+        // Only valid ReDoS input once `x` strips the whitespace.
+        app.set_pattern("( a + ) + $");
+        app.analyze_redos();
+        let msg = app.status.text.clone().unwrap_or_default();
+        assert!(msg.contains("EXPONENTIAL"), "got: {msg}");
     }
 
     #[test]
