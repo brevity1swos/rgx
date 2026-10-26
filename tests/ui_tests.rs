@@ -576,3 +576,46 @@ fn scroll_help_pages_length_check() {
         }
     }
 }
+
+fn screen_text(terminal: &Terminal<TestBackend>) -> String {
+    let buf = terminal.backend().buffer();
+    let mut out = String::new();
+    for y in 0..buf.area.height {
+        for x in 0..buf.area.width {
+            out.push_str(buf[(x, y)].symbol());
+        }
+        out.push('\n');
+    }
+    out
+}
+
+fn draw_synced(terminal: &mut Terminal<TestBackend>, app: &mut App) {
+    terminal
+        .draw(|frame| {
+            let layout = ui::compute_layout(frame.area(), app.show_quickref);
+            app.sync_editor_scroll(&layout);
+            ui::render(frame, app);
+        })
+        .unwrap();
+}
+
+#[test]
+fn long_pattern_scrolls_to_keep_cursor_visible() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_pattern(&format!("{}TAIL", "a".repeat(150)));
+    draw_synced(&mut terminal, &mut app);
+    assert!(app.regex_editor.scroll_offset() > 0);
+    assert!(screen_text(&terminal).contains("TAIL"));
+}
+
+#[test]
+fn long_test_string_scrolls_to_cursor_line() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    let text: Vec<String> = (0..40).map(|i| format!("line{i}")).collect();
+    app.set_test_string(&text.join("\n"));
+    draw_synced(&mut terminal, &mut app);
+    assert!(app.test_editor.vertical_scroll() > 0);
+    assert!(screen_text(&terminal).contains("line39"));
+}

@@ -296,6 +296,24 @@ impl App {
         }
     }
 
+    /// Keep each editor's cursor inside its panel (inner size = rect minus borders).
+    /// Called before every draw, since rendering only borrows `App` immutably.
+    pub fn sync_editor_scroll(&mut self, layout: &ui::PanelLayout) {
+        let inner = |r: ratatui::layout::Rect| {
+            (
+                r.width.saturating_sub(2) as usize,
+                r.height.saturating_sub(2) as usize,
+            )
+        };
+        let (w, _) = inner(layout.regex_input);
+        self.regex_editor.update_scroll(w);
+        let (w, h) = inner(layout.test_input);
+        self.test_editor.update_scroll(w);
+        self.test_editor.update_vertical_scroll(h);
+        let (w, _) = inner(layout.replace_input);
+        self.replace_editor.update_scroll(w);
+    }
+
     pub fn switch_engine(&mut self) {
         self.engine_kind = self.engine_kind.next();
         self.engine = engine::create_engine(self.engine_kind);
