@@ -62,7 +62,8 @@ impl<'a> Widget for RegexInput<'a> {
 
         let paragraph = Paragraph::new(line)
             .block(block)
-            .style(Style::default().bg(theme::BASE));
+            .style(Style::default().bg(theme::BASE))
+            .scroll((0, self.editor.scroll_offset() as u16));
 
         paragraph.render(area, buf);
 

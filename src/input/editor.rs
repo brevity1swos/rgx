@@ -417,6 +417,9 @@ impl Editor {
 
     /// Update horizontal scroll for the current line.
     pub fn update_scroll(&mut self, visible_width: usize) {
+        if visible_width == 0 {
+            return;
+        }
         let (_, col) = self.cursor_line_col();
         if col < self.scroll_offset {
             self.scroll_offset = col;
@@ -427,6 +430,9 @@ impl Editor {
 
     /// Update vertical scroll to keep cursor visible within `visible_height` lines.
     pub fn update_vertical_scroll(&mut self, visible_height: usize) {
+        if visible_height == 0 {
+            return;
+        }
         let (line, _) = self.cursor_line_col();
         if line < self.vertical_scroll {
             self.vertical_scroll = line;

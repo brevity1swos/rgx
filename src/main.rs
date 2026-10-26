@@ -197,6 +197,7 @@ async fn run() -> anyhow::Result<ExitCode> {
     loop {
         terminal.draw(|frame| {
             last_layout = ui::compute_layout(frame.area(), app.show_quickref);
+            app.sync_editor_scroll(&last_layout);
             ui::render(frame, &app);
         })?;
 

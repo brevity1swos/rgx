@@ -55,7 +55,8 @@ impl<'a> Widget for TestInput<'a> {
 
         let paragraph = Paragraph::new(visible_lines)
             .block(block)
-            .style(Style::default().bg(theme::BASE));
+            .style(Style::default().bg(theme::BASE))
+            .scroll((0, self.editor.scroll_offset() as u16));
 
         paragraph.render(area, buf);
 
@@ -66,7 +67,9 @@ impl<'a> Widget for TestInput<'a> {
             let visual_row = cursor_line.saturating_sub(v_scroll);
             let cursor_x = area.x + 1 + visual_col as u16;
             let cursor_y = area.y + 1 + visual_row as u16;
-            if cursor_x < area.x + area.width - 1 && cursor_y < area.y + area.height - 1 {
+            if cursor_x < area.x + area.width.saturating_sub(1)
+                && cursor_y < area.y + area.height.saturating_sub(1)
+            {
                 if let Some(cell) = buf.cell_mut((cursor_x, cursor_y)) {
                     cell.set_style(
                         Style::default()
