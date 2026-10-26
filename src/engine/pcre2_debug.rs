@@ -370,7 +370,7 @@ pub fn find_token_at_offset(offset_map: &[PatternToken], offset: usize) -> Optio
         } else {
             offset - token.end
         };
-        if best.map_or(true, |(_, d)| dist < d) {
+        if best.is_none_or(|(_, d)| dist < d) {
             best = Some((i, dist));
         }
     }

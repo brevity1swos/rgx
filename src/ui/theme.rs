@@ -19,7 +19,7 @@ pub const MATCH_BG: Color = Color::Rgb(69, 71, 90);
 pub const MATCH_BG_ALT: Color = Color::Rgb(88, 91, 112);
 
 pub const fn match_bg(index: usize) -> Color {
-    if index % 2 == 0 {
+    if index.is_multiple_of(2) {
         MATCH_BG
     } else {
         MATCH_BG_ALT
