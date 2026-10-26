@@ -119,7 +119,14 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::F(3) => Action::ToggleQuickref,
         KeyCode::PageUp => Action::ScrollQuickrefUp,
         KeyCode::PageDown => Action::ScrollQuickrefDown,
-        KeyCode::Char(c) => Action::InsertChar(c),
+        // Unmapped Ctrl+key / Alt+key chords do nothing. Ctrl+Alt together is
+        // AltGr on many layouts (e.g. `@` on German keyboards), so it still types.
+        KeyCode::Char(c)
+            if key.modifiers.contains(KeyModifiers::CONTROL)
+                == key.modifiers.contains(KeyModifiers::ALT) =>
+        {
+            Action::InsertChar(c)
+        }
         KeyCode::Enter => Action::InsertNewline,
         KeyCode::Backspace => Action::DeleteBack,
         KeyCode::Delete => Action::DeleteForward,
@@ -136,5 +143,32 @@ pub fn key_to_action(key: KeyEvent) -> Action {
         KeyCode::Home => Action::MoveCursorHome,
         KeyCode::End => Action::MoveCursorEnd,
         _ => Action::None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn char_key(c: char, modifiers: KeyModifiers) -> Action {
+        key_to_action(KeyEvent::new(KeyCode::Char(c), modifiers))
+    }
+
+    #[test]
+    fn plain_and_shifted_chars_insert() {
+        assert_eq!(char_key('a', KeyModifiers::NONE), Action::InsertChar('a'));
+        assert_eq!(char_key('A', KeyModifiers::SHIFT), Action::InsertChar('A'));
+    }
+
+    #[test]
+    fn unmapped_ctrl_or_alt_chords_do_not_insert() {
+        assert_eq!(char_key('k', KeyModifiers::CONTROL), Action::None);
+        assert_eq!(char_key('f', KeyModifiers::ALT), Action::None);
+    }
+
+    #[test]
+    fn altgr_chars_still_insert() {
+        let altgr = KeyModifiers::CONTROL | KeyModifiers::ALT;
+        assert_eq!(char_key('@', altgr), Action::InsertChar('@'));
     }
 }
