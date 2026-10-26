@@ -567,4 +567,35 @@ mod cli_e2e {
         assert_eq!(code, Some(2));
         assert!(stderr.contains("unknown engine 'bogus'"), "{stderr}");
     }
+
+    #[test]
+    fn test_mode_accepts_minimal_workspace_and_ignores_open_stdin() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("min.toml");
+        std::fs::write(
+            &path,
+            "pattern = \"^a\"\n[[tests]]\ninput = \"ab\"\nshould_match = true\n",
+        )
+        .unwrap();
+        // Keep stdin open (never write or close it): --test must not read it.
+        let mut child = Command::new(rgx_bin())
+            .args(["--test", path.to_str().unwrap()])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap();
+        let start = std::time::Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if start.elapsed() > std::time::Duration::from_secs(10) {
+                child.kill().unwrap();
+                panic!("rgx --test blocked on stdin");
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        };
+        assert_eq!(status.code(), Some(0));
+        let _ = child.stdin.take().map(|mut s| s.flush());
+    }
 }
