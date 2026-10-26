@@ -138,8 +138,8 @@ pub struct FilterArgs {
     pub case_insensitive: bool,
 
     /// Cap input at N lines to prevent OOM on multi-GB piped streams.
-    /// Defaults to 100000. Pass a larger value (or 0 for no cap — see below)
-    /// if you know your input fits in memory.
+    /// Defaults to 100000. Pass a larger value, or 0 for no cap, if you know
+    /// your input fits in memory.
     #[arg(long, default_value_t = 100_000, value_name = "N")]
     pub max_lines: usize,
 
