@@ -60,9 +60,65 @@ pub fn generate_code(lang: &Language, pattern: &str, flags: &EngineFlags) -> Str
     }
 }
 
-/// Escape a pattern for use inside a double-quoted string literal.
+/// Escape a pattern for use inside a (non-raw) double-quoted string literal.
 fn escape_double_quoted(pattern: &str) -> String {
-    pattern.replace('\\', "\\\\").replace('"', "\\\"")
+    let mut out = String::with_capacity(pattern.len());
+    for c in pattern.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
+/// Rust raw string literal with enough `#`s that the pattern cannot close it.
+fn rust_raw_string(pattern: &str) -> String {
+    let mut hashes = 0;
+    while pattern.contains(&format!("\"{}", "#".repeat(hashes))) {
+        hashes += 1;
+    }
+    let h = "#".repeat(hashes);
+    format!("r{h}\"{pattern}\"{h}")
+}
+
+/// Python string literal: raw when a quote style allows it, escaped otherwise.
+fn python_string(pattern: &str) -> String {
+    if !pattern.contains('\n') && !pattern.contains('\r') {
+        if !pattern.contains('"') {
+            return format!("r\"{pattern}\"");
+        }
+        if !pattern.contains('\'') {
+            return format!("r'{pattern}'");
+        }
+    }
+    format!("\"{}\"", escape_double_quoted(pattern))
+}
+
+/// Escape `/` for a `/.../` regex literal, leaving already-escaped chars intact.
+/// With `escape_newlines`, raw line breaks become `\n`/`\r` (illegal in JS literals).
+fn escape_slash_delimiter(pattern: &str, escape_newlines: bool) -> String {
+    let mut out = String::with_capacity(pattern.len());
+    let mut chars = pattern.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '\\' => {
+                out.push('\\');
+                if let Some(next) = chars.next() {
+                    out.push(next);
+                }
+            }
+            '/' => out.push_str("\\/"),
+            '\n' if escape_newlines => out.push_str("\\n"),
+            '\r' if escape_newlines => out.push_str("\\r"),
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 /// Collect active flag names from a language-specific mapping.
@@ -75,7 +131,7 @@ fn collect_flags<'a>(mapping: &[(&'a str, bool)]) -> Vec<&'a str> {
 }
 
 fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = escape_double_quoted(pattern);
+    let literal = rust_raw_string(pattern);
     let has_flags = flags.case_insensitive
         || flags.multi_line
         || flags.dot_matches_newline
@@ -84,7 +140,7 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
 
     if has_flags {
         let mut lines = String::from("use regex::RegexBuilder;\n\n");
-        let _ = writeln!(lines, "let re = RegexBuilder::new(r\"{escaped}\")");
+        let _ = writeln!(lines, "let re = RegexBuilder::new({literal})");
         if flags.case_insensitive {
             lines.push_str("    .case_insensitive(true)\n");
         }
@@ -108,14 +164,14 @@ fn generate_rust(pattern: &str, flags: &EngineFlags) -> String {
     } else {
         format!(
             "use regex::Regex;\n\n\
-             let re = Regex::new(r\"{escaped}\").unwrap();\n\
+             let re = Regex::new({literal}).unwrap();\n\
              let matches: Vec<&str> = re.find_iter(text).map(|m| m.as_str()).collect();\n"
         )
     }
 }
 
 fn generate_python(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = escape_double_quoted(pattern);
+    let literal = python_string(pattern);
     let flag_parts = collect_flags(&[
         ("re.IGNORECASE", flags.case_insensitive),
         ("re.MULTILINE", flags.multi_line),
@@ -127,22 +183,22 @@ fn generate_python(pattern: &str, flags: &EngineFlags) -> String {
     if flag_parts.is_empty() {
         format!(
             "import re\n\n\
-             pattern = re.compile(r\"{escaped}\")\n\
+             pattern = re.compile({literal})\n\
              matches = pattern.findall(text)\n"
         )
     } else {
         format!(
             "import re\n\n\
-             pattern = re.compile(r\"{}\", {})\n\
+             pattern = re.compile({}, {})\n\
              matches = pattern.findall(text)\n",
-            escaped,
+            literal,
             flag_parts.join(" | ")
         )
     }
 }
 
 fn generate_javascript(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = pattern.replace('/', "\\/");
+    let escaped = escape_slash_delimiter(pattern, true);
     let mut js_flags = String::from("g");
     if flags.case_insensitive {
         js_flags.push('i');
@@ -175,9 +231,7 @@ fn generate_go(pattern: &str, flags: &EngineFlags) -> String {
     if flags.dot_matches_newline {
         inline_flags.push('s');
     }
-    if flags.unicode {
-        inline_flags.push('U');
-    }
+    // Go regexps are always Unicode-aware; `(?U)` would mean "ungreedy".
 
     let pattern_str = if inline_flags.is_empty() {
         format!("`{escaped}`")
@@ -252,7 +306,11 @@ fn generate_csharp(pattern: &str, flags: &EngineFlags) -> String {
 }
 
 fn generate_php(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = pattern.replace('\'', "\\'").replace('/', "\\/");
+    // Single-quoted PHP string: only `\\` and `\'` are escapes, so double every
+    // backslash to keep the pattern byte-for-byte.
+    let escaped = escape_slash_delimiter(pattern, false)
+        .replace('\\', "\\\\")
+        .replace('\'', "\\'");
     let php_flags = flags.to_inline_prefix();
 
     format!(
@@ -262,12 +320,13 @@ fn generate_php(pattern: &str, flags: &EngineFlags) -> String {
 }
 
 fn generate_ruby(pattern: &str, flags: &EngineFlags) -> String {
-    let escaped = pattern.replace('/', "\\/");
+    let escaped = escape_slash_delimiter(pattern, false);
     let mut ruby_flags = String::new();
     if flags.case_insensitive {
         ruby_flags.push('i');
     }
-    if flags.multi_line {
+    // Ruby's `^`/`$` always match at line breaks; its `m` flag means dot-all.
+    if flags.dot_matches_newline {
         ruby_flags.push('m');
     }
     if flags.extended {
