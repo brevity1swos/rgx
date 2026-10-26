@@ -570,10 +570,10 @@ impl App {
         if self.matches.is_empty() || self.selection.match_index >= self.matches.len() {
             return;
         }
-        let mut line = 0usize;
-        for i in 0..self.selection.match_index {
-            line += 1 + self.matches[i].captures.len();
-        }
+        let mut line: usize = self.matches[..self.selection.match_index]
+            .iter()
+            .map(|m| 1 + m.captures.len())
+            .sum();
         if let Some(ci) = self.selection.capture_index {
             line += 1 + ci;
         }
