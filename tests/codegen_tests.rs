@@ -84,3 +84,16 @@ fn java_escapes_literal_newline() {
     let code = generate_code(&Language::Java, "a\nb", &plain());
     assert!(code.contains(r#"Pattern.compile("a\nb")"#), "{code}");
 }
+
+#[test]
+fn ruby_escapes_interpolation_sequences() {
+    let code = generate_code(
+        &Language::Ruby,
+        r#"a#{system("id")}#@x#$y#z\#{k}"#,
+        &plain(),
+    );
+    assert!(
+        code.contains(r#"pattern = /a\#{system("id")}\#@x\#$y#z\#{k}/"#),
+        "{code}"
+    );
+}
