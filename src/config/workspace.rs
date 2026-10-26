@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use crate::app::App;
 use crate::engine::{self, EngineFlags, EngineKind};
 
+/// Every field is optional on load, so a `--test` file can be as small as
+/// `pattern` plus `[[tests]]`.
 #[derive(Serialize, Deserialize)]
+#[serde(default)]
 pub struct Workspace {
     pub pattern: String,
     pub test_string: String,
@@ -19,6 +22,25 @@ pub struct Workspace {
     pub show_whitespace: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tests: Vec<TestCase>,
+}
+
+impl Default for Workspace {
+    fn default() -> Self {
+        let flags = EngineFlags::default();
+        Self {
+            pattern: String::new(),
+            test_string: String::new(),
+            replacement: String::new(),
+            engine: "rust".to_string(),
+            case_insensitive: flags.case_insensitive,
+            multiline: flags.multi_line,
+            dotall: flags.dot_matches_newline,
+            unicode: flags.unicode,
+            extended: flags.extended,
+            show_whitespace: false,
+            tests: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
