@@ -188,202 +188,202 @@ async fn run() -> anyhow::Result<ExitCode> {
             ui::render(frame, &app);
         })?;
 
-        if let Some(event) = events.next().await {
-            match event {
-                AppEvent::Key(key) => {
-                    if app.overlay.grex.is_some() {
-                        app.dispatch_grex_overlay_key(key);
-                        continue;
-                    }
-
-                    if app.overlay.help {
-                        handler::handle_help_key(&mut app, key);
-                        continue;
-                    }
-
-                    if app.overlay.recipes {
-                        use crossterm::event::KeyCode;
-                        match key.code {
-                            KeyCode::Up => {
-                                app.overlay.recipe_index =
-                                    app.overlay.recipe_index.saturating_sub(1);
-                            }
-                            KeyCode::Down => {
-                                if app.overlay.recipe_index + 1 < RECIPES.len() {
-                                    app.overlay.recipe_index += 1;
-                                }
-                            }
-                            KeyCode::Enter => {
-                                let recipe = &RECIPES[app.overlay.recipe_index];
-                                app.set_test_string(recipe.test_string);
-                                app.set_pattern(recipe.pattern);
-                                app.overlay.recipes = false;
-                            }
-                            _ => {
-                                app.overlay.recipes = false;
-                            }
-                        }
-                        continue;
-                    }
-
-                    if app.overlay.benchmark {
-                        app.overlay.benchmark = false;
-                        continue;
-                    }
-
-                    if app.overlay.codegen {
-                        use crossterm::event::KeyCode;
-                        match key.code {
-                            KeyCode::Up => {
-                                app.overlay.codegen_language_index =
-                                    app.overlay.codegen_language_index.saturating_sub(1);
-                            }
-                            KeyCode::Down => {
-                                let langs = rgx::codegen::Language::all();
-                                if app.overlay.codegen_language_index + 1 < langs.len() {
-                                    app.overlay.codegen_language_index += 1;
-                                }
-                            }
-                            KeyCode::Enter => {
-                                let langs = rgx::codegen::Language::all();
-                                let lang = &langs[app.overlay.codegen_language_index];
-                                app.generate_code(lang);
-                            }
-                            _ => {
-                                app.overlay.codegen = false;
-                            }
-                        }
-                        continue;
-                    }
-
-                    #[cfg(feature = "pcre2-engine")]
-                    if app.debug_session.is_some() {
-                        use crossterm::event::KeyCode;
-                        match key.code {
-                            KeyCode::Right | KeyCode::Char('l') => app.debug_step_forward(),
-                            KeyCode::Left | KeyCode::Char('h') => app.debug_step_back(),
-                            KeyCode::Home | KeyCode::Char('g') => app.debug_jump_start(),
-                            KeyCode::End | KeyCode::Char('G') => app.debug_jump_end(),
-                            KeyCode::Char('m') => app.debug_next_match(),
-                            KeyCode::Char('f') => app.debug_next_backtrack(),
-                            KeyCode::Char('H') => app.debug_toggle_heatmap(),
-                            KeyCode::Esc | KeyCode::Char('q') => {
-                                app.close_debug();
-                            }
-                            _ => {}
-                        }
-                        continue;
-                    }
-
-                    let action = if app.vim_mode {
-                        vim_key_to_action(key, &mut app.vim_state)
-                    } else {
-                        key_to_action(key)
-                    };
-                    match action {
-                        Action::SaveWorkspace => {
-                            let ws = Workspace::from_app(&app);
-                            let path = app
-                                .workspace_path
-                                .clone()
-                                .or_else(|| {
-                                    dirs::config_dir().map(|d| {
-                                        d.join("rgx")
-                                            .join("workspace.toml")
-                                            .to_string_lossy()
-                                            .into_owned()
-                                    })
-                                })
-                                .unwrap_or_else(|| "workspace.toml".to_string());
-                            let save_path = std::path::Path::new(&path);
-                            if let Some(parent) = save_path.parent() {
-                                if let Err(e) = std::fs::create_dir_all(parent) {
-                                    app.status.set(format!("Cannot create directory: {e}"));
-                                    continue;
-                                }
-                            }
-                            match ws.save(save_path) {
-                                Ok(()) => {
-                                    app.workspace_path = Some(path.clone());
-                                    app.status.set(format!("Saved: {path}"));
-                                }
-                                Err(e) => {
-                                    app.status.set(format!("Save error: {e}"));
-                                }
-                            }
-                        }
-                        other => app.handle_action(other, settings.debug_max_steps),
-                    }
+        // `None` means the terminal event source is gone (read error or closed
+        // tty); nothing can ever arrive again, so quit instead of spinning.
+        let Some(event) = events.next().await else {
+            break;
+        };
+        match event {
+            AppEvent::Key(key) => {
+                if app.overlay.grex.is_some() {
+                    app.dispatch_grex_overlay_key(key);
+                    continue;
                 }
-                AppEvent::Mouse(mouse) => {
-                    match mouse.kind {
-                        MouseEventKind::Down(MouseButton::Left) => {
-                            let col = mouse.column;
-                            let row = mouse.row;
-                            let layout = &last_layout;
 
-                            // Determine which panel was clicked
-                            if contains(layout.regex_input, col, row) {
-                                app.focused_panel = App::PANEL_REGEX;
-                                let x = col.saturating_sub(layout.regex_input.x + 1) as usize;
-                                app.regex_editor
-                                    .set_cursor_by_col(x + app.regex_editor.scroll_offset());
-                            } else if contains(layout.test_input, col, row) {
-                                app.focused_panel = App::PANEL_TEST;
-                                let x = col.saturating_sub(layout.test_input.x + 1) as usize;
-                                let y = row.saturating_sub(layout.test_input.y + 1) as usize;
-                                let line = y + app.test_editor.vertical_scroll();
-                                app.test_editor.set_cursor_by_position(
-                                    line,
-                                    x + app.test_editor.scroll_offset(),
-                                );
-                            } else if contains(layout.replace_input, col, row) {
-                                app.focused_panel = App::PANEL_REPLACE;
-                                let x = col.saturating_sub(layout.replace_input.x + 1) as usize;
-                                app.replace_editor
-                                    .set_cursor_by_col(x + app.replace_editor.scroll_offset());
-                            } else if contains(layout.match_display, col, row) {
-                                app.focused_panel = App::PANEL_MATCHES;
-                            } else if contains(layout.explanation, col, row) {
-                                app.focused_panel = App::PANEL_EXPLAIN;
+                if app.overlay.help {
+                    handler::handle_help_key(&mut app, key);
+                    continue;
+                }
+
+                if app.overlay.recipes {
+                    use crossterm::event::KeyCode;
+                    match key.code {
+                        KeyCode::Up => {
+                            app.overlay.recipe_index = app.overlay.recipe_index.saturating_sub(1);
+                        }
+                        KeyCode::Down => {
+                            if app.overlay.recipe_index + 1 < RECIPES.len() {
+                                app.overlay.recipe_index += 1;
                             }
                         }
-                        MouseEventKind::ScrollUp => {
-                            let col = mouse.column;
-                            let row = mouse.row;
-                            let layout = &last_layout;
+                        KeyCode::Enter => {
+                            let recipe = &RECIPES[app.overlay.recipe_index];
+                            app.set_test_string(recipe.test_string);
+                            app.set_pattern(recipe.pattern);
+                            app.overlay.recipes = false;
+                        }
+                        _ => {
+                            app.overlay.recipes = false;
+                        }
+                    }
+                    continue;
+                }
 
-                            if contains(layout.test_input, col, row) {
-                                app.test_editor.move_up();
-                            } else if contains(layout.match_display, col, row) {
-                                app.select_match_prev();
-                            } else if contains(layout.explanation, col, row) {
-                                app.scroll_explain_up();
+                if app.overlay.benchmark {
+                    app.overlay.benchmark = false;
+                    continue;
+                }
+
+                if app.overlay.codegen {
+                    use crossterm::event::KeyCode;
+                    match key.code {
+                        KeyCode::Up => {
+                            app.overlay.codegen_language_index =
+                                app.overlay.codegen_language_index.saturating_sub(1);
+                        }
+                        KeyCode::Down => {
+                            let langs = rgx::codegen::Language::all();
+                            if app.overlay.codegen_language_index + 1 < langs.len() {
+                                app.overlay.codegen_language_index += 1;
                             }
                         }
-                        MouseEventKind::ScrollDown => {
-                            let col = mouse.column;
-                            let row = mouse.row;
-                            let layout = &last_layout;
+                        KeyCode::Enter => {
+                            let langs = rgx::codegen::Language::all();
+                            let lang = &langs[app.overlay.codegen_language_index];
+                            app.generate_code(lang);
+                        }
+                        _ => {
+                            app.overlay.codegen = false;
+                        }
+                    }
+                    continue;
+                }
 
-                            if contains(layout.test_input, col, row) {
-                                app.test_editor.move_down();
-                            } else if contains(layout.match_display, col, row) {
-                                app.select_match_next();
-                            } else if contains(layout.explanation, col, row) {
-                                app.scroll_explain_down();
-                            }
+                #[cfg(feature = "pcre2-engine")]
+                if app.debug_session.is_some() {
+                    use crossterm::event::KeyCode;
+                    match key.code {
+                        KeyCode::Right | KeyCode::Char('l') => app.debug_step_forward(),
+                        KeyCode::Left | KeyCode::Char('h') => app.debug_step_back(),
+                        KeyCode::Home | KeyCode::Char('g') => app.debug_jump_start(),
+                        KeyCode::End | KeyCode::Char('G') => app.debug_jump_end(),
+                        KeyCode::Char('m') => app.debug_next_match(),
+                        KeyCode::Char('f') => app.debug_next_backtrack(),
+                        KeyCode::Char('H') => app.debug_toggle_heatmap(),
+                        KeyCode::Esc | KeyCode::Char('q') => {
+                            app.close_debug();
                         }
                         _ => {}
                     }
+                    continue;
                 }
-                AppEvent::Tick => {
-                    app.status.tick();
-                    app.maybe_run_grex_generation();
-                    app.drain_grex_results();
+
+                let action = if app.vim_mode {
+                    vim_key_to_action(key, &mut app.vim_state)
+                } else {
+                    key_to_action(key)
+                };
+                match action {
+                    Action::SaveWorkspace => {
+                        let ws = Workspace::from_app(&app);
+                        let path = app
+                            .workspace_path
+                            .clone()
+                            .or_else(|| {
+                                dirs::config_dir().map(|d| {
+                                    d.join("rgx")
+                                        .join("workspace.toml")
+                                        .to_string_lossy()
+                                        .into_owned()
+                                })
+                            })
+                            .unwrap_or_else(|| "workspace.toml".to_string());
+                        let save_path = std::path::Path::new(&path);
+                        if let Some(parent) = save_path.parent() {
+                            if let Err(e) = std::fs::create_dir_all(parent) {
+                                app.status.set(format!("Cannot create directory: {e}"));
+                                continue;
+                            }
+                        }
+                        match ws.save(save_path) {
+                            Ok(()) => {
+                                app.workspace_path = Some(path.clone());
+                                app.status.set(format!("Saved: {path}"));
+                            }
+                            Err(e) => {
+                                app.status.set(format!("Save error: {e}"));
+                            }
+                        }
+                    }
+                    other => app.handle_action(other, settings.debug_max_steps),
                 }
-                AppEvent::Resize(_, _) => {}
             }
+            AppEvent::Mouse(mouse) => {
+                match mouse.kind {
+                    MouseEventKind::Down(MouseButton::Left) => {
+                        let col = mouse.column;
+                        let row = mouse.row;
+                        let layout = &last_layout;
+
+                        // Determine which panel was clicked
+                        if contains(layout.regex_input, col, row) {
+                            app.focused_panel = App::PANEL_REGEX;
+                            let x = col.saturating_sub(layout.regex_input.x + 1) as usize;
+                            app.regex_editor
+                                .set_cursor_by_col(x + app.regex_editor.scroll_offset());
+                        } else if contains(layout.test_input, col, row) {
+                            app.focused_panel = App::PANEL_TEST;
+                            let x = col.saturating_sub(layout.test_input.x + 1) as usize;
+                            let y = row.saturating_sub(layout.test_input.y + 1) as usize;
+                            let line = y + app.test_editor.vertical_scroll();
+                            app.test_editor
+                                .set_cursor_by_position(line, x + app.test_editor.scroll_offset());
+                        } else if contains(layout.replace_input, col, row) {
+                            app.focused_panel = App::PANEL_REPLACE;
+                            let x = col.saturating_sub(layout.replace_input.x + 1) as usize;
+                            app.replace_editor
+                                .set_cursor_by_col(x + app.replace_editor.scroll_offset());
+                        } else if contains(layout.match_display, col, row) {
+                            app.focused_panel = App::PANEL_MATCHES;
+                        } else if contains(layout.explanation, col, row) {
+                            app.focused_panel = App::PANEL_EXPLAIN;
+                        }
+                    }
+                    MouseEventKind::ScrollUp => {
+                        let col = mouse.column;
+                        let row = mouse.row;
+                        let layout = &last_layout;
+
+                        if contains(layout.test_input, col, row) {
+                            app.test_editor.move_up();
+                        } else if contains(layout.match_display, col, row) {
+                            app.select_match_prev();
+                        } else if contains(layout.explanation, col, row) {
+                            app.scroll_explain_up();
+                        }
+                    }
+                    MouseEventKind::ScrollDown => {
+                        let col = mouse.column;
+                        let row = mouse.row;
+                        let layout = &last_layout;
+
+                        if contains(layout.test_input, col, row) {
+                            app.test_editor.move_down();
+                        } else if contains(layout.match_display, col, row) {
+                            app.select_match_next();
+                        } else if contains(layout.explanation, col, row) {
+                            app.scroll_explain_down();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            AppEvent::Tick => {
+                app.status.tick();
+                app.maybe_run_grex_generation();
+                app.drain_grex_results();
+            }
+            AppEvent::Resize(_, _) => {}
         }
 
         if app.should_quit {
