@@ -16,6 +16,17 @@ use rgx::input::{handler, key_to_action, Action};
 use rgx::recipe::RECIPES;
 use rgx::ui;
 
+/// Exit quietly like grep when a downstream reader closes the pipe
+/// (`rgx -p ... | head`), instead of panicking in `println!`.
+fn reset_sigpipe() {
+    #[cfg(unix)]
+    // SAFETY: signal(2) only swaps the process-wide disposition and may be
+    // called from any thread; SIG_DFL needs no handler to stay valid.
+    unsafe {
+        libc::signal(libc::SIGPIPE, libc::SIG_DFL);
+    }
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
     match run().await {
@@ -28,6 +39,7 @@ async fn main() -> ExitCode {
 }
 
 async fn run() -> anyhow::Result<ExitCode> {
+    reset_sigpipe();
     let cli = Cli::parse();
 
     // Generate shell completions and exit
