@@ -270,62 +270,84 @@ pub const fn is_engine_upgrade(current: EngineKind, suggested: EngineKind) -> bo
 }
 
 fn needs_fancy(pattern: &str) -> bool {
-    if pattern.contains("(?=")
-        || pattern.contains("(?!")
-        || pattern.contains("(?<=")
-        || pattern.contains("(?<!")
-    {
-        return true;
-    }
-    has_backreference(pattern)
-}
-
-fn has_backreference(pattern: &str) -> bool {
-    let bytes = pattern.as_bytes();
-    let len = bytes.len();
-    let mut i = 0;
-    while i < len.saturating_sub(1) {
-        if bytes[i] == b'\\' {
-            let next = bytes[i + 1];
-            if next.is_ascii_digit() && next != b'0' {
-                return true;
-            }
-            // Skip the escaped character so we don't re-inspect it
-            i += 2;
-            continue;
-        }
-        i += 1;
-    }
-    false
+    scan_features(pattern).fancy
 }
 
 #[cfg(feature = "pcre2-engine")]
 fn needs_pcre2(pattern: &str) -> bool {
-    if pattern.contains("(?R)")
-        || pattern.contains("(*SKIP)")
-        || pattern.contains("(*FAIL)")
-        || pattern.contains("(*PRUNE)")
-        || pattern.contains("(*COMMIT)")
-        || pattern.contains("\\K")
-        || pattern.contains("(?(")
-    {
-        return true;
-    }
-    has_subroutine_call(pattern)
+    scan_features(pattern).pcre2
 }
 
-#[cfg(feature = "pcre2-engine")]
-fn has_subroutine_call(pattern: &str) -> bool {
-    let bytes = pattern.as_bytes();
-    for i in 0..bytes.len().saturating_sub(2) {
-        if bytes[i] == b'('
-            && bytes[i + 1] == b'?'
-            && bytes.get(i + 2).is_some_and(u8::is_ascii_digit)
-        {
-            return true;
+/// Engine-specific syntax found in a pattern.
+#[derive(Default)]
+struct PatternFeatures {
+    /// Lookaround, backreferences, atomic groups.
+    fancy: bool,
+    /// Recursion/subroutines, verbs, conditionals, branch reset, `\K`, `\R`, `\g`.
+    pcre2: bool,
+}
+
+/// Scan for engine-specific syntax, ignoring escaped characters and the
+/// contents of character classes (so `\(?=` or `[(?=]` are not lookaheads).
+fn scan_features(pattern: &str) -> PatternFeatures {
+    let b = pattern.as_bytes();
+    let mut f = PatternFeatures::default();
+    let mut class_depth = 0usize;
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'\\' => {
+                if class_depth == 0 {
+                    match b.get(i + 1) {
+                        // \1-\9 and \k<name> / \k{name} / \k'name'
+                        Some(b'1'..=b'9' | b'k') => f.fancy = true,
+                        Some(b'K' | b'R' | b'g') => f.pcre2 = true,
+                        _ => {}
+                    }
+                }
+                i += 2;
+                continue;
+            }
+            b'[' => {
+                class_depth += 1;
+                i += 1;
+                // A `]` right after `[` or `[^` is a literal, not the end.
+                if b.get(i) == Some(&b'^') {
+                    i += 1;
+                }
+                if b.get(i) == Some(&b']') {
+                    i += 1;
+                }
+                continue;
+            }
+            b']' if class_depth > 0 => class_depth -= 1,
+            b'(' if class_depth == 0 => {
+                let rest = &b[i + 1..];
+                if rest.starts_with(b"*") {
+                    f.pcre2 = true; // (*SKIP), (*FAIL), (*UTF), ...
+                } else if let Some(r) = rest.strip_prefix(b"?") {
+                    let signed_digit = matches!(r.first(), Some(b'+' | b'-'))
+                        && r.get(1).is_some_and(u8::is_ascii_digit);
+                    if [&b"="[..], b"!", b"<=", b"<!", b">", b"P="]
+                        .iter()
+                        .any(|p| r.starts_with(p))
+                    {
+                        f.fancy = true;
+                    } else if [&b"R"[..], b"&", b"P>", b"(", b"|"]
+                        .iter()
+                        .any(|p| r.starts_with(p))
+                        || r.first().is_some_and(u8::is_ascii_digit)
+                        || signed_digit
+                    {
+                        f.pcre2 = true;
+                    }
+                }
+            }
+            _ => {}
         }
+        i += 1;
     }
-    false
+    f
 }
 
 // --- Replace/Substitution support ---
@@ -654,14 +676,41 @@ mod tests {
     }
 
     #[test]
-    fn test_has_backreference() {
-        assert!(has_backreference(r"(\w+)\1"));
-        assert!(has_backreference(r"\1"));
-        assert!(has_backreference(r"(a)(b)(c)\3"));
-        assert!(!has_backreference(r"\d+"));
-        assert!(!has_backreference(r"\0"));
-        assert!(!has_backreference(r"plain text"));
-        assert!(!has_backreference(r"\w\s\b\B\n\r\t"));
+    fn test_needs_fancy_backreferences() {
+        assert!(needs_fancy(r"(\w+)\1"));
+        assert!(needs_fancy(r"\1"));
+        assert!(needs_fancy(r"(a)(b)(c)\3"));
+        assert!(!needs_fancy(r"\d+"));
+        assert!(!needs_fancy(r"\0"));
+        assert!(!needs_fancy(r"plain text"));
+        assert!(!needs_fancy(r"\w\s\b\B\n\r\t"));
+    }
+
+    #[test]
+    fn test_detect_named_backrefs_and_atomic_groups() {
+        for p in [r"(?<w>\w)\k<w>", r"(?P<w>\w)(?P=w)", r"(?>a+)b", r"(?<=x)y"] {
+            assert_eq!(detect_minimum_engine(p), EngineKind::FancyRegex, "{p}");
+            let compiled =
+                create_engine(EngineKind::FancyRegex).compile(p, &EngineFlags::default());
+            assert!(compiled.is_ok(), "fancy-regex rejects {p}");
+        }
+    }
+
+    #[test]
+    fn test_detect_ignores_escaped_and_class_syntax() {
+        for p in [
+            r"\(?=",
+            r"\(?!x",
+            r"[(?=]",
+            r"[]\1(?=]",
+            r"\\d",
+            r"(?<name>a)",
+            r"(?i)a",
+        ] {
+            assert_eq!(detect_minimum_engine(p), EngineKind::RustRegex, "{p}");
+        }
+        // Escaped backslash followed by a real lookahead is still detected.
+        assert_eq!(detect_minimum_engine(r"\\(?=a)"), EngineKind::FancyRegex);
     }
 
     #[test]
@@ -741,6 +790,30 @@ mod tests {
     #[cfg(feature = "pcre2-engine")]
     mod pcre2_detection_tests {
         use super::*;
+
+        #[test]
+        fn test_detect_subroutines_and_pcre2_escapes() {
+            for p in [
+                r"(a)(?-1)",
+                r"(a)(?+1)(b)",
+                r"(?<n>a)(?&n)",
+                r"(?P<n>a)(?P>n)",
+                r"(?|(a)|(b))",
+                r"a\Rb",
+                r"(a)\g{1}",
+                r"(*UTF)a",
+            ] {
+                assert_eq!(detect_minimum_engine(p), EngineKind::Pcre2, "{p}");
+                let compiled = create_engine(EngineKind::Pcre2).compile(p, &EngineFlags::default());
+                assert!(compiled.is_ok(), "PCRE2 rejects {p}");
+            }
+        }
+
+        #[test]
+        fn test_detect_escaped_paren_digit_is_not_subroutine() {
+            assert_eq!(detect_minimum_engine(r"\(?1\d"), EngineKind::RustRegex);
+            assert_eq!(detect_minimum_engine(r"(?-i)a"), EngineKind::RustRegex);
+        }
 
         #[test]
         fn test_detect_recursion_needs_pcre2() {
