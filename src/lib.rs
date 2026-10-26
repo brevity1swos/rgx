@@ -9,4 +9,5 @@ pub mod filter;
 pub mod grex_integration;
 pub mod input;
 pub mod recipe;
+pub mod tui;
 pub mod ui;

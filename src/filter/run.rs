@@ -3,41 +3,25 @@
 use std::io;
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use crossterm::execute;
-use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-};
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
 
 use crate::filter::{FilterApp, Outcome};
+use crate::tui::{TerminalGuard, TuiTerminal};
 
 /// Run the TUI event loop to completion. Returns when the user hits Enter
 /// (emit) or Esc/q (discard). Input events come from crossterm's blocking
 /// `event::read()` — the filter UI has no background work, so async is not
 /// needed.
 pub fn run_tui(mut app: FilterApp) -> io::Result<(FilterApp, Outcome)> {
-    let mut stdout = io::stdout();
-    enable_raw_mode()?;
-    execute!(stdout, EnterAlternateScreen)?;
-
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    let result = event_loop(&mut terminal, &mut app);
-
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+    let mut guard = TerminalGuard::enter(false)?;
+    let result = event_loop(&mut guard.terminal, &mut app);
+    drop(guard);
 
     result?;
     let outcome = app.outcome;
     Ok((app, outcome))
 }
 
-fn event_loop(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    app: &mut FilterApp,
-) -> io::Result<()> {
+fn event_loop(terminal: &mut TuiTerminal, app: &mut FilterApp) -> io::Result<()> {
     while !app.should_quit {
         terminal.draw(|frame| crate::filter::ui::render(frame, app))?;
         match crossterm::event::read()? {

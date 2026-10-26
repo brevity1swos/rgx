@@ -4,12 +4,6 @@ use std::time::Duration;
 
 use clap::Parser;
 use crossterm::event::{MouseButton, MouseEventKind};
-use crossterm::{
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use ratatui::backend::CrosstermBackend;
-use ratatui::Terminal;
 
 use rgx::app::App;
 use rgx::config::cli::{Cli, ColorMode};
@@ -178,16 +172,9 @@ async fn run() -> anyhow::Result<ExitCode> {
         });
     }
 
-    // Setup terminal
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(
-        stdout,
-        EnterAlternateScreen,
-        crossterm::event::EnableMouseCapture
-    )?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    // Setup terminal (restored on drop, error, or panic)
+    let mut guard = rgx::tui::TerminalGuard::enter(true)?;
+    let terminal = &mut guard.terminal;
 
     // Event loop
     let mut events = EventHandler::new(Duration::from_millis(50));
@@ -404,14 +391,8 @@ async fn run() -> anyhow::Result<ExitCode> {
         }
     }
 
-    // Restore terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        crossterm::event::DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
+    // Restore terminal before printing any output
+    drop(guard);
 
     if cli.output_pattern {
         let pattern = app.regex_editor.content();
