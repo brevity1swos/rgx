@@ -344,7 +344,7 @@ fn read_input_truncates_oversized_line() {
     // come back at exactly MAX_LINE_BYTES and truncated == true, and the
     // second line should still be readable intact.
     let cap = rgx::filter::MAX_LINE_BYTES;
-    let big: Vec<u8> = std::iter::repeat(b'x').take(cap + 1024).collect();
+    let big: Vec<u8> = std::iter::repeat_n(b'x', cap + 1024).collect();
     let mut data = big;
     data.push(b'\n');
     data.extend_from_slice(b"next\n");
