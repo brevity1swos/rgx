@@ -1153,15 +1153,13 @@ impl App {
             return;
         }
         overlay.debounce_deadline = None;
-        overlay.generation_counter += 1;
+        // Process-wide ids: a fresh overlay restarts its state, and must not
+        // accept a late result from a closed overlay that used the same id.
+        static NEXT_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        overlay.generation_counter =
+            NEXT_GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let counter = overlay.generation_counter;
-        let examples: Vec<String> = overlay
-            .editor
-            .content()
-            .lines()
-            .filter(|l| !l.is_empty())
-            .map(ToString::to_string)
-            .collect();
+        let examples = grex_examples(&overlay.editor);
         let options = overlay.options;
         let tx = self.grex_result_tx.clone();
 
@@ -1201,11 +1199,12 @@ impl App {
                 return true;
             }
             KeyCode::Tab => {
-                let pattern = overlay
-                    .generated_pattern
-                    .as_deref()
-                    .filter(|p| !p.is_empty())
-                    .map(str::to_string);
+                // Generate from the examples as they are now: the preview may
+                // still be pending (debounce) or reflect an older edit.
+                let examples = grex_examples(&overlay.editor);
+                let pattern = (!examples.is_empty())
+                    .then(|| crate::grex_integration::generate(&examples, overlay.options))
+                    .filter(|p| !p.is_empty());
                 if let Some(pattern) = pattern {
                     self.set_pattern(&pattern);
                     self.overlay.grex = None;
@@ -1318,6 +1317,16 @@ fn print_colored_replace(output: &str, segments: &[engine::ReplaceSegment]) {
     if !output.ends_with('\n') {
         println!();
     }
+}
+
+/// Non-empty lines of the grex overlay editor, one example per line.
+fn grex_examples(editor: &Editor) -> Vec<String> {
+    editor
+        .content()
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(ToString::to_string)
+        .collect()
 }
 
 #[cfg(all(test, feature = "redos"))]

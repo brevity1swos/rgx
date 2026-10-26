@@ -91,16 +91,39 @@ const fn press(key: KeyCode, mods: KeyModifiers) -> KeyEvent {
     KeyEvent::new(key, mods)
 }
 
+fn type_text(app: &mut App, text: &str) {
+    for c in text.chars() {
+        let key = if c == '\n' {
+            press(KeyCode::Enter, KeyModifiers::NONE)
+        } else {
+            press(KeyCode::Char(c), KeyModifiers::NONE)
+        };
+        app.dispatch_grex_overlay_key(key);
+    }
+}
+
 #[test]
-fn tab_with_generated_pattern_loads_into_regex_editor_and_closes_overlay() {
+fn tab_with_examples_loads_into_regex_editor_and_closes_overlay() {
     let mut app = new_test_app();
     app.handle_action(Action::OpenGrex, 10_000);
-    if let Some(overlay) = app.overlay.grex.as_mut() {
-        overlay.generated_pattern = Some("^hello$".to_string());
-    }
+    type_text(&mut app, "hello");
     app.dispatch_grex_overlay_key(press(KeyCode::Tab, KeyModifiers::NONE));
     assert!(app.overlay.grex.is_none());
     assert_eq!(app.regex_editor.content(), "^hello$");
+}
+
+#[test]
+fn tab_uses_current_examples_not_a_stale_preview() {
+    let mut app = new_test_app();
+    app.handle_action(Action::OpenGrex, 10_000);
+    type_text(&mut app, "abc");
+    // Simulate a preview generated before the latest edit landed.
+    if let Some(overlay) = app.overlay.grex.as_mut() {
+        overlay.generated_pattern = Some("^old$".to_string());
+    }
+    // Tab inside the debounce window, before any regeneration ran.
+    app.dispatch_grex_overlay_key(press(KeyCode::Tab, KeyModifiers::NONE));
+    assert_eq!(app.regex_editor.content(), "^abc$");
 }
 
 #[test]
