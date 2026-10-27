@@ -1,8 +1,8 @@
 # rgx Roadmap
 
-## Current direction (updated 2026-06-14)
+## Current direction (updated 2026-10-26)
 
-**rgx v0.14.1 shipped.** The core CLI is in maintenance mode. The regex-
+**rgx v0.14.3 shipped.** The core CLI is in maintenance mode. The regex-
 debugging audience has been served: step-through debugger, grex overlay,
 code generation, test suite mode, workspace save/load, vim mode, filter
 mode with `--json` JSONL-field extraction, the F3 Quick Reference side
@@ -11,7 +11,7 @@ gap left to close in the core editor-mode workflow.
 
 **One deliberate exception to maintenance: editor distribution.** rgx now
 ships thin editor integrations under `plugin/` — a VS Code extension
-(`plugin/vscode`, v0.5.0, packaged `.vsix`), a Neovim Lua module
+(`plugin/vscode`, v0.5.1, packaged `.vsix`), a Neovim Lua module
 (`plugin/nvim`), and a Zed `tasks.json` (`plugin/zed`). These are **CLI
 launchers, not reimplementations**: every plugin shells out to the
 existing `rgx` binary in an integrated terminal, so they add zero
@@ -55,11 +55,22 @@ development continues; the binary itself is feature-frozen.
 
 ## Recently shipped
 
-- **Editor plugins** — VS Code extension (`plugin/vscode` v0.5.0,
+- **Editor plugins** — VS Code extension (`plugin/vscode` v0.5.1,
   packaged `.vsix`; launches rgx in the integrated terminal with
   real-time matching and explanations), Neovim Lua module
   (`plugin/nvim`), and Zed `tasks.json` (`plugin/zed`). All thin
   launchers around the `rgx` binary.
+- **v0.14.3** (2026-10-26) — repository-review bug-fix release: PCRE2
+  left context between matches, byte-for-byte code generation (raw
+  strings, `/` delimiters, Ruby interpolation), terminal restore on
+  panic, TUI drawn to stderr when stdout is piped, editor scrolling,
+  escape-aware auto engine detection, unknown `--engine` is now an
+  error, minimal `--test` workspaces, and filter match-time errors exit
+  2. `rust-version` corrected from 1.74 to 1.88: ratatui 0.30 and other
+  dependencies already required 1.88, so the real floor did not move
+  and a patch release was appropriate. CI now checks MSRV.
+- **v0.14.2** (2026-07-07) — optional ReDoS analysis via `rxray`
+  (`--features redos`, `Ctrl+A`); VS Code extension v0.5.0–v0.5.1.
 - **v0.13.0–v0.14.1** (2026-06-07 → 06-08) — F3-toggled Quick Reference
   side panel (full-height, PageUp/PageDown scrolling); `Action` enum
   marked `#[non_exhaustive]` for forward-compatible semver; scroll-clamp
