@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.3] - 2026-10-26
+
+### Bug Fixes
+
+- *(pcre2)* Keep left context and char boundaries between matches
+- *(codegen)* Emit patterns byte-for-byte in generated code
+- *(redos)* Clear stale matches and honor flags when loading attack
+- *(ui)* Scroll editors so the cursor stays visible
+- *(tui)* Restore the terminal on panic and keep piped stdout clean
+- *(filter)* Ignore key releases and handle Delete in the TUI
+- *(input)* Stop unmapped ctrl/alt chords from inserting text
+- *(event)* Quit when terminal input ends instead of spinning
+- *(config)* Reject unknown engines instead of silently using rust
+- *(workspace)* Make every field optional in workspace files
+- *(cli)* Run --test before reading stdin
+- *(cli)* Exit 1 for --print with empty input
+- *(cli)* Exit quietly when the output pipe closes
+- *(app)* Clear match-time errors once matching succeeds
+- *(engine)* Make auto engine detection escape- and class-aware
+- *(filter)* Accept .["key"] in --json paths
+- *(filter)* Report match-time errors instead of treating them as misses
+- *(grex)* Generate from current examples on Tab
+- *(codegen)* Escape ruby interpolation in generated regex literals
+
+### Documentation
+
+- *(cli)* Finish the --max-lines help text
+
+### Miscellaneous
+
+- *(clippy)* Fix lints from newer toolchains
+
+### Testing
+
+- *(e2e)* Locate the rgx binary via CARGO_BIN_EXE_rgx
+
+### Build
+
+- Raise rust-version to 1.88 to match dependencies
+
+### Ci
+
+- Pin actions to SHAs and test features and MSRV
+
+
 ## [0.14.2] - 2026-07-07
 
 ### Documentation
