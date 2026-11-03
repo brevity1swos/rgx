@@ -68,12 +68,26 @@ pub fn render_debugger(frame: &mut Frame, area: Rect, session: &DebugSession, bt
 
     let step = &trace.steps[current_step.min(trace.steps.len() - 1)];
 
-    render_pattern_panel(frame, inner_chunks[0], pattern, step, bt);
-    render_input_panel(frame, inner_chunks[1], subject, step, bt);
+    // The pattern and subject are single lines; scroll each so the current
+    // step stays visible. The heatmap shares the pattern's scroll so the two
+    // stay aligned.
+    let view = inner_chunks[0].width.saturating_sub(2) as usize;
+    let token_start = step.pattern_offset;
+    let token_end = token_start + step.pattern_item_length.max(1);
+    let pattern_scroll = scroll_to_show(
+        column_at(pattern, token_start, pattern_char_width),
+        column_at(pattern, token_end, pattern_char_width),
+        view,
+    );
+    let pos_col = column_at(subject, step.subject_offset, subject_char_width);
+    let subject_scroll = scroll_to_show(pos_col, pos_col + 1, view);
+
+    render_pattern_panel(frame, inner_chunks[0], pattern, step, pattern_scroll, bt);
+    render_input_panel(frame, inner_chunks[1], subject, step, subject_scroll, bt);
     render_step_info(frame, inner_chunks[2], step, current_step, trace);
 
     if show_heatmap {
-        render_heatmap(frame, inner_chunks[3], pattern, trace, bt);
+        render_heatmap(frame, inner_chunks[3], pattern, trace, pattern_scroll, bt);
     }
 
     render_captures(frame, inner_chunks[4], step, subject, trace, bt);
@@ -87,6 +101,45 @@ fn panel_block(title: &'static str, bt: BorderType) -> Block<'static> {
         .border_style(Style::default().fg(theme::OVERLAY))
         .title(Span::styled(title, Style::default().fg(theme::SUBTEXT)))
         .style(Style::default().bg(theme::BASE))
+}
+
+/// Drawn width of a pattern character.
+#[cfg(feature = "pcre2-engine")]
+fn pattern_char_width(c: char) -> usize {
+    unicode_width::UnicodeWidthChar::width(c).unwrap_or(0)
+}
+
+/// Drawn width of a subject character; whitespace is shown as one-column glyphs.
+#[cfg(feature = "pcre2-engine")]
+fn subject_char_width(c: char) -> usize {
+    match c {
+        '\n' | '\t' | ' ' => 1,
+        c => unicode_width::UnicodeWidthChar::width(c).unwrap_or(0),
+    }
+}
+
+/// Column at which the character at byte `pos` is drawn.
+#[cfg(feature = "pcre2-engine")]
+fn column_at(text: &str, pos: usize, width_of: fn(char) -> usize) -> usize {
+    text.char_indices()
+        .take_while(|&(i, _)| i < pos)
+        .map(|(_, c)| width_of(c))
+        .sum()
+}
+
+/// Horizontal scroll that keeps columns `start..end` inside a panel `view`
+/// columns wide, with about a third of the panel of context before them.
+/// `start` is always visible, even when the span is wider than the panel.
+#[cfg(feature = "pcre2-engine")]
+fn scroll_to_show(start: usize, end: usize, view: usize) -> u16 {
+    if view == 0 || end <= view {
+        return 0;
+    }
+    let mut offset = start.saturating_sub(view / 3);
+    if end > offset + view {
+        offset = (end - view).min(start);
+    }
+    u16::try_from(offset).unwrap_or(u16::MAX)
 }
 
 fn build_char_spans(
@@ -105,6 +158,7 @@ fn render_pattern_panel(
     area: Rect,
     pattern: &str,
     step: &DebugStep,
+    scroll: u16,
     bt: BorderType,
 ) {
     let token_start = step.pattern_offset;
@@ -122,7 +176,9 @@ fn render_pattern_panel(
         |ch| ch.to_string(),
     );
 
-    let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Pattern ", bt));
+    let paragraph = Paragraph::new(Line::from(spans))
+        .block(panel_block(" Pattern ", bt))
+        .scroll((0, scroll));
     frame.render_widget(paragraph, area);
 }
 
@@ -132,6 +188,7 @@ fn render_input_panel(
     area: Rect,
     subject: &str,
     step: &DebugStep,
+    scroll: u16,
     bt: BorderType,
 ) {
     let pos = step.subject_offset;
@@ -162,7 +219,9 @@ fn render_input_panel(
         ));
     }
 
-    let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Subject ", bt));
+    let paragraph = Paragraph::new(Line::from(spans))
+        .block(panel_block(" Subject ", bt))
+        .scroll((0, scroll));
     frame.render_widget(paragraph, area);
 }
 
@@ -224,6 +283,7 @@ fn render_heatmap(
     area: Rect,
     pattern: &str,
     trace: &DebugTrace,
+    scroll: u16,
     bt: BorderType,
 ) {
     let max_heat = trace.heatmap.iter().copied().max().unwrap_or(1).max(1);
@@ -252,7 +312,9 @@ fn render_heatmap(
         ));
     }
 
-    let paragraph = Paragraph::new(Line::from(spans)).block(panel_block(" Heatmap (H) ", bt));
+    let paragraph = Paragraph::new(Line::from(spans))
+        .block(panel_block(" Heatmap (H) ", bt))
+        .scroll((0, scroll));
     frame.render_widget(paragraph, area);
 }
 
@@ -344,4 +406,33 @@ fn render_controls(frame: &mut Frame, area: Rect, show_heatmap: bool) {
 
     let paragraph = Paragraph::new(vec![line1, line2]).style(Style::default().bg(theme::BASE));
     frame.render_widget(paragraph, area);
+}
+
+#[cfg(all(test, feature = "pcre2-engine"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scroll_to_show_stays_put_when_span_fits() {
+        assert_eq!(scroll_to_show(10, 11, 80), 0);
+        assert_eq!(scroll_to_show(79, 80, 80), 0);
+    }
+
+    #[test]
+    fn scroll_to_show_brings_far_span_into_view() {
+        let off = scroll_to_show(200, 201, 60) as usize;
+        assert!(off <= 200 && 201 <= off + 60);
+    }
+
+    #[test]
+    fn scroll_to_show_keeps_start_of_oversized_span() {
+        assert_eq!(scroll_to_show(100, 300, 60), 100);
+    }
+
+    #[test]
+    fn column_at_counts_wide_chars() {
+        // `é` is one column, `日` is two.
+        assert_eq!(column_at("é日x", "é日".len(), pattern_char_width), 3);
+        assert_eq!(column_at("a\nb", 2, subject_char_width), 2);
+    }
 }

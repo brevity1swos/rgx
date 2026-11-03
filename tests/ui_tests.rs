@@ -690,3 +690,26 @@ fn selected_match_stays_visible_when_matches_wrap() {
         "selected match scrolled out of view"
     );
 }
+
+#[cfg(feature = "pcre2-engine")]
+#[test]
+fn debugger_scrolls_long_subject_to_current_step() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::Pcre2, EngineFlags::default());
+    app.set_pattern("K$");
+    app.set_test_string(&format!("{}ENDMARK", "a".repeat(150)));
+    app.start_debug(100_000);
+    app.debug_jump_end();
+    draw_synced(&mut terminal, &mut app);
+    let screen = screen_text(&terminal);
+    let lines: Vec<&str> = screen.lines().collect();
+    let title = lines
+        .iter()
+        .position(|l| l.contains("Subject"))
+        .expect("subject panel");
+    assert!(
+        lines[title + 1].contains("ENDMARK"),
+        "subject row: {}",
+        lines[title + 1]
+    );
+}
