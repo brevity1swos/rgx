@@ -672,3 +672,21 @@ fn mouse_column_counts_tab_as_one_column() {
     editor.set_cursor_by_col(2);
     assert_eq!(editor.cursor(), 2, "column 2 is `b`");
 }
+
+#[test]
+fn selected_match_stays_visible_when_matches_wrap() {
+    let mut terminal = Terminal::new(TestBackend::new(40, 24)).unwrap();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_pattern(r"\w+");
+    let words: Vec<String> = (0..10).map(|i| format!("w{i}{}", "x".repeat(60))).collect();
+    app.set_test_string(&words.join(" "));
+    app.focused_panel = App::PANEL_MATCHES;
+    for _ in 0..6 {
+        app.select_match_next();
+    }
+    draw_synced(&mut terminal, &mut app);
+    assert!(
+        screen_text(&terminal).contains(">> Match 7"),
+        "selected match scrolled out of view"
+    );
+}

@@ -13,6 +13,10 @@ use crate::ui::theme;
 pub struct MatchDisplay<'a> {
     pub matches: &'a [engine::Match],
     pub replace_result: Option<&'a engine::ReplaceResult>,
+    /// Number of logical lines (match, group or preview lines) scrolled off
+    /// the top. Counted in lines rather than wrapped rows, so an entry that
+    /// `App::scroll_to_selected` scrolls to lands at the top however much
+    /// the entries before it wrap.
     pub scroll: u16,
     pub focused: bool,
     pub selected_match: usize,
@@ -131,11 +135,11 @@ impl<'a> Widget for MatchDisplay<'a> {
             )));
         }
 
+        let lines: Vec<Line> = lines.into_iter().skip(self.scroll as usize).collect();
         let paragraph = Paragraph::new(lines)
             .block(block)
             .style(Style::default().bg(theme::BASE))
-            .wrap(Wrap { trim: false })
-            .scroll((self.scroll, 0));
+            .wrap(Wrap { trim: false });
 
         paragraph.render(area, buf);
     }
