@@ -646,3 +646,29 @@ fn paste_drops_newlines_in_single_line_panels() {
     app.paste_text("x\ny");
     assert_eq!(app.test_editor.content(), "x\ny");
 }
+
+#[test]
+fn tab_is_drawn_as_one_column_under_the_cursor() {
+    let mut terminal = create_test_terminal();
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.set_test_string("a\tbc");
+    app.focused_panel = App::PANEL_TEST;
+    draw_synced(&mut terminal, &mut app);
+    let screen = screen_text(&terminal);
+    let row = screen
+        .lines()
+        .position(|l| l.starts_with("│a bc"))
+        .expect("tab should be drawn as a space");
+    // The cursor sits right after "a bc": border + 4 columns.
+    let buf = terminal.backend().buffer();
+    let cursor_cell = &buf[(5, row as u16)];
+    assert_eq!(cursor_cell.bg, rgx::ui::theme::TEXT);
+    assert_ne!(buf[(4, row as u16)].bg, rgx::ui::theme::TEXT);
+}
+
+#[test]
+fn mouse_column_counts_tab_as_one_column() {
+    let mut editor = rgx::input::editor::Editor::with_content("a\tbc".to_string());
+    editor.set_cursor_by_col(2);
+    assert_eq!(editor.cursor(), 2, "column 2 is `b`");
+}

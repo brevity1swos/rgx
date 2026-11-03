@@ -42,7 +42,7 @@ impl<'a> Widget for TestInput<'a> {
         } else {
             flat_spans
         };
-        let lines = split_spans_into_lines(flat_spans);
+        let lines = split_spans_into_lines(super::tabs_as_spaces(flat_spans));
 
         // Apply vertical scroll
         let v_scroll = self.editor.vertical_scroll();

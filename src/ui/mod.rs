@@ -523,6 +523,21 @@ pub fn build_lengths_of_help_pages() -> HashMap<EngineKind, Vec<u16>> {
     map
 }
 
+/// ratatui draws nothing for a tab, but the editors count it as one column.
+/// Draw each tab as a space so the cursor and mouse clicks stay aligned.
+pub(crate) fn tabs_as_spaces(spans: Vec<Span<'_>>) -> Vec<Span<'_>> {
+    spans
+        .into_iter()
+        .map(|span| {
+            if span.content.contains('\t') {
+                Span::styled(span.content.replace('\t', " "), span.style)
+            } else {
+                span
+            }
+        })
+        .collect()
+}
+
 pub(crate) fn centered_overlay(
     frame: &mut Frame,
     area: Rect,
