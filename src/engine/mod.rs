@@ -350,6 +350,98 @@ fn scan_features(pattern: &str) -> PatternFeatures {
     f
 }
 
+/// How [`ascii_shorthands`] spells an ASCII word boundary.
+#[derive(Clone, Copy)]
+pub(crate) enum AsciiBoundary {
+    /// `(?-u:\b)`, for the `regex` crate.
+    InlineFlag,
+    /// A lookaround over `[[:word:]]`, for fancy-regex, which rejects `(?-u`.
+    Lookaround,
+}
+
+/// Rewrite `\d \s \w \b` and their negations into ASCII-only forms that
+/// compile in Unicode mode. With unicode off, the Rust and fancy engines then
+/// behave like PCRE2 without UCP: ASCII shorthand classes, while `.` and
+/// negated classes still match whole characters. A plain `(?-u)` prefix
+/// instead makes the `regex` crate reject anything that could match part of a
+/// UTF-8 sequence (`.`, `[^a]`, `\W`), and fancy-regex reject every pattern.
+pub(crate) fn ascii_shorthands(pattern: &str, boundary: AsciiBoundary, extended: bool) -> String {
+    let c: Vec<char> = pattern.chars().collect();
+    let mut out = String::with_capacity(pattern.len() + 16);
+    let mut class_depth = 0usize;
+    let mut i = 0;
+    while i < c.len() {
+        match c[i] {
+            '\\' => {
+                let Some(&e) = c.get(i + 1) else {
+                    out.push('\\');
+                    break;
+                };
+                let posix = match e {
+                    'd' => Some("digit"),
+                    'D' => Some("^digit"),
+                    's' => Some("space"),
+                    'S' => Some("^space"),
+                    'w' => Some("word"),
+                    'W' => Some("^word"),
+                    _ => None,
+                };
+                // `\b{start}` and friends are left as they are.
+                let plain_boundary =
+                    class_depth == 0 && matches!(e, 'b' | 'B') && c.get(i + 2) != Some(&'{');
+                match posix {
+                    Some(name) if class_depth == 0 => out.push_str(&format!("[[:{name}:]]")),
+                    Some(name) => out.push_str(&format!("[:{name}:]")),
+                    None if plain_boundary => out.push_str(match (boundary, e) {
+                        (AsciiBoundary::InlineFlag, 'b') => r"(?-u:\b)",
+                        (AsciiBoundary::InlineFlag, _) => r"(?-u:\B)",
+                        (AsciiBoundary::Lookaround, 'b') => {
+                            "(?:(?<=[[:word:]])(?![[:word:]])|(?<![[:word:]])(?=[[:word:]]))"
+                        }
+                        (AsciiBoundary::Lookaround, _) => {
+                            "(?:(?<=[[:word:]])(?=[[:word:]])|(?<![[:word:]])(?![[:word:]]))"
+                        }
+                    }),
+                    None => {
+                        out.push('\\');
+                        out.push(e);
+                    }
+                }
+                i += 2;
+                continue;
+            }
+            '[' => {
+                class_depth += 1;
+                out.push('[');
+                i += 1;
+                // A `]` right after `[` or `[^` is a literal, not the end.
+                if c.get(i) == Some(&'^') {
+                    out.push('^');
+                    i += 1;
+                }
+                if c.get(i) == Some(&']') {
+                    out.push(']');
+                    i += 1;
+                }
+                continue;
+            }
+            ']' if class_depth > 0 => class_depth -= 1,
+            // In extended mode a `#` comment runs to the end of the line.
+            '#' if extended && class_depth == 0 => {
+                while i < c.len() && c[i] != '\n' {
+                    out.push(c[i]);
+                    i += 1;
+                }
+                continue;
+            }
+            _ => {}
+        }
+        out.push(c[i]);
+        i += 1;
+    }
+    out
+}
+
 // --- Replace/Substitution support ---
 
 #[derive(Debug, Clone)]
@@ -732,6 +824,41 @@ mod tests {
             EngineKind::FancyRegex,
             EngineKind::FancyRegex,
         ));
+    }
+
+    #[test]
+    fn ascii_shorthands_rewrites_outside_and_inside_classes() {
+        let r = |p: &str| ascii_shorthands(p, AsciiBoundary::InlineFlag, false);
+        assert_eq!(r(r"\d+\S"), "[[:digit:]]+[[:^space:]]");
+        assert_eq!(r(r"[\w-]"), "[[:word:]-]");
+        assert_eq!(r(r"[^\W\d]"), "[^[:^word:][:digit:]]");
+        assert_eq!(r(r"\bx\B"), r"(?-u:\b)x(?-u:\B)");
+    }
+
+    #[test]
+    fn ascii_shorthands_leaves_other_escapes_alone() {
+        let r = |p: &str| ascii_shorthands(p, AsciiBoundary::InlineFlag, false);
+        assert_eq!(r(r"\\d"), r"\\d");
+        assert_eq!(r(r"\p{L}\x41\."), r"\p{L}\x41\.");
+        assert_eq!(r(r"\b{start}a"), r"\b{start}a");
+        // `]` right after `[` is a literal, so `\d` is still inside the class.
+        assert_eq!(r(r"[]\d]"), "[][:digit:]]");
+        assert_eq!(r(r"[[:alpha:]\s]"), "[[:alpha:][:space:]]");
+    }
+
+    #[test]
+    fn ascii_shorthands_skips_extended_comments() {
+        let p = "a # [\\d\n\\d";
+        assert_eq!(
+            ascii_shorthands(p, AsciiBoundary::InlineFlag, true),
+            "a # [\\d\n[[:digit:]]"
+        );
+    }
+
+    #[test]
+    fn ascii_shorthands_uses_lookaround_boundary_for_fancy() {
+        let out = ascii_shorthands(r"\bx", AsciiBoundary::Lookaround, false);
+        assert!(out.starts_with("(?:(?<=[[:word:]])") && out.ends_with('x'));
     }
 
     #[test]

@@ -1,8 +1,8 @@
 use regex::Regex;
 
 use super::{
-    CaptureGroup, CompiledRegex, EngineError, EngineFlags, EngineKind, EngineResult, Match,
-    RegexEngine,
+    ascii_shorthands, AsciiBoundary, CaptureGroup, CompiledRegex, EngineError, EngineFlags,
+    EngineKind, EngineResult, Match, RegexEngine,
 };
 
 pub struct RustRegexEngine;
@@ -13,7 +13,16 @@ impl RegexEngine for RustRegexEngine {
     }
 
     fn compile(&self, pattern: &str, flags: &EngineFlags) -> EngineResult<Box<dyn CompiledRegex>> {
-        let full_pattern = flags.wrap_pattern(pattern);
+        let full_pattern = if flags.unicode {
+            flags.wrap_pattern(pattern)
+        } else {
+            let ascii = ascii_shorthands(pattern, AsciiBoundary::InlineFlag, flags.extended);
+            EngineFlags {
+                unicode: true,
+                ..*flags
+            }
+            .wrap_pattern(&ascii)
+        };
         let re = Regex::new(&full_pattern).map_err(|e| EngineError::CompileError(e.to_string()))?;
 
         Ok(Box::new(RustCompiledRegex { re }))
