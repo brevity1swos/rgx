@@ -1,6 +1,6 @@
 use super::{
-    CaptureGroup, CompiledRegex, EngineError, EngineFlags, EngineKind, EngineResult, Match,
-    RegexEngine,
+    ascii_shorthands, AsciiBoundary, CaptureGroup, CompiledRegex, EngineError, EngineFlags,
+    EngineKind, EngineResult, Match, RegexEngine,
 };
 
 pub struct FancyRegexEngine;
@@ -11,7 +11,18 @@ impl RegexEngine for FancyRegexEngine {
     }
 
     fn compile(&self, pattern: &str, flags: &EngineFlags) -> EngineResult<Box<dyn CompiledRegex>> {
-        let full_pattern = flags.wrap_pattern(pattern);
+        // fancy-regex rejects `(?-u)`, so unicode off is emulated with ASCII
+        // classes; see `ascii_shorthands`.
+        let full_pattern = if flags.unicode {
+            flags.wrap_pattern(pattern)
+        } else {
+            let ascii = ascii_shorthands(pattern, AsciiBoundary::Lookaround, flags.extended);
+            EngineFlags {
+                unicode: true,
+                ..*flags
+            }
+            .wrap_pattern(&ascii)
+        };
         let re = fancy_regex::Regex::new(&full_pattern)
             .map_err(|e| EngineError::CompileError(e.to_string()))?;
 

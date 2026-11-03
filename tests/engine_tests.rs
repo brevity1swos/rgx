@@ -31,6 +31,28 @@ fn test_engine_left_context_and_empty_matches(kind: EngineKind) {
     assert_eq!(match_texts(kind, "a|", "ab"), ["a", ""]);
 }
 
+/// With unicode off, shorthand classes and `\b` are ASCII-only, while `.`
+/// and negated classes still match whole characters (PCRE2 without UCP).
+fn test_engine_ascii_mode(kind: EngineKind) {
+    let flags = EngineFlags {
+        unicode: false,
+        ..EngineFlags::default()
+    };
+    let texts = |pattern: &str| -> Vec<String> {
+        let compiled = create_engine(kind).compile(pattern, &flags).unwrap();
+        let matches = compiled.find_matches("aé b1_x").unwrap();
+        matches.into_iter().map(|m| m.text).collect()
+    };
+    assert_eq!(texts(r"\w+"), ["a", "b1_x"]);
+    assert_eq!(texts(r"\W"), ["é", " "]);
+    assert_eq!(texts(r"\S+"), ["aé", "b1_x"]);
+    assert_eq!(texts(r"[^\s]").len(), 6);
+    assert_eq!(texts(".").len(), 7);
+    assert_eq!(texts("[^a]"), ["é", " ", "b", "1", "_", "x"]);
+    assert_eq!(texts(r"[\d_]+"), ["1_"]);
+    assert_eq!(texts(r"\bb"), ["b"]);
+}
+
 fn test_engine_capture_groups(kind: EngineKind) {
     let engine = create_engine(kind);
     let flags = EngineFlags::default();
@@ -113,6 +135,11 @@ fn rust_regex_left_context_and_empty_matches() {
 }
 
 #[test]
+fn rust_regex_ascii_mode() {
+    test_engine_ascii_mode(EngineKind::RustRegex);
+}
+
+#[test]
 fn rust_regex_compile_error() {
     test_engine_compile_error(EngineKind::RustRegex);
 }
@@ -145,6 +172,11 @@ fn fancy_regex_named_captures() {
 #[test]
 fn fancy_regex_left_context_and_empty_matches() {
     test_engine_left_context_and_empty_matches(EngineKind::FancyRegex);
+}
+
+#[test]
+fn fancy_regex_ascii_mode() {
+    test_engine_ascii_mode(EngineKind::FancyRegex);
 }
 
 #[test]
@@ -184,6 +216,11 @@ mod pcre2_tests {
     #[test]
     fn pcre2_left_context_and_empty_matches() {
         test_engine_left_context_and_empty_matches(EngineKind::Pcre2);
+    }
+
+    #[test]
+    fn pcre2_ascii_mode() {
+        test_engine_ascii_mode(EngineKind::Pcre2);
     }
 
     #[test]
