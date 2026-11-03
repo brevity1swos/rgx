@@ -632,3 +632,17 @@ fn match_time_error_clears_after_text_edit() {
     assert!(app.error.is_none(), "stale error: {:?}", app.error);
     assert_eq!(app.matches.len(), 1);
 }
+
+#[test]
+fn paste_drops_newlines_in_single_line_panels() {
+    let mut app = App::new(EngineKind::RustRegex, EngineFlags::default());
+    app.focused_panel = App::PANEL_REGEX;
+    app.paste_text("a\nb\r\n");
+    assert_eq!(app.regex_editor.content(), "ab");
+    app.focused_panel = App::PANEL_REPLACE;
+    app.paste_text("$1\n");
+    assert_eq!(app.replace_editor.content(), "$1");
+    app.focused_panel = App::PANEL_TEST;
+    app.paste_text("x\ny");
+    assert_eq!(app.test_editor.content(), "x\ny");
+}
