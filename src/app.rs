@@ -707,6 +707,17 @@ impl App {
         }
     }
 
+    /// Insert pasted text into the focused editor. The regex and replace panels
+    /// are single-line, so line breaks are dropped there.
+    pub fn paste_text(&mut self, text: &str) {
+        if self.focused_panel == Self::PANEL_TEST {
+            self.edit_focused(|ed| ed.insert_str(text));
+        } else {
+            let line: String = text.chars().filter(|&c| c != '\n' && c != '\r').collect();
+            self.edit_focused(|ed| ed.insert_str(&line));
+        }
+    }
+
     /// Apply a non-mutating cursor movement to the currently focused editor panel.
     pub fn move_focused(&mut self, f: impl FnOnce(&mut Editor)) {
         match self.focused_panel {
@@ -1121,7 +1132,7 @@ impl App {
             Action::PasteClipboard => {
                 if let Ok(mut cb) = arboard::Clipboard::new() {
                     if let Ok(text) = cb.get_text() {
-                        self.edit_focused(|ed| ed.insert_str(&text));
+                        self.paste_text(&text);
                     }
                 }
             }
