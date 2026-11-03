@@ -478,7 +478,12 @@ fn byte_offset_at_width(line: &str, target_width: usize) -> usize {
         if width >= target_width {
             return i;
         }
-        width += unicode_width::UnicodeWidthChar::width(c).unwrap_or(0);
+        // A tab is one column, matching `cursor_line_col` and the renderer.
+        width += if c == '\t' {
+            1
+        } else {
+            unicode_width::UnicodeWidthChar::width(c).unwrap_or(0)
+        };
     }
     line.len()
 }

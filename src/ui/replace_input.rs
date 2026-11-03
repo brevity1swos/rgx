@@ -33,10 +33,10 @@ impl<'a> Widget for ReplaceInput<'a> {
             ));
 
         let content = self.editor.content();
-        let line = Line::from(Span::styled(
+        let line = Line::from(super::tabs_as_spaces(vec![Span::styled(
             content.to_string(),
             Style::default().fg(theme::TEXT),
-        ));
+        )]));
 
         let paragraph = Paragraph::new(line)
             .block(block)

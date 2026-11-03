@@ -58,7 +58,7 @@ impl<'a> Widget for RegexInput<'a> {
         } else {
             syntax_highlight::build_highlighted_spans(content, tokens)
         };
-        let line = Line::from(spans);
+        let line = Line::from(super::tabs_as_spaces(spans));
 
         let paragraph = Paragraph::new(line)
             .block(block)
