@@ -102,6 +102,7 @@ Full flag reference, piping recipes, and `rgx filter` + `--json` usage:
 - **[Keyboard shortcuts](docs/shortcuts.md)** — main TUI, vim mode, filter mode
 - **[Editor integrations](docs/integrations.md)** — VS Code, Neovim, Zed, tmux
 - **[Advanced](docs/advanced.md)** — test suite mode, config file, engines deep-dive, comparison matrix
+- **[Suite conventions](docs/suite-conventions.md)** — shared keys, flags and CLI contracts with agx and sift
 
 ## Engines at a glance
 
