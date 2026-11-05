@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.14.4] - 2026-11-05
+
+### Bug Fixes
+
+- *(vim)* Drop newlines when pasting into single-line panels
+- *(ui)* Draw tabs as one column so the cursor stays aligned
+- *(ui)* Keep the selected match visible when entries wrap
+- *(debugger)* Scroll pattern and subject to the current step
+- *(engine)* Make unicode-off mode work on the rust and fancy engines
+
+### Documentation
+
+- *(roadmap)* Record v0.14.2 and v0.14.3 releases
+- Add the shared suite conventions doc
+
+### Ci
+
+- *(vscode)* Pin extension publish actions to SHAs
+
+
 ## [0.14.3] - 2026-10-26
 
 ### Bug Fixes
